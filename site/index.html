@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>لینگوتاک؛ سامانهٔ مدیریت آموزشگاه زبان</title>
+
+<style>
+/* ============================================================
+   LINGO TALK — سایت معرفی
+   سیستم طراحی: مطابق docs/M-ui-ux-direction.md و docs/P-iran-market.md
+   ============================================================ */
+
+/* ---------- فونت دانا (self-host، بدون هیچ وابستگی خارجی) ---------- */
+@font-face{font-family:"Dana";src:url("fonts/dana-light.woff2") format("woff2");font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:"Dana";src:url("fonts/dana-regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Dana";src:url("fonts/dana-bold.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap}
+
+/* ---------- توکن‌ها ---------- */
+:root{
+  --paper:#F7F8FA;      --surface:#FFFFFF;    --surface-2:#F1F4F8;  --surface-3:#E8EDF4;
+  --ink:#0B1220;        --ink-2:#2C3A56;      --ink-3:#5A6A85;
+  --line:#E1E7EF;       --line-2:#CBD5E1;
+  --brand:#2563C7;      --brand-deep:#0F2A54; --brand-soft:#E9F0FB; --brand-ring:rgba(37,99,199,.32);
+  --accent:#D98324;     --accent-soft:#FBF0E1;
+  --ok:#0A7048;         --ok-soft:#E4F4EC;
+  --warn:#A65F00;       --warn-soft:#FBF1E0;
+  --bad:#B42318;        --bad-soft:#FCEAE8;
+  --shadow-sm:0 1px 2px rgba(11,18,32,.05), 0 2px 8px rgba(11,18,32,.05);
+  --shadow-md:0 8px 28px rgba(11,18,32,.09);
+  --shadow-lg:0 24px 60px rgba(11,18,32,.14);
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-xl:22px;
+  --maxw:1180px;
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#080D16;     --surface:#111926;   --surface-2:#18222F; --surface-3:#212C3C;
+    --ink:#EEF3F9;       --ink-2:#B9C6D6;     --ink-3:#8496AC;
+    --line:#212C3C;      --line-2:#2E3A4C;
+    --brand:#6BA0EA;     --brand-deep:#C9DDF7; --brand-soft:#14243A; --brand-ring:rgba(107,160,234,.36);
+    --accent:#E9A24E;    --accent-soft:#2A1F11;
+    --ok:#43C08C;        --ok-soft:#0F2A21;
+    --warn:#DFA24A;      --warn-soft:#2A200F;
+    --bad:#F0736A;       --bad-soft:#2C1614;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:0 8px 28px rgba(0,0,0,.5);
+    --shadow-lg:0 24px 60px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#080D16;     --surface:#111926;   --surface-2:#18222F; --surface-3:#212C3C;
+  --ink:#EEF3F9;       --ink-2:#B9C6D6;     --ink-3:#8496AC;
+  --line:#212C3C;      --line-2:#2E3A4C;
+  --brand:#6BA0EA;     --brand-deep:#C9DDF7; --brand-soft:#14243A; --brand-ring:rgba(107,160,234,.36);
+  --accent:#E9A24E;    --accent-soft:#2A1F11;
+  --ok:#43C08C;        --ok-soft:#0F2A21;
+  --warn:#DFA24A;      --warn-soft:#2A200F;
+  --bad:#F0736A;       --bad-soft:#2C1614;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 8px 28px rgba(0,0,0,.5);
+  --shadow-lg:0 24px 60px rgba(0,0,0,.6);
+}
+:root[data-theme="light"]{
+  --paper:#F7F8FA;     --surface:#FFFFFF;   --surface-2:#F1F4F8; --surface-3:#E8EDF4;
+  --ink:#0B1220;       --ink-2:#2C3A56;     --ink-3:#5A6A85;
+  --line:#E1E7EF;      --line-2:#CBD5E1;
+  --brand:#2563C7;     --brand-deep:#0F2A54; --brand-soft:#E9F0FB; --brand-ring:rgba(37,99,199,.32);
+  --accent:#D98324;    --accent-soft:#FBF0E1;
+  --ok:#0A7048;        --ok-soft:#E4F4EC;
+  --warn:#A65F00;      --warn-soft:#FBF1E0;
+  --bad:#B42318;       --bad-soft:#FCEAE8;
+  --shadow-sm:0 1px 2px rgba(11,18,32,.05), 0 2px 8px rgba(11,18,32,.05);
+  --shadow-md:0 8px 28px rgba(11,18,32,.09);
+  --shadow-lg:0 24px 60px rgba(11,18,32,.14);
+}
+
+/* ---------- پایه ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body.lt{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Dana", Tahoma, system-ui, sans-serif;
+  font-size:16px; line-height:1.75; font-weight:400;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.lt h1,.lt h2,.lt h3,.lt h4{margin:0; font-weight:700; line-height:1.45; text-wrap:balance}
+.lt p{margin:0}
+.lt ul{margin:0; padding:0; list-style:none}
+.lt a{color:inherit; text-decoration:none}
+.lt button{font:inherit; color:inherit; cursor:pointer}
+.lt img,.lt svg{max-width:100%}
+.num{font-variant-numeric:tabular-nums}
+
+.lt :focus-visible{outline:none; box-shadow:0 0 0 3px var(--brand-ring); border-radius:var(--r-sm)}
+
+.wrap{width:100%; max-width:var(--maxw); margin-inline:auto; padding-inline:20px}
+.sec{padding-block:clamp(56px,7vw,104px)}
+.sec--tight{padding-block:clamp(40px,5vw,68px)}
+.eyebrow{
+  font-size:12.5px; font-weight:700; color:var(--brand);
+  letter-spacing:.04em; display:flex; align-items:center; gap:8px; margin-bottom:14px;
+}
+.eyebrow::before{content:""; inline-size:22px; block-size:2px; background:var(--brand); border-radius:2px}
+.h-sec{font-size:clamp(24px,3.4vw,36px); letter-spacing:-.01em}
+.lead{color:var(--ink-2); font-size:clamp(15px,1.6vw,17.5px); max-width:60ch; margin-top:12px}
+.muted{color:var(--ink-3)}
+
+/* ---------- دکمه‌ها ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  min-block-size:46px; padding-inline:22px; border-radius:var(--r-md);
+  border:1px solid transparent; font-weight:700; font-size:15px;
+  transition:background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn--primary{background:var(--brand); color:#fff; border-color:var(--brand)}
+:root[data-theme="dark"] .btn--primary,
+:root[data-theme="dark"] .btn--primary:hover{color:#08111F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn--primary{color:#08111F}}
+.btn--primary:hover{background:var(--brand-deep); border-color:var(--brand-deep)}
+:root[data-theme="dark"] .btn--primary:hover{background:#8FB9F0; border-color:#8FB9F0}
+.btn--ghost{background:var(--surface); color:var(--ink); border-color:var(--line-2)}
+.btn--ghost:hover{background:var(--surface-2); border-color:var(--ink-3)}
+.btn--sm{min-block-size:38px; padding-inline:15px; font-size:14px}
+.btn--lg{min-block-size:54px; padding-inline:28px; font-size:16.5px}
+.btn--block{inline-size:100%}
+
+/* ---------- نوار پیش‌نمایش ---------- */
+.preview-bar{
+  background:var(--accent-soft); color:var(--ink); border-block-end:1px solid var(--line);
+  font-size:13.5px; position:relative; z-index:60;
+}
+.preview-bar .wrap{display:flex; align-items:center; gap:12px; padding-block:9px}
+.preview-bar b{color:var(--accent)}
+.preview-bar .x{
+  margin-inline-start:auto; background:none; border:none; color:var(--ink-3);
+  font-size:20px; line-height:1; padding:4px 8px; border-radius:var(--r-sm);
+}
+.preview-bar .x:hover{background:rgba(0,0,0,.06); color:var(--ink)}
+
+/* ---------- هدر ---------- */
+.hdr{position:sticky; top:0; z-index:50; background:color-mix(in srgb, var(--paper) 88%, transparent);
+     backdrop-filter:blur(12px); border-block-end:1px solid var(--line)}
+.hdr .wrap{display:flex; align-items:center; gap:18px; block-size:66px}
+.logo{display:flex; align-items:center; gap:9px; font-weight:700; font-size:18.5px; letter-spacing:-.01em}
+.logo-mark{
+  inline-size:30px; block-size:30px; border-radius:9px; flex:none;
+  background:linear-gradient(150deg, var(--brand) 0%, var(--brand-deep) 100%);
+  display:grid; place-items:center; color:#fff; font-size:15px; font-weight:700;
+}
+:root[data-theme="dark"] .logo-mark{background:linear-gradient(150deg,#3E7FD8 0%,#1B3E6E 100%); color:#EAF2FD}
+.nav{display:flex; gap:4px; margin-inline-start:14px}
+.nav a{padding:8px 13px; border-radius:var(--r-sm); font-size:15px; color:var(--ink-2); transition:background .15s, color .15s}
+.nav a:hover{background:var(--surface-2); color:var(--ink)}
+.hdr-actions{margin-inline-start:auto; display:flex; align-items:center; gap:8px}
+.icon-btn{
+  inline-size:38px; block-size:38px; display:grid; place-items:center; flex:none;
+  background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-md); color:var(--ink-2);
+}
+.icon-btn:hover{background:var(--surface-2); color:var(--ink)}
+.burger{display:none}
+@media (max-width:900px){
+  .nav{display:none}
+  .hdr-actions .btn--ghost{display:none}
+  .burger{display:grid}
+}
+.mobile-nav{display:none; border-block-end:1px solid var(--line); background:var(--surface)}
+.mobile-nav.open{display:block}
+.mobile-nav ul{display:flex; flex-direction:column; padding-block:8px}
+.mobile-nav a{padding:13px 20px; font-size:15.5px; border-block-end:1px solid var(--line)}
+.mobile-nav li:last-child a{border:none}
+
+/* ---------- هیرو ---------- */
+.hero{position:relative; overflow:hidden; padding-block:clamp(44px,6vw,84px) clamp(52px,7vw,96px)}
+.hero::before{
+  content:""; position:absolute; inset-block-start:-320px; inset-inline-end:-240px;
+  inline-size:760px; block-size:760px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, var(--brand-soft) 0%, transparent 66%); opacity:.85;
+}
+.hero .wrap{position:relative}
+.hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(28px,4vw,60px); align-items:center}
+@media (max-width:980px){.hero-grid{grid-template-columns:1fr; gap:38px}}
+.hero h1{font-size:clamp(29px,4.6vw,52px); line-height:1.34; letter-spacing:-.02em}
+.hero h1 .hl{
+  color:var(--brand-deep); white-space:nowrap;
+  background-image:linear-gradient(to top, color-mix(in srgb, var(--accent) 34%, transparent) 0 9px, transparent 9px);
+  padding-inline:2px;
+}
+.hero-sub{margin-top:20px; font-size:clamp(15.5px,1.8vw,18.5px); color:var(--ink-2); max-width:52ch; line-height:1.85}
+.hero-cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:30px}
+@media (max-width:560px){ .hero-cta{flex-direction:column} .hero-cta .btn{inline-size:100%} }
+.hero-note{margin-top:16px; font-size:13.5px; color:var(--ink-3); display:flex; flex-wrap:wrap; gap:6px 16px}
+.hero-note span{display:inline-flex; align-items:center; gap:6px}
+.tick{color:var(--ok); font-weight:700}
+
+/* ---------- ویجت حضور و غیاب ---------- */
+.demo-card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-xl);
+  box-shadow:var(--shadow-lg); overflow:hidden;
+}
+.demo-top{
+  display:flex; align-items:center; gap:10px; padding:13px 16px;
+  border-block-end:1px solid var(--line); background:var(--surface-2);
+}
+.dots{display:flex; gap:5px}
+.dots i{inline-size:9px; block-size:9px; border-radius:50%; background:var(--line-2); display:block}
+.demo-title{font-size:13px; color:var(--ink-3); margin-inline-start:auto}
+.demo-head{padding:16px 18px 12px}
+.demo-head .cls{font-size:17px; font-weight:700}
+.demo-head .meta{font-size:13px; color:var(--ink-3); margin-top:4px; display:flex; flex-wrap:wrap; gap:4px 12px}
+.demo-counts{
+  display:flex; gap:8px; padding:0 18px 12px; font-size:13px; font-weight:700;
+}
+.chip{display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:100px}
+.chip--ok{background:var(--ok-soft); color:var(--ok)}
+.chip--bad{background:var(--bad-soft); color:var(--bad)}
+.chip--time{background:var(--surface-2); color:var(--ink-3); margin-inline-start:auto; font-weight:400; white-space:nowrap}
+@media (max-width:460px){ .chip--time{display:none} }
+.roster{border-block-start:1px solid var(--line)}
+.st{
+  inline-size:100%; display:flex; align-items:center; gap:12px; text-align:start;
+  padding:11px 18px; background:none; border:none; border-block-end:1px solid var(--line);
+  transition:background .14s ease;
+}
+.st:hover{background:var(--surface-2)}
+.st:last-child{border-block-end:none}
+.av{
+  inline-size:34px; block-size:34px; border-radius:50%; flex:none; display:grid; place-items:center;
+  background:var(--surface-3); color:var(--ink-2); font-size:12.5px; font-weight:700;
+}
+.st-name{flex:1; font-size:14.5px}
+.st-state{
+  font-size:12.5px; font-weight:700; padding:3px 11px; border-radius:100px; flex:none;
+  background:var(--ok-soft); color:var(--ok); transition:background .14s, color .14s;
+}
+.st[data-absent="1"] .st-state{background:var(--bad-soft); color:var(--bad)}
+.st[data-absent="1"] .st-name{color:var(--ink-3); text-decoration:line-through; text-decoration-color:var(--line-2)}
+.demo-foot{padding:14px 18px; border-block-start:1px solid var(--line); background:var(--surface-2)}
+.demo-hint{font-size:12.5px; color:var(--ink-3); margin-top:10px; text-align:center}
+.demo-done{
+  display:none; align-items:center; gap:9px; padding:12px 14px; border-radius:var(--r-md);
+  background:var(--ok-soft); color:var(--ok); font-size:14px; font-weight:700;
+}
+.demo-done.show{display:flex}
+
+/* ---------- نوار واقعیت‌ها ---------- */
+.facts{border-block:1px solid var(--line); background:var(--surface)}
+.facts .wrap{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line)}
+.fact{background:var(--surface); padding:22px 18px; text-align:center}
+.fact b{display:block; font-size:clamp(20px,2.6vw,27px); font-weight:300; letter-spacing:-.01em}
+.fact span{display:block; font-size:13px; color:var(--ink-3); margin-top:3px}
+@media (max-width:760px){.facts .wrap{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- کارت‌های درد ---------- */
+.pain-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:36px}
+@media (max-width:1000px){.pain-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.pain-grid{grid-template-columns:1fr}}
+.pain{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:20px;
+  position:relative; overflow:hidden;
+}
+.pain::before{
+  content:""; position:absolute; inset-block-start:0; inset-inline-start:0; inline-size:3px; block-size:100%;
+  background:var(--bad); opacity:.5;
+}
+.pain q{font-size:15.5px; font-weight:700; display:block; line-height:1.7; quotes:"«" "»"}
+.pain p{margin-top:10px; font-size:13.5px; color:var(--ink-3); line-height:1.8}
+
+/* ---------- ستون فقرات ترم ---------- */
+.spine{background:var(--brand-deep); color:#EAF1FB; position:relative; overflow:hidden}
+:root[data-theme="dark"] .spine{background:var(--surface); border-block:1px solid var(--line); color:var(--ink)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spine{background:var(--surface); border-block:1px solid var(--line); color:var(--ink)}}
+.spine .eyebrow{color:var(--accent)}
+.spine .eyebrow::before{background:var(--accent)}
+.spine .lead{color:rgba(234,241,251,.72)}
+:root[data-theme="dark"] .spine .lead{color:var(--ink-2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spine .lead{color:var(--ink-2)}}
+.spine-scroll{margin-top:40px; overflow-x:auto; padding-block-end:10px; scrollbar-width:thin}
+.spine-track{display:grid; grid-template-columns:repeat(6, minmax(178px,1fr)); gap:0; min-inline-size:1080px; position:relative}
+.spine-track::before{
+  content:""; position:absolute; inset-block-start:41px; inset-inline:14px; block-size:2px;
+  background:rgba(234,241,251,.18);
+}
+:root[data-theme="dark"] .spine-track::before{background:var(--line-2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spine-track::before{background:var(--line-2)}}
+.step{padding-inline:14px; position:relative}
+.step .wk{font-size:12px; color:var(--accent); font-weight:700}
+.step .node{
+  inline-size:15px; block-size:15px; border-radius:50%; background:var(--accent); margin-block:11px 18px;
+  position:relative; z-index:1; box-shadow:0 0 0 5px var(--brand-deep);
+}
+:root[data-theme="dark"] .step .node{box-shadow:0 0 0 5px var(--surface)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .step .node{box-shadow:0 0 0 5px var(--surface)}}
+.step h4{font-size:15.5px; margin-bottom:7px}
+.step p{font-size:13.5px; line-height:1.8; color:rgba(234,241,251,.66)}
+:root[data-theme="dark"] .step p{color:var(--ink-3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .step p{color:var(--ink-3)}}
+.spine-hint{margin-top:8px; font-size:12.5px; color:rgba(234,241,251,.5)}
+:root[data-theme="dark"] .spine-hint{color:var(--ink-3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .spine-hint{color:var(--ink-3)}}
+
+/* ---------- ماژول‌ها ---------- */
+.mods{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:38px}
+@media (max-width:960px){.mods{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.mods{grid-template-columns:1fr}}
+.mod{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:22px;
+  transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.mod:hover{border-color:var(--brand); box-shadow:var(--shadow-md); transform:translateY(-2px)}
+.mod-ico{
+  inline-size:40px; block-size:40px; border-radius:var(--r-md); background:var(--brand-soft); color:var(--brand);
+  display:grid; place-items:center; margin-bottom:15px;
+}
+.mod h3{font-size:16.5px}
+.mod p{margin-top:8px; font-size:14px; color:var(--ink-3); line-height:1.85}
+.mod ul{margin-top:13px; display:flex; flex-direction:column; gap:6px}
+.mod li{font-size:13.5px; color:var(--ink-2); display:flex; gap:7px; align-items:flex-start}
+.mod li::before{content:""; inline-size:9px; block-size:1px; background:var(--line-2); flex:none; margin-block-start:.85em}
+
+/* ---------- تب نقش‌ها ---------- */
+.tabs{display:flex; gap:6px; margin-top:32px; border-block-end:1px solid var(--line); overflow-x:auto}
+.tab{
+  background:none; border:none; padding:12px 18px; font-size:15px; font-weight:700; color:var(--ink-3);
+  border-block-end:2.5px solid transparent; margin-block-end:-1px; white-space:nowrap; transition:color .15s;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--brand); border-block-end-color:var(--brand)}
+.panel{display:none; padding-top:28px}
+.panel.active{display:grid; grid-template-columns:1fr 1.1fr; gap:34px; align-items:start}
+@media (max-width:900px){.panel.active{grid-template-columns:1fr; gap:24px}}
+.panel h3{font-size:20px}
+.panel .p-lead{margin-top:10px; color:var(--ink-2); font-size:15px; line-height:1.9}
+.panel ul{margin-top:18px; display:flex; flex-direction:column; gap:11px}
+.panel li{display:flex; gap:10px; font-size:14.5px; line-height:1.75}
+.panel li b{color:var(--ink)}
+.li-dot{
+  inline-size:20px; block-size:20px; border-radius:50%; background:var(--ok-soft); color:var(--ok);
+  display:grid; place-items:center; flex:none; font-size:11px; font-weight:700; margin-top:4px;
+}
+/* ماکت صفحه */
+.mock{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-md); overflow:hidden}
+.mock-bar{padding:11px 15px; border-block-end:1px solid var(--line); background:var(--surface-2); font-size:12.5px; color:var(--ink-3); display:flex; align-items:center; gap:8px}
+.mock-body{padding:16px}
+.kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+@media (max-width:520px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md); padding:12px}
+.kpi .lbl{font-size:11.5px; color:var(--ink-3); line-height:1.5}
+.kpi .val{font-size:19px; font-weight:700; margin-top:5px; letter-spacing:-.01em}
+.kpi .dt{font-size:11.5px; margin-top:2px}
+.up{color:var(--ok)} .down{color:var(--bad)}
+.alert-list{margin-top:14px; display:flex; flex-direction:column; gap:8px}
+.alert{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--r-md);
+  background:var(--surface-2); border:1px solid var(--line); font-size:13px;
+}
+.alert .sev{inline-size:7px; block-size:7px; border-radius:50%; flex:none}
+.sev--hi{background:var(--bad)} .sev--md{background:var(--warn)}
+.alert .act{margin-inline-start:auto; color:var(--brand); font-weight:700; font-size:12.5px; white-space:nowrap}
+.bars{margin-top:14px; display:flex; align-items:flex-end; gap:7px; block-size:88px; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md)}
+.bars i{flex:1; background:var(--brand); border-radius:3px 3px 0 0; opacity:.85; display:block}
+.bars i:last-child{background:var(--accent); opacity:1}
+/* ماکت موبایل */
+.phone{
+  inline-size:252px; margin-inline:auto; background:var(--surface); border:1px solid var(--line-2);
+  border-radius:26px; padding:9px; box-shadow:var(--shadow-lg);
+}
+.phone-in{background:var(--surface-2); border-radius:19px; overflow:hidden}
+.phone-top{padding:11px 14px 8px; font-size:12px; color:var(--ink-3); display:flex; justify-content:space-between}
+.next-card{margin:0 10px 10px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:13px}
+.next-card .t{font-size:11.5px; color:var(--brand); font-weight:700}
+.next-card .n{font-size:15px; font-weight:700; margin-top:5px}
+.next-card .m{font-size:12.5px; color:var(--ink-3); margin-top:3px}
+.next-card .b{margin-top:11px; background:var(--brand); color:#fff; text-align:center; padding:9px; border-radius:var(--r-sm); font-size:13px; font-weight:700}
+:root[data-theme="dark"] .next-card .b{color:#08111F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .next-card .b{color:#08111F}}
+.pay-card{margin:0 10px 10px; background:var(--warn-soft); border:1px solid color-mix(in srgb,var(--warn) 30%, transparent); border-radius:var(--r-md); padding:13px}
+.pay-card .t{font-size:11.5px; color:var(--warn); font-weight:700}
+.pay-card .n{font-size:16px; font-weight:700; margin-top:5px}
+.pay-card .m{font-size:12px; color:var(--ink-3); margin-top:2px}
+.phone-nav{display:flex; border-block-start:1px solid var(--line); background:var(--surface)}
+.phone-nav span{flex:1; text-align:center; padding:9px 0; font-size:10.5px; color:var(--ink-3)}
+.phone-nav span:first-child{color:var(--brand); font-weight:700}
+
+/* ---------- بخش ایران ---------- */
+.iran{background:var(--surface); border-block:1px solid var(--line)}
+.iran-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:36px}
+@media (max-width:960px){.iran-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.iran-grid{grid-template-columns:1fr}}
+.ir{border:1px solid var(--line); border-radius:var(--r-lg); padding:19px; background:var(--paper)}
+.ir h4{font-size:15.5px; display:flex; align-items:center; gap:8px}
+.ir h4 .tag{font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:100px}
+.ir p{margin-top:9px; font-size:13.5px; color:var(--ink-3); line-height:1.85}
+
+/* ---------- تعرفه ---------- */
+.plan-toggle{display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:100px; padding:4px; margin-top:26px}
+.plan-toggle button{
+  border:none; background:none; padding:8px 20px; border-radius:100px; font-size:14px; font-weight:700; color:var(--ink-3);
+  transition:background .16s, color .16s;
+}
+.plan-toggle button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:var(--shadow-sm)}
+.save-pill{font-size:11.5px; color:var(--ok); background:var(--ok-soft); padding:2px 8px; border-radius:100px; margin-inline-start:6px}
+
+.calc{margin-top:26px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:20px}
+.calc-top{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; font-size:14.5px}
+.calc-top b{font-size:22px; color:var(--brand)}
+.calc input[type=range]{inline-size:100%; margin-top:16px; accent-color:var(--brand); block-size:22px}
+.calc-scale{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-3); margin-top:2px}
+.calc-out{margin-top:14px; padding-top:14px; border-block-start:1px solid var(--line); font-size:14.5px}
+.calc-out b{color:var(--ink); font-size:16px}
+
+.plans{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:22px; align-items:start}
+@media (max-width:960px){.plans{grid-template-columns:1fr; max-width:460px; margin-inline:auto}}
+.plan{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:24px; position:relative}
+.plan--best{border-color:var(--brand); border-width:2px; box-shadow:var(--shadow-md)}
+.plan-badge{
+  /* عمداً left فیزیکی: transform به جهت صفحه حساس نیست، پس این ترکیب
+     در هر دو جهت درست وسط‌چین می‌شود. */
+  position:absolute; inset-block-start:-11px; left:50%; transform:translateX(-50%);
+  background:var(--brand); color:#fff; font-size:11.5px; font-weight:700; padding:3px 13px; border-radius:100px; white-space:nowrap;
+}
+:root[data-theme="dark"] .plan-badge{color:#08111F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .plan-badge{color:#08111F}}
+.plan h3{font-size:17px}
+.plan .for{font-size:13px; color:var(--ink-3); margin-top:4px; min-block-size:38px}
+.plan .price{margin-top:14px; display:flex; align-items:baseline; gap:6px}
+.plan .price b{font-size:29px; font-weight:700; letter-spacing:-.02em}
+.plan .price span{font-size:13px; color:var(--ink-3)}
+.plan .price-note{font-size:12px; color:var(--ink-3); margin-top:3px; min-block-size:18px}
+.plan ul{margin:18px 0; display:flex; flex-direction:column; gap:9px}
+.plan li{font-size:13.5px; display:flex; gap:8px; align-items:flex-start; line-height:1.7}
+.plan li .k{color:var(--ok); flex:none; font-weight:700; margin-top:1px}
+.plan li .k--no{color:var(--ink-3)}
+.plan li .dash{display:inline-block; inline-size:9px; block-size:1.5px; background:currentColor; margin-block-start:.75em}
+.plan li.off{color:var(--ink-3)}
+.addons{margin-top:20px; font-size:13.5px; color:var(--ink-3); display:flex; flex-wrap:wrap; gap:8px 22px}
+
+/* ---------- سوالات ---------- */
+.faq{margin-top:32px; border-block-start:1px solid var(--line)}
+.faq details{border-block-end:1px solid var(--line)}
+.faq summary{
+  padding:17px 4px; font-size:15.5px; font-weight:700; cursor:pointer; list-style:none;
+  display:flex; align-items:center; gap:12px;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{
+  content:"+"; margin-inline-start:auto; color:var(--brand); font-size:20px; font-weight:400; flex:none;
+  transition:transform .18s ease;
+}
+.faq details[open] summary::after{content:"−"}
+.faq .a{padding:0 4px 19px; color:var(--ink-2); font-size:14.5px; line-height:1.95; max-width:74ch}
+
+/* ---------- فرم دمو ---------- */
+.cta-sec{background:var(--brand-deep); color:#EAF1FB}
+:root[data-theme="dark"] .cta-sec{background:var(--surface); border-block:1px solid var(--line); color:var(--ink)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cta-sec{background:var(--surface); border-block:1px solid var(--line); color:var(--ink)}}
+.cta-grid{display:grid; grid-template-columns:1fr 1.05fr; gap:clamp(28px,4vw,56px); align-items:start}
+@media (max-width:900px){.cta-grid{grid-template-columns:1fr}}
+.cta-sec h2{font-size:clamp(24px,3.2vw,34px)}
+.cta-sec .lead{color:rgba(234,241,251,.74)}
+:root[data-theme="dark"] .cta-sec .lead{color:var(--ink-2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cta-sec .lead{color:var(--ink-2)}}
+.steps{margin-top:26px; display:flex; flex-direction:column; gap:16px}
+.stp{display:flex; gap:13px; align-items:flex-start}
+.stp .n{
+  inline-size:27px; block-size:27px; border-radius:50%; flex:none; display:grid; place-items:center;
+  background:rgba(234,241,251,.12); font-size:13px; font-weight:700;
+}
+:root[data-theme="dark"] .stp .n{background:var(--surface-3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .stp .n{background:var(--surface-3)}}
+.stp b{display:block; font-size:15px}
+.stp p{font-size:13.5px; color:rgba(234,241,251,.66); margin-top:3px; line-height:1.8}
+:root[data-theme="dark"] .stp p{color:var(--ink-3)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .stp p{color:var(--ink-3)}}
+
+.form-card{background:var(--surface); color:var(--ink); border-radius:var(--r-xl); padding:26px; box-shadow:var(--shadow-lg); border:1px solid var(--line)}
+.form-row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:560px){.form-row{grid-template-columns:1fr}}
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+.field label{font-size:13.5px; font-weight:700}
+.field label .req{color:var(--bad)}
+.field input,.field select,.field textarea{
+  font:inherit; font-size:15px; padding:11px 13px; min-block-size:46px;
+  background:var(--paper); border:1px solid var(--line-2); border-radius:var(--r-md); color:var(--ink);
+  transition:border-color .15s, box-shadow .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-ring);
+}
+.field textarea{min-block-size:78px; resize:vertical; line-height:1.8}
+.field .help{font-size:12px; color:var(--ink-3)}
+.field .err{font-size:12.5px; color:var(--bad); display:none; align-items:center; gap:5px}
+.field.invalid input,.field.invalid select{border-color:var(--bad)}
+.field.invalid .err{display:flex}
+.field input[dir=ltr]{text-align:end}
+.form-ok{
+  display:none; text-align:center; padding:26px 10px;
+}
+.form-ok.show{display:block}
+.form-ok .ic{inline-size:52px; block-size:52px; border-radius:50%; background:var(--ok-soft); color:var(--ok); display:grid; place-items:center; margin:0 auto 14px; font-size:25px}
+.form-ok h3{font-size:19px}
+.form-ok p{margin-top:9px; font-size:14px; color:var(--ink-3); line-height:1.9}
+.form-legal{font-size:12px; color:var(--ink-3); margin-top:12px; line-height:1.8}
+
+/* ---------- فوتر ---------- */
+.ftr{background:var(--surface); border-block-start:1px solid var(--line); padding-block:44px 26px}
+.ftr-grid{display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:28px}
+@media (max-width:860px){.ftr-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.ftr-grid{grid-template-columns:1fr}}
+.ftr h5{font-size:13.5px; font-weight:700; margin-bottom:13px}
+.ftr ul{display:flex; flex-direction:column; gap:9px}
+.ftr li a{font-size:13.5px; color:var(--ink-3)}
+.ftr li a:hover{color:var(--brand)}
+.ftr-about{font-size:13.5px; color:var(--ink-3); line-height:1.9; margin-top:12px; max-width:38ch}
+.badges{display:flex; gap:10px; margin-top:16px}
+.badge{
+  inline-size:62px; block-size:62px; border:1px dashed var(--line-2); border-radius:var(--r-md);
+  display:grid; place-items:center; text-align:center; font-size:10px; color:var(--ink-3); line-height:1.4; padding:5px;
+}
+.ftr-btm{
+  margin-top:34px; padding-top:20px; border-block-start:1px solid var(--line);
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:12.5px; color:var(--ink-3);
+}
+.ftr-btm .sp{margin-inline-start:auto; display:flex; gap:18px}
+
+
+/* ---------- شکل‌های CSS به‌جای گلیف ----------
+   فونت دانا برای ·  –  —  ←  ▲  ▼  ✓  🔔 گلیف ندارد و به فونت جایگزین
+   می‌افتد؛ نتیجه هم بدشکل است و هم ترتیب دوجهته را به‌هم می‌ریزد.
+   این شکل‌ها با CSS کشیده می‌شوند، پس به هیچ فونتی وابسته نیستند.
+   برای شکل‌های محض عمداً از left/right فیزیکی استفاده شده, چون
+   transform و border به جهت صفحه حساس نیستند. */
+.ck{  /* تیک */
+  display:inline-block; inline-size:.44em; block-size:.78em; flex:none;
+  border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:rotate(45deg); margin-block-end:.2em;
+}
+.tri{display:inline-block; inline-size:0; block-size:0; flex:none;
+     border-left:4px solid transparent; border-right:4px solid transparent}
+.tri--up{border-bottom:5px solid currentColor}
+.tri--down{border-top:5px solid currentColor}
+.chev{ /* پیکان به سمت چپ */
+  display:inline-block; inline-size:.42em; block-size:.42em; flex:none;
+  border-left:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:rotate(45deg);
+}
+.metaline{display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px}
+.metaline > span{display:inline-flex; align-items:center; gap:8px; unicode-bidi:isolate}
+.metaline > span:not(:last-child)::after{
+  content:""; inline-size:3px; block-size:3px; border-radius:50%;
+  background:currentColor; opacity:.38; flex:none;
+}
+
+/* ---------- انیمیشن ورود ----------
+   محتوا به‌صورت پیش‌فرض دیده می‌شود. حالت مخفی فقط وقتی اعمال می‌شود که
+   جاوااسکریپت اجرا شده باشد (کلاس js-rv روی ریشه). اگر JS نرسید یا خطا داد،
+   هیچ بخشی از صفحه نامرئی نمی‌ماند. */
+.js-rv .rv{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease}
+.js-rv .rv.in{opacity:1; transform:none}
+@media (prefers-reduced-motion:reduce){
+  .js-rv .rv{opacity:1; transform:none; transition:none}
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important}
+}
+</style>
+
+
+<div class="lt" id="lt-root" dir="rtl" lang="fa">
+
+<!-- ═══ نوار پیش‌نمایش ═══ -->
+<div class="preview-bar" id="pv">
+  <div class="wrap">
+    <span><b>پیش‌نمایش طراحی:</b> متن‌ها و قیمت‌ها نمونه است. آمار مشتری و نقل‌قول واقعی هنوز وارد نشده.</span>
+    <button class="x" id="pvx" aria-label="بستن نوار پیش‌نمایش">×</button>
+  </div>
+</div>
+
+<!-- ═══ هدر ═══ -->
+<header class="hdr">
+  <div class="wrap">
+    <a href="#" class="logo"><span class="logo-mark">ل</span> لینگوتاک</a>
+    <nav class="nav">
+      <a href="#modules">امکانات</a>
+      <a href="#roles">برای چه کسانی</a>
+      <a href="#iran">ویژه ایران</a>
+      <a href="#pricing">تعرفه</a>
+      <a href="#faq">سوال‌ها</a>
+    </nav>
+    <div class="hdr-actions">
+      <button class="icon-btn" id="theme" aria-label="تغییر حالت روشن و تاریک" title="حالت روشن / تاریک">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <a href="#login" class="btn btn--ghost btn--sm">ورود</a>
+      <a href="#demo" class="btn btn--primary btn--sm">درخواست دمو</a>
+      <button class="icon-btn burger" id="burger" aria-label="منو" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<nav class="mobile-nav" id="mnav" aria-label="منوی موبایل">
+  <ul>
+    <li><a href="#modules">امکانات</a></li>
+    <li><a href="#roles">برای چه کسانی</a></li>
+    <li><a href="#iran">ویژه ایران</a></li>
+    <li><a href="#pricing">تعرفه</a></li>
+    <li><a href="#faq">سوال‌ها</a></li>
+    <li><a href="#login">ورود</a></li>
+  </ul>
+</nav>
+
+<!-- ═══ هیرو ═══ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <h1>ثبت‌نام، کلاس‌بندی، شهریه و حضور و غیاب<br><span class="hl">همه در یک سامانه</span></h1>
+        <p class="hero-sub">
+          لینگوتاک جای فایل اکسل، دفتر حضور و غیاب و گروه واتساپ را می‌گیرد.
+          ساخته‌شده برای آموزشگاه‌های زبان ایران: تقویم شمسی، شهریهٔ قسطی،
+          کارت به کارت، پیامک خدماتی و روزهای زوج و فرد.
+        </p>
+        <div class="hero-cta">
+          <a href="#demo" class="btn btn--primary btn--lg">درخواست دموی رایگان</a>
+          <a href="#pricing" class="btn btn--ghost btn--lg">دیدن تعرفه‌ها</a>
+        </div>
+        <div class="hero-note">
+          <span><i class="tick ck"></i> ۱۴ روز رایگان</span>
+          <span><i class="tick ck"></i> بدون نیاز به کارت بانکی</span>
+          <span><i class="tick ck"></i> فایل اکسل‌تان را ما وارد می‌کنیم</span>
+        </div>
+      </div>
+
+      <!-- ویجت زندهٔ حضور و غیاب -->
+      <div class="demo-card rv" id="attendance">
+        <div class="demo-top">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span class="demo-title">پنل مدرس، حضور و غیاب</span>
+        </div>
+        <div class="demo-head">
+          <div class="cls">American English File 2A</div>
+          <div class="meta metaline">
+            <span>روزهای فرد، <span class="num">۱۸:۰۰</span></span>
+            <span>کلاس <span class="num">۳</span></span>
+            <span>جلسهٔ <span class="num">۷</span> از <span class="num">۲۰</span></span>
+          </div>
+        </div>
+        <div class="demo-counts">
+          <span class="chip chip--ok"><span class="num" id="cOk">۶</span> حاضر</span>
+          <span class="chip chip--bad"><span class="num" id="cNo">۰</span> غایب</span>
+          <span class="chip chip--time" id="cTime">برای علامت‌زدن، روی اسم بزنید</span>
+        </div>
+        <div class="roster" id="roster">
+          <button class="st" data-absent="0"><span class="av">س</span><span class="st-name">سینا احمدی</span><span class="st-state">حاضر</span></button>
+          <button class="st" data-absent="0"><span class="av">م</span><span class="st-name">مریم رضایی</span><span class="st-state">حاضر</span></button>
+          <button class="st" data-absent="0"><span class="av">ا</span><span class="st-name">امیر کریمی</span><span class="st-state">حاضر</span></button>
+          <button class="st" data-absent="0"><span class="av">ن</span><span class="st-name">نگار موسوی</span><span class="st-state">حاضر</span></button>
+          <button class="st" data-absent="0"><span class="av">پ</span><span class="st-name">پارسا صادقی</span><span class="st-state">حاضر</span></button>
+          <button class="st" data-absent="0"><span class="av">ه</span><span class="st-name">هستی یزدانی</span><span class="st-state">حاضر</span></button>
+        </div>
+        <div class="demo-foot">
+          <button class="btn btn--primary btn--block" id="submitAtt">ثبت حضور و غیاب</button>
+          <div class="demo-done" id="attDone">
+            <i class="ck"></i><span id="attDoneTxt">ثبت شد</span>
+          </div>
+          <p class="demo-hint">این یک نمونهٔ واقعی است؛ امتحانش کنید.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ واقعیت‌ها ═══ -->
+<section class="facts">
+  <div class="wrap">
+    <div class="fact"><b class="num">۲۰ ثانیه</b><span>ثبت حضور و غیاب یک کلاس</span></div>
+    <div class="fact"><b class="num">۲ دقیقه</b><span>از ثبت‌نام تا صدور رسید</span></div>
+    <div class="fact"><b class="num">۳ روز</b><span>تا اولین ثبت‌نام واقعی</span></div>
+    <div class="fact"><b class="num">۱۴ روز</b><span>استفادهٔ کامل و رایگان</span></div>
+  </div>
+</section>
+
+<!-- ═══ آینهٔ مشکل ═══ -->
+<section class="sec">
+  <div class="wrap">
+    <div class="eyebrow">مسئله</div>
+    <h2 class="h-sec">این جمله‌ها را در آموزشگاه‌تان شنیده‌اید؟</h2>
+    <p class="lead">هر آموزشگاهی که با اکسل و دفتر اداره می‌شود، دیر یا زود به همین چهار جا می‌رسد.</p>
+    <div class="pain-grid">
+      <article class="pain rv">
+        <q>فایل درست کدوم بود؟</q>
+        <p>لیست زبان‌آموزها در سه فایل اکسل با سه تاریخ متفاوت. هیچ‌کس مطمئن نیست کدام آخری است.</p>
+      </article>
+      <article class="pain rv">
+        <q>بپرس از خانم رضایی، اون می‌دونه.</q>
+        <p>نصف اطلاعات آموزشگاه در حافظهٔ یک نفر است. آن یک نفر که مرخصی برود، کار می‌خوابد.</p>
+      </article>
+      <article class="pain rv">
+        <q>مگه بدهی داشت؟</q>
+        <p>ترم تمام شده و تازه معلوم می‌شود چند نفر شهریه‌شان را کامل نداده‌اند. پیگیری‌اش هم از دست رفته.</p>
+      </article>
+      <article class="pain rv">
+        <q>به من که خبر ندادن.</q>
+        <p>کلاس لغو شده، پیام در گروه واتساپ گم شده، و زبان‌آموز تا در بستهٔ آموزشگاه آمده است.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ستون فقرات ترم ═══ -->
+<section class="sec spine">
+  <div class="wrap">
+    <div class="eyebrow">چطور کار می‌کند</div>
+    <h2 class="h-sec">لینگوتاک دور ترم می‌چرخد، نه دور تقویم میلادی</h2>
+    <p class="lead">
+      آموزشگاه زبان با ترم زندگی می‌کند. هر امکان محصول دقیقاً به همان هفته‌ای وصل است
+      که واقعاً به آن نیاز دارید: از شش هفته قبل از شروع تا بستن دفتر ترم.
+    </p>
+
+    <div class="spine-scroll">
+      <div class="spine-track">
+        <div class="step">
+          <div class="wk">۶ هفته مانده</div><div class="node"></div>
+          <h4>ساخت ترم</h4>
+          <p>ترم قبل را کپی کنید، تاریخ‌های شمسی را جابه‌جا کنید، تعطیلات را وارد کنید. تداخل مدرس و کلاس همان لحظه هشدار داده می‌شود.</p>
+        </div>
+        <div class="step">
+          <div class="wk">۴ هفته مانده</div><div class="node"></div>
+          <h4>تمدید ثبت‌نام</h4>
+          <p>به همهٔ زبان‌آموزهای فعلی، کلاس ترم بعدشان با تخفیف وفاداری پیشنهاد می‌شود. یک پیامک، یک لینک، یک کلیک.</p>
+        </div>
+        <div class="step">
+          <div class="wk">۲ هفته مانده</div><div class="node"></div>
+          <h4>تعیین سطح و ثبت‌نام جدید</h4>
+          <p>سرنخ‌های اینستاگرام و مراجعهٔ حضوری، آزمون تعیین سطح، انتخاب کلاس با ظرفیت زنده و بستن قسط‌ها.</p>
+        </div>
+        <div class="step">
+          <div class="wk">هفتهٔ ۱</div><div class="node"></div>
+          <h4>شروع کلاس‌ها</h4>
+          <p>برنامهٔ هفتگی برای زبان‌آموز و مدرس پیامک می‌شود. کلاس‌های کم‌جمعیت قبل از شروع علامت خورده‌اند.</p>
+        </div>
+        <div class="step">
+          <div class="wk">هفتهٔ ۱ تا ۱۲</div><div class="node"></div>
+          <h4>اداره کردن</h4>
+          <p>حضور و غیاب، تکلیف، نمره، یادآوری قسط، اطلاعیه، جلسهٔ جبرانی و جایگزینی مدرس؛ همه در جریان روزمره.</p>
+        </div>
+        <div class="step">
+          <div class="wk">پایان ترم</div><div class="node"></div>
+          <h4>بستن ترم</h4>
+          <p>قفل نمرات، صدور مدرک، انتقال بدهی‌ها، و گزارش ماندگاری: چند درصد زبان‌آموزها ترم بعد ماندند.</p>
+        </div>
+      </div>
+    </div>
+    <p class="spine-hint"><i class="chev"></i> برای دیدن بقیهٔ مراحل، بکشید</p>
+  </div>
+</section>
+
+<!-- ═══ ماژول‌ها ═══ -->
+<section class="sec" id="modules">
+  <div class="wrap">
+    <div class="eyebrow">امکانات</div>
+    <h2 class="h-sec">شش بخش که به هم وصل‌اند</h2>
+    <p class="lead">
+      ارزش اصلی در خودِ ماژول‌ها نیست؛ در این است که به هم وصل‌اند.
+      «کدام زبان‌آموزِ بدهکار این هفته سر کلاس آمده؟» یک فیلتر است، نه نیم‌ساعت کار دستی.
+    </p>
+
+    <div class="mods">
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>ثبت‌نام و پذیرش</h3>
+        <p>از اولین تماس تا نشستن سر کلاس، بدون اینکه سرنخی از دست برود.</p>
+        <ul>
+          <li>ثبت سرنخ از سایت، اینستاگرام و مراجعهٔ حضوری</li>
+          <li>آزمون تعیین سطح و ثبت نتیجه</li>
+          <li>ثبت‌نام دو دقیقه‌ای با بستن قسط</li>
+          <li>لیست انتظار با پیشنهاد خودکار صندلی خالی</li>
+        </ul>
+      </article>
+
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h3>کلاس و برنامه‌ریزی</h3>
+        <p>ترم را یک بار بسازید؛ سال بعد فقط کپی کنید.</p>
+        <ul>
+          <li>روزهای زوج، فرد، پنجشنبه و فشرده</li>
+          <li>هشدار زندهٔ تداخل مدرس و کلاس</li>
+          <li>تولید خودکار جلسات با حذف تعطیلات</li>
+          <li>سطح‌بندی بر اساس کتاب، نه حروف انگلیسی</li>
+        </ul>
+      </article>
+
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <h3>حضور و غیاب</h3>
+        <p>مدرس با موبایل، در راهروی آموزشگاه، در بیست ثانیه.</p>
+        <ul>
+          <li>همه پیش‌فرض حاضرند؛ فقط غایب‌ها را بزنید</li>
+          <li>بدون اینترنت هم کار می‌کند و بعد همگام می‌شود</li>
+          <li>پیامک خودکار غیبت به زبان‌آموز و ولی</li>
+          <li>صف جلسات علامت‌نخورده برای مدیر</li>
+        </ul>
+      </article>
+
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3>شهریه و مالی</h3>
+        <p>بدانید دقیقاً چقدر طلب دارید؛ نه حدود، دقیق.</p>
+        <ul>
+          <li>قسط‌بندی با پیش‌پرداخت و سررسید شمسی</li>
+          <li>درگاه آنلاین، نقدی، کارتخوان و کارت به کارت</li>
+          <li>تابلوی بدهکاران با یادآوری گروهی</li>
+          <li>رسید و فاکتور با شماره‌گذاری بدون شکاف</li>
+        </ul>
+      </article>
+
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H7l-3 3z"/></svg></div>
+        <h3>اطلاع‌رسانی</h3>
+        <p>پیام به مخاطب درست می‌رسد و مدرکش هم می‌ماند.</p>
+        <ul>
+          <li>مخاطب‌گیری بر اساس کلاس، سطح، شعبه یا بدهی</li>
+          <li>تفکیک خودکار خط خدماتی و تبلیغاتی</li>
+          <li>گزارش تحویل به تفکیک هر گیرنده</li>
+          <li>یادآوری خودکار قسط، غیبت و لغو کلاس</li>
+        </ul>
+      </article>
+
+      <article class="mod rv">
+        <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+        <h3>گزارش و تحلیل</h3>
+        <p>عددی که می‌بینید، قابل کلیک است و می‌توانید تا خودِ ردیف‌ها بروید.</p>
+        <ul>
+          <li>ماندگاری زبان‌آموز، ترم به ترم</li>
+          <li>وصولی در برابر شهریهٔ مورد انتظار</li>
+          <li>بار کاری مدرس و درصد پر شدن کلاس</li>
+          <li>قیف تبدیل سرنخ به ثبت‌نام</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ نقش‌ها ═══ -->
+<section class="sec sec--tight" id="roles" style="background:var(--surface); border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="eyebrow">برای چه کسانی</div>
+    <h2 class="h-sec">هر نفر فقط چیزی را می‌بیند که به کارش می‌آید</h2>
+
+    <div class="tabs" role="tablist" aria-label="نقش‌ها">
+      <button class="tab" role="tab" aria-selected="true" aria-controls="p-mgr" id="t-mgr">مدیر آموزشگاه</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="p-tch" id="t-tch">مدرس</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="p-std" id="t-std">زبان‌آموز</button>
+    </div>
+
+    <!-- مدیر -->
+    <div class="panel active" role="tabpanel" id="p-mgr" aria-labelledby="t-mgr">
+      <div>
+        <h3>صبح که می‌آیید، بدانید امروز کجا لنگ می‌زند</h3>
+        <p class="p-lead">
+          صفحهٔ اول جواب یک سوال است: «امروز چه چیزی به من نیاز دارد؟»
+          نمودارها پایین‌ترند؛ چیزی که باید حل شود بالاست.
+        </p>
+        <ul>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>تابلوی هشدار:</b> جلسات علامت‌نخورده، بدهی‌های عقب‌افتاده، کلاس‌های کم‌جمعیت، کلاس بدون مدرس؛ هرکدام با یک دکمهٔ حل.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>وصولی در برابر انتظار:</b> چند درصد شهریهٔ این ترم واقعاً وصول شده.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>مقایسهٔ شعب:</b> درصد پر شدن، حضور و وصولی هر شعبه، کنار هم.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>دسترسی نقش‌محور:</b> مدیر آموزشی عدد مالی نمی‌بیند، مسئول مالی نمره نمی‌بیند.</span></li>
+        </ul>
+      </div>
+      <div class="mock">
+        <div class="mock-bar metaline"><span>پیشخوان مدیر</span><span class="muted num">شنبه ۱۲ مهر ۱۴۰۵</span><span class="muted num">هفتهٔ ۴ از ۱۲</span></div>
+        <div class="mock-body">
+          <div class="kpi-row">
+            <div class="kpi"><div class="lbl">زبان‌آموز فعال</div><div class="val num">۴۱۲</div><div class="dt up num"><i class="tri tri--up"></i> ۶٪</div></div>
+            <div class="kpi"><div class="lbl">وصولی ترم</div><div class="val num">۶۸٪</div><div class="dt muted num">۶۱۲ از ۹۰۰ میلیون</div></div>
+            <div class="kpi"><div class="lbl">معوق</div><div class="val num">۸۴ میلیون</div><div class="dt down num">۳۷ نفر بدهکار</div></div>
+            <div class="kpi"><div class="lbl">حضور هفته</div><div class="val num">۹۱٪</div><div class="dt down num"><i class="tri tri--down"></i> ۲</div></div>
+          </div>
+          <div class="alert-list">
+            <div class="alert"><span class="sev sev--hi"></span><span><span class="num">۳</span> جلسهٔ دیروز علامت نخورده</span><span class="act">یادآوری <i class="chev"></i></span></div>
+            <div class="alert"><span class="sev sev--hi"></span><span><span class="num">۱۲</span> نفر بیش از <span class="num">۱۴</span> روز معوق</span><span class="act">پیامک گروهی <i class="chev"></i></span></div>
+            <div class="alert"><span class="sev sev--md"></span><span><span class="num">۲</span> کلاس زیر حد نصاب، <span class="num">۹</span> روز تا شروع</span><span class="act">بررسی <i class="chev"></i></span></div>
+          </div>
+          <div class="bars" aria-hidden="true"><i style="height:42%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:66%"></i><i style="height:61%"></i><i style="height:75%"></i><i style="height:70%"></i><i style="height:88%"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- مدرس -->
+    <div class="panel" role="tabpanel" id="p-tch" aria-labelledby="t-tch" hidden>
+      <div>
+        <h3>قرار نیست کار مدرس بیشتر شود</h3>
+        <p class="p-lead">
+          پنل مدرس عمداً کم‌حجم است: نه گزارش، نه عدد مالی، نه اطلاعات بقیهٔ مدرس‌ها.
+          فقط کلاس امروز و کاری که مانده.
+        </p>
+        <ul>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>کلاس بعدی</b> بزرگ‌ترین چیز روی صفحه، با دکمهٔ حضور و غیاب.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>بدون اینترنت</b> هم علامت می‌خورد و بعد خودش همگام می‌شود.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>تکلیف و فایل</b> یک بار برای کل کلاس، به‌جای پانزده پیام جدا.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>نمره با مقیاس ۲۰</b> و ضریب هر بخش، بدون اکسل.</span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="phone-in">
+            <div class="phone-top"><span>امروز</span><span class="num">شنبه ۱۲ مهر</span></div>
+            <div class="next-card">
+              <div class="t metaline"><span>کلاس بعدی</span><span><span class="num">۲۵</span> دقیقهٔ دیگر</span></div>
+              <div class="n">Top Notch 1B</div>
+              <div class="m metaline num"><span>۱۶:۰۰ تا ۱۷:۳۰</span><span>کلاس ۲</span><span>۱۴ نفر</span></div>
+              <div class="b">ثبت حضور و غیاب</div>
+            </div>
+            <div class="pay-card">
+              <div class="t">مانده</div>
+              <div class="n"><span class="num">۲</span> کار انجام‌نشده</div>
+              <div class="m metaline"><span>حضور و غیاب پنجشنبه</span><span>۶ تکلیف تصحیح‌نشده</span></div>
+            </div>
+            <div class="phone-nav"><span>امروز</span><span>کلاس‌ها</span><span>برنامه</span><span>پیام</span><span>بیشتر</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- زبان‌آموز -->
+    <div class="panel" role="tabpanel" id="p-std" aria-labelledby="t-std" hidden>
+      <div>
+        <h3>دیگر لازم نیست برای هر سوالی زنگ بزند</h3>
+        <p class="p-lead">
+          پرتال زبان‌آموز بدون نصب هیچ اپلیکیشنی باز می‌شود: لینک در پیامک، ورود با شمارهٔ موبایل و کد یک‌بارمصرف.
+          همین یک چیز، بیشترین بار را از روی منشی برمی‌دارد.
+        </p>
+        <ul>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>برنامهٔ کلاسی</b> با تاریخ شمسی و امکان افزودن به تقویم گوشی.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>مانده و اقساط</b> با دکمهٔ پرداخت و امکان آپلود فیش کارت به کارت.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>نمره، درصد حضور و تکلیف</b> هر جلسه.</span></li>
+          <li><span class="li-dot"><i class="ck"></i></span><span><b>تمدید ترم بعد</b> با یک کلیک و حفظ همان روز و ساعت.</span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="phone-in">
+            <div class="phone-top"><span>سلام سینا</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+            <div class="next-card">
+              <div class="t">کلاس بعدی</div>
+              <div class="n">AEF 2A</div>
+              <div class="m metaline num"><span>فردا ۱۸:۰۰</span><span>کلاس ۳</span><span>استاد نوری</span></div>
+              <div class="b">افزودن به تقویم</div>
+            </div>
+            <div class="pay-card">
+              <div class="t">قسط دوم</div>
+              <div class="n num">۴٬۵۰۰٬۰۰۰ تومان</div>
+              <div class="m metaline num"><span>سررسید ۲۰ مهر</span><span>۸ روز مانده</span></div>
+            </div>
+            <div class="phone-nav"><span>خانه</span><span>برنامه</span><span>کلاس‌ها</span><span>پرداخت</span><span>بیشتر</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ویژه ایران ═══ -->
+<section class="sec iran" id="iran">
+  <div class="wrap">
+    <div class="eyebrow">ساخته‌شده برای ایران</div>
+    <h2 class="h-sec">این‌ها ترجمه نشده‌اند؛ از اول همین‌طور طراحی شده‌اند</h2>
+    <p class="lead">
+      نرم‌افزار خارجی با تقویم میلادی و پرداخت دلاری، در آموزشگاه ایرانی جواب نمی‌دهد.
+      این فهرست، تفاوت‌هایی است که در کار روزمره حس می‌کنید.
+    </p>
+
+    <div class="iran-grid">
+      <article class="ir rv">
+        <h4>تقویم شمسی<span class="tag">پایه</span></h4>
+        <p>ترم، سررسید قسط، برنامهٔ هفتگی و گزارش‌ها همه شمسی‌اند و هفته از شنبه شروع می‌شود؛ نه یک فیلتر نمایشی روی تقویم میلادی.</p>
+      </article>
+      <article class="ir rv">
+        <h4>روزهای زوج و فرد</h4>
+        <p>موقع ساخت کلاس، اول همان چیزی را انتخاب می‌کنید که با آن فکر می‌کنید: فرد، زوج، پنجشنبه، جمعه یا فشرده.</p>
+      </article>
+      <article class="ir rv">
+        <h4>شهریهٔ قسطی</h4>
+        <p>پیش‌پرداخت و قسط، حالت عادی است نه استثنا. تخفیف ثبت‌نام زودهنگام، زبان‌آموز قدیمی، خواهر و برادر و معرفی دوست از قبل آماده است.</p>
+      </article>
+      <article class="ir rv">
+        <h4>کارت به کارت<span class="tag">مهم</span></h4>
+        <p>زبان‌آموز عکس فیش را در پرتال آپلود می‌کند، به صف تأیید مالی می‌رود، و تا تأیید نشود از بدهی کم نمی‌شود.</p>
+      </article>
+      <article class="ir rv">
+        <h4>پیامک خدماتی</h4>
+        <p>یادآوری قسط و اطلاع غیبت از خط خدماتی می‌رود، نه تبلیغاتی؛ وگرنه به دست کسی که تبلیغات را لغو کرده اصلاً نمی‌رسد.</p>
+      </article>
+      <article class="ir rv">
+        <h4>سطح‌بندی کتاب‌محور</h4>
+        <p>سطح‌ها با نام کتاب تعریف می‌شوند: AEF 2A، Top Notch 1B، Family and Friends 3. سری‌های رایج از قبل آماده‌اند.</p>
+      </article>
+      <article class="ir rv">
+        <h4>تعطیلی ناگهانی</h4>
+        <p>آلودگی هوا، برف یا تعطیلی اعلامی: با یک دکمه همهٔ جلسات آن روز لغو می‌شود، پیامک می‌رود و جلسهٔ جبرانی پیشنهاد می‌شود.</p>
+      </article>
+      <article class="ir rv">
+        <h4>نمرهٔ ۲۰</h4>
+        <p>مقیاس پیش‌فرض نمره‌دهی ۲۰ است، و برای دوره‌های آیلتس و تافل مقیاس اختصاصی همان آزمون.</p>
+      </article>
+      <article class="ir rv">
+        <h4>زیرساخت داخلی</h4>
+        <p>هاست و شبکهٔ تحویل محتوا داخل کشور، فونت و اسکریپت روی سرور خودمان. هیچ درخواستی به دامنهٔ خارجی زده نمی‌شود.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ تعرفه ═══ -->
+<section class="sec" id="pricing">
+  <div class="wrap">
+    <div class="eyebrow">تعرفه</div>
+    <h2 class="h-sec">بر اساس تعداد زبان‌آموز فعال، با کاربر نامحدود</h2>
+    <p class="lead">
+      هرچند نفر پرسنل دارید، همه حساب کاربری خودشان را دارند و پولی بابتش نمی‌دهید.
+      حساب مشترک یعنی حضور و غیاب بی‌اعتبار؛ ما تشویقش نمی‌کنیم.
+    </p>
+
+    <div class="plan-toggle" role="group" aria-label="دورهٔ پرداخت">
+      <button id="bMonthly" aria-pressed="true">ماهانه</button>
+      <button id="bYearly" aria-pressed="false">سالانه<span class="save-pill">۲۰٪ تخفیف</span></button>
+    </div>
+
+    <div class="calc">
+      <div class="calc-top">
+        <span>چند زبان‌آموز فعال دارید؟</span>
+        <b class="num" id="calcN">۳۰۰</b>
+        <span>نفر</span>
+      </div>
+      <input type="range" id="calcRange" min="20" max="1600" step="10" value="300" aria-label="تعداد زبان‌آموز فعال">
+      <div class="calc-scale"><span class="num">۲۰</span><span class="num">۱۶۰۰+</span></div>
+      <div class="calc-out">پلن مناسب شما: <b id="calcPlan">رشد</b>، <b class="num" id="calcPrice">۱٬۷۰۰٬۰۰۰ تومان</b> <span class="muted" id="calcCycle">در ماه</span></div>
+    </div>
+
+    <div class="plans">
+      <article class="plan">
+        <h3>پایه</h3>
+        <p class="for">مدرس خصوصی و آموزشگاه‌های خیلی کوچک</p>
+        <div class="price"><b class="num" data-m="۴۹۰٬۰۰۰" data-y="۳۹۲٬۰۰۰">۴۹۰٬۰۰۰</b><span>تومان / ماه</span></div>
+        <p class="price-note">تا <span class="num">۷۵</span> زبان‌آموز فعال، <span class="num">۱</span> شعبه</p>
+        <ul>
+          <li><span class="k"><i class="ck"></i></span> ثبت‌نام، کلاس و حضور و غیاب</li>
+          <li><span class="k"><i class="ck"></i></span> شهریه، قسط و رسید</li>
+          <li><span class="k"><i class="ck"></i></span> پرتال زبان‌آموز و پنل مدرس</li>
+          <li><span class="k"><i class="ck"></i></span> <span class="num">۲۰۰</span> پیامک در ماه</li>
+          <li class="off"><span class="k k--no"><i class="dash"></i></span> آزمون آنلاین و تعیین سطح</li>
+          <li class="off"><span class="k k--no"><i class="dash"></i></span> کمپین تمدید ترم</li>
+        </ul>
+        <a href="#demo" class="btn btn--ghost btn--block">شروع رایگان</a>
+      </article>
+
+      <article class="plan plan--best">
+        <span class="plan-badge">بیشترین انتخاب</span>
+        <h3>رشد</h3>
+        <p class="for">آموزشگاه تک‌شعبه‌ای در حال رشد</p>
+        <div class="price"><b class="num" data-m="۱٬۷۰۰٬۰۰۰" data-y="۱٬۳۶۰٬۰۰۰">۱٬۷۰۰٬۰۰۰</b><span>تومان / ماه</span></div>
+        <p class="price-note">تا <span class="num">۴۰۰</span> زبان‌آموز فعال، <span class="num">۱</span> شعبه</p>
+        <ul>
+          <li><span class="k"><i class="ck"></i></span> همهٔ امکانات پایه</li>
+          <li><span class="k"><i class="ck"></i></span> آزمون آنلاین و تعیین سطح</li>
+          <li><span class="k"><i class="ck"></i></span> کمپین تمدید ترم و لیست انتظار</li>
+          <li><span class="k"><i class="ck"></i></span> همهٔ گزارش‌ها و خروجی اکسل</li>
+          <li><span class="k"><i class="ck"></i></span> <span class="num">۱٬۰۰۰</span> پیامک در ماه</li>
+          <li><span class="k"><i class="ck"></i></span> صدور مدرک با کد استعلام</li>
+        </ul>
+        <a href="#demo" class="btn btn--primary btn--block">درخواست دمو</a>
+      </article>
+
+      <article class="plan">
+        <h3>حرفه‌ای</h3>
+        <p class="for">آموزشگاه چندشعبه‌ای و مجموعه‌های بزرگ</p>
+        <div class="price"><b class="num" data-m="۴٬۴۰۰٬۰۰۰" data-y="۳٬۵۲۰٬۰۰۰">۴٬۴۰۰٬۰۰۰</b><span>تومان / ماه</span></div>
+        <p class="price-note">تا <span class="num">۱٬۵۰۰</span> زبان‌آموز، تا <span class="num">۵</span> شعبه</p>
+        <ul>
+          <li><span class="k"><i class="ck"></i></span> همهٔ امکانات رشد</li>
+          <li><span class="k"><i class="ck"></i></span> مدیریت چندشعبه و مقایسهٔ شعب</li>
+          <li><span class="k"><i class="ck"></i></span> نقش و دسترسی سفارشی</li>
+          <li><span class="k"><i class="ck"></i></span> دامنهٔ اختصاصی</li>
+          <li><span class="k"><i class="ck"></i></span> <span class="num">۴٬۰۰۰</span> پیامک در ماه</li>
+          <li><span class="k"><i class="ck"></i></span> پشتیبانی اولویت‌دار</li>
+        </ul>
+        <a href="#demo" class="btn btn--ghost btn--block">تماس با ما</a>
+      </article>
+    </div>
+
+    <div class="addons">
+      <span>افزودنی: بستهٔ پیامک</span>
+      <span>شعبهٔ اضافه</span>
+      <span>بستهٔ راه‌اندازی و انتقال داده</span>
+      <span>آموزش پرسنل</span>
+      <span>دسترسی API</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ سوالات ═══ -->
+<section class="sec sec--tight" id="faq" style="background:var(--surface); border-block:1px solid var(--line)">
+  <div class="wrap" style="max-width:900px">
+    <div class="eyebrow">سوال‌های پرتکرار</div>
+    <h2 class="h-sec">آنچه بیشتر از همه می‌پرسند</h2>
+
+    <div class="faq">
+      <details open>
+        <summary>پرسنل ما با نرم‌افزار کار نمی‌کنند، تکلیف چیست؟</summary>
+        <div class="a">
+          نگرانی درستی است و ما هم همین را بزرگ‌ترین ریسک می‌دانیم. جواب‌مان این است که
+          پنل مدرس عمداً کوچک نگه داشته شده و ثبت حضور و غیاب کمتر از بیست ثانیه طول می‌کشد؛
+          یعنی از دفتر کاغذی سریع‌تر است، نه هم‌اندازه. ضمناً میزان استفادهٔ هر نفر در پیشخوان
+          مدیر دیده می‌شود؛ اگر کسی استفاده نمی‌کند، هفتهٔ دوم می‌فهمید، نه ماه ششم.
+        </div>
+      </details>
+      <details>
+        <summary>اطلاعات فعلی‌مان در اکسل است. باید از صفر وارد کنیم؟</summary>
+        <div class="a">
+          نه. فایل اکسل‌تان را بدهید، ما وارد می‌کنیم. ابزار ورود اطلاعات با فایل‌های واقعی
+          و به‌هم‌ریخته کار می‌کند: ستون‌ها را خودش تشخیص می‌دهد، قبل از ثبت پیش‌نمایش می‌دهد،
+          و ردیف‌های ایراددار را با دلیل مشخص به شما برمی‌گرداند. تکراری‌ها را هم بر اساس
+          شمارهٔ موبایل و کد ملی علامت می‌زند و هرگز خودسرانه ادغام نمی‌کند.
+        </div>
+      </details>
+      <details>
+        <summary>اگر بخواهیم بعداً جدا شویم، اطلاعات‌مان چه می‌شود؟</summary>
+        <div class="a">
+          کل اطلاعات، هر زمان، بدون تماس با پشتیبانی و در قالب اکسل و JSON قابل دریافت است؛
+          حتی در دورهٔ تعلیق به‌خاطر پرداخت‌نشدن اشتراک. این را در قرارداد هم می‌نویسیم.
+          گروگان‌گرفتن دادهٔ مشتری، کارِ ما نیست.
+        </div>
+      </details>
+      <details>
+        <summary>درگاه پرداخت نداریم. باز هم می‌توانیم استفاده کنیم؟</summary>
+        <div class="a">
+          بله. نقدی، کارتخوان، کارت به کارت با آپلود فیش و واریز به حساب، همگی روش‌های
+          درجه‌یک هستند و بدون هیچ درگاهی می‌توانید کل مالی آموزشگاه را اداره کنید.
+          اگر هم بخواهید درگاه بگیرید، در بستهٔ راه‌اندازی برای گرفتن نماد اعتماد کمک‌تان می‌کنیم.
+        </div>
+      </details>
+      <details>
+        <summary>چند شعبه داریم. هر شعبه اطلاعات خودش را می‌بیند؟</summary>
+        <div class="a">
+          بله. دسترسی هر نفر به شعبه محدود می‌شود و مدیر شعبه فقط دادهٔ شعبهٔ خودش را می‌بیند.
+          گزارش تجمیعی همهٔ شعب هم برای مدیریت مجموعه در دسترس است، با تفکیک هر شعبه.
+          انتقال زبان‌آموز بین شعب هم با حفظ کل سابقه انجام می‌شود.
+        </div>
+      </details>
+      <details>
+        <summary>راه‌اندازی چقدر طول می‌کشد؟</summary>
+        <div class="a">
+          هدف ما این است که از ثبت‌نام تا اولین ثبت‌نام واقعی زبان‌آموز، سه روز طول بکشد.
+          برای آموزشگاه‌های بالای دویست زبان‌آموز یک جلسهٔ راه‌اندازی هم گذاشته می‌شود که
+          ورود اطلاعات، تنظیم مالی، اتصال پنل پیامک و آموزش پرسنل را پوشش می‌دهد.
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ فرم دمو ═══ -->
+<section class="sec cta-sec" id="demo">
+  <div class="wrap">
+    <div class="cta-grid">
+      <div>
+        <div class="eyebrow" style="color:var(--accent)">درخواست دمو</div>
+        <h2>پانزده دقیقه وقت بگذارید، با اعداد خودتان</h2>
+        <p class="lead">
+          در دمو چیزی که نشان می‌دهیم فهرست امکانات نیست. یک سوال از شما می‌پرسیم:
+          «ترم قبل چند درصد شهریه‌تان وصول شد؟» و بعد، با همان اطلاعات، همان‌جا جوابش را می‌سازیم.
+        </p>
+        <div class="steps">
+          <div class="stp"><span class="n num">۱</span><div><b>تماس کوتاه</b><p>پانزده دقیقه، برای فهمیدن اینکه آموزشگاه شما چطور کار می‌کند.</p></div></div>
+          <div class="stp"><span class="n num">۲</span><div><b>نمایش اختصاصی</b><p>محصول را با ساختار ترم و سطح‌های خودتان می‌بینید، نه با داده‌های نمایشی.</p></div></div>
+          <div class="stp"><span class="n num">۳</span><div><b>برنامهٔ انتقال</b><p>می‌گوییم دقیقاً چه چیزی لازم است و چقدر طول می‌کشد. اگر مناسب‌تان نبود، صادقانه می‌گوییم.</p></div></div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <form id="demoForm" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label for="f-name">نام و نام خانوادگی <span class="req">*</span></label>
+              <input id="f-name" name="name" type="text" autocomplete="name" required>
+              <span class="err">نام‌تان را وارد کنید.</span>
+            </div>
+            <div class="field">
+              <label for="f-inst">نام آموزشگاه <span class="req">*</span></label>
+              <input id="f-inst" name="institute" type="text" autocomplete="organization" required>
+              <span class="err">نام آموزشگاه را وارد کنید.</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="f-phone">شمارهٔ موبایل <span class="req">*</span></label>
+              <input id="f-phone" name="phone" type="tel" inputmode="numeric" dir="ltr" placeholder="09121234567" autocomplete="tel" required>
+              <span class="help">با همین شماره تماس می‌گیریم.</span>
+              <span class="err" id="phoneErr">شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.</span>
+            </div>
+            <div class="field">
+              <label for="f-count">تعداد زبان‌آموز <span class="req">*</span></label>
+              <select id="f-count" name="students" required>
+                <option value="">انتخاب کنید</option>
+                <option>زیر ۵۰ نفر</option>
+                <option>۵۰ تا ۱۵۰ نفر</option>
+                <option>۱۵۰ تا ۴۰۰ نفر</option>
+                <option>۴۰۰ تا ۱۰۰۰ نفر</option>
+                <option>بیش از ۱۰۰۰ نفر</option>
+              </select>
+              <span class="err">یک گزینه انتخاب کنید.</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="f-city">شهر و تعداد شعبه</label>
+            <input id="f-city" name="city" type="text" placeholder="مثلاً تهران، ۲ شعبه">
+          </div>
+
+          <div class="field">
+            <label for="f-msg">بزرگ‌ترین دردسر امروزتان چیست؟</label>
+            <textarea id="f-msg" name="challenge" placeholder="مثلاً: پیگیری شهریهٔ عقب‌افتاده و برنامه‌ریزی ترم"></textarea>
+            <span class="help">همین یک جمله، دمو را برای شما مفید می‌کند.</span>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--block btn--lg">ارسال درخواست</button>
+          <p class="form-legal">با ارسال این فرم، فقط برای هماهنگی دمو با شما تماس گرفته می‌شود. شماره‌تان در اختیار هیچ‌کس دیگری قرار نمی‌گیرد.</p>
+        </form>
+
+        <div class="form-ok" id="formOk">
+          <div class="ic"><i class="ck"></i></div>
+          <h3>درخواست‌تان ثبت شد</h3>
+          <p>تا <b>پایان روز کاری بعد</b> با شمارهٔ <span class="num" id="okPhone" dir="ltr"></span> تماس می‌گیریم.<br>اگر عجله دارید: <span class="num" dir="ltr">۰۲۱-۱۲۳۴۵۶۷۸</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ فوتر ═══ -->
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-grid">
+      <div>
+        <a href="#" class="logo"><span class="logo-mark">ل</span> لینگوتاک</a>
+        <p class="ftr-about">سامانهٔ یکپارچهٔ مدیریت آموزشگاه‌های زبان: ثبت‌نام، کلاس، شهریه، حضور و غیاب و گزارش، در یک جا.</p>
+        <div class="badges">
+          <div class="badge">نماد اعتماد<br>الکترونیکی</div>
+          <div class="badge">ساماندهی</div>
+        </div>
+      </div>
+      <div>
+        <h5>محصول</h5>
+        <ul>
+          <li><a href="#modules">امکانات</a></li>
+          <li><a href="#pricing">تعرفه</a></li>
+          <li><a href="#iran">ویژه ایران</a></li>
+          <li><a href="#demo">درخواست دمو</a></li>
+          <li><a href="#login">ورود به پنل</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>راهکارها</h5>
+        <ul>
+          <li><a href="#roles">آموزشگاه کوچک</a></li>
+          <li><a href="#roles">آموزشگاه چندشعبه‌ای</a></li>
+          <li><a href="#roles">مدرس خصوصی</a></li>
+          <li><a href="#roles">آموزش سازمانی</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>تماس</h5>
+        <ul>
+          <li><a href="tel:+982112345678" class="num" dir="ltr">۰۲۱-۱۲۳۴۵۶۷۸</a></li>
+          <li><a href="mailto:hello@lingotalk.ir">hello@lingotalk.ir</a></li>
+          <li><a href="#">راهنما و پشتیبانی</a></li>
+          <li><a href="#">وبلاگ</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ftr-btm">
+      <span>© <span class="num">۱۴۰۵</span> لینگوتاک، همهٔ حقوق محفوظ است.</span>
+      <span class="sp">
+        <a href="#">قوانین</a>
+        <a href="#">حریم خصوصی</a>
+        <a href="#">بازگشت وجه</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+</div><!-- /.lt -->
+
+
+<script>
+(function(){
+  "use strict";
+
+  /* روی خروجی آرتیفکت، جهت و زبان روی ریشه ست می‌شود */
+  try{
+    document.documentElement.setAttribute("dir","rtl");
+    document.documentElement.setAttribute("lang","fa");
+    document.body.classList.add("lt");
+  }catch(e){}
+
+  var FA = ["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+  function fa(n){ return String(n).replace(/[0-9]/g, function(d){ return FA[+d]; }); }
+  function faGroup(n){
+    return fa(String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "٬"));
+  }
+  function enDigits(s){
+    return String(s)
+      .replace(/[۰-۹]/g, function(d){ return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)); })
+      .replace(/[٠-٩]/g, function(d){ return String("٠١٢٣٤٥٦٧٨٩".indexOf(d)); });
+  }
+
+  /* ---------- نوار پیش‌نمایش ---------- */
+  var pv = document.getElementById("pv"), pvx = document.getElementById("pvx");
+  if(pvx) pvx.addEventListener("click", function(){ pv.remove(); });
+
+  /* ---------- حالت روشن / تاریک ---------- */
+  var themeBtn = document.getElementById("theme");
+  if(themeBtn){
+    themeBtn.addEventListener("click", function(){
+      var root = document.documentElement;
+      var cur = root.getAttribute("data-theme");
+      if(!cur){
+        cur = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      root.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+    });
+  }
+
+  /* ---------- منوی موبایل ---------- */
+  var burger = document.getElementById("burger"), mnav = document.getElementById("mnav");
+  if(burger && mnav){
+    burger.addEventListener("click", function(){
+      var open = mnav.classList.toggle("open");
+      burger.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    mnav.addEventListener("click", function(e){
+      if(e.target.tagName === "A"){ mnav.classList.remove("open"); burger.setAttribute("aria-expanded","false"); }
+    });
+  }
+
+  /* ---------- ویجت حضور و غیاب ---------- */
+  var roster = document.getElementById("roster");
+  if(roster){
+    var cOk = document.getElementById("cOk"), cNo = document.getElementById("cNo");
+    var cTime = document.getElementById("cTime"), submitAtt = document.getElementById("submitAtt");
+    var attDone = document.getElementById("attDone"), attDoneTxt = document.getElementById("attDoneTxt");
+    var started = null, timer = null;
+
+    function tick(){
+      if(started === null) return;
+      var s = Math.floor((Date.now() - started)/1000);
+      cTime.textContent = "زمان سپری‌شده: " + fa(s) + " ثانیه";
+    }
+    function refresh(){
+      var all = roster.querySelectorAll(".st");
+      var absent = roster.querySelectorAll('.st[data-absent="1"]').length;
+      cOk.textContent = fa(all.length - absent);
+      cNo.textContent = fa(absent);
+      return absent;
+    }
+    roster.addEventListener("click", function(e){
+      var btn = e.target.closest(".st");
+      if(!btn) return;
+      if(started === null){ started = Date.now(); timer = setInterval(tick, 250); tick(); }
+      var now = btn.getAttribute("data-absent") === "1" ? "0" : "1";
+      btn.setAttribute("data-absent", now);
+      btn.querySelector(".st-state").textContent = now === "1" ? "غایب" : "حاضر";
+      refresh();
+      attDone.classList.remove("show");
+      submitAtt.style.display = "";
+    });
+    if(submitAtt){
+      submitAtt.addEventListener("click", function(){
+        var absent = refresh();
+        if(timer){ clearInterval(timer); timer = null; }
+        var secs = started === null ? 0 : Math.max(1, Math.floor((Date.now() - started)/1000));
+        attDoneTxt.textContent = absent > 0
+          ? "ثبت شد؛ به " + fa(absent) + " زبان‌آموز پیامک غیبت رفت (" + fa(secs) + " ثانیه)"
+          : "ثبت شد؛ همه حاضر بودند (" + fa(secs) + " ثانیه)";
+        attDone.classList.add("show");
+        submitAtt.style.display = "none";
+        started = null;
+        cTime.textContent = "برای شروع دوباره، روی اسم بزنید";
+      });
+    }
+  }
+
+  /* ---------- تب نقش‌ها ---------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  function selectTab(tab){
+    tabs.forEach(function(t){
+      var sel = t === tab;
+      t.setAttribute("aria-selected", sel ? "true" : "false");
+      var panel = document.getElementById(t.getAttribute("aria-controls"));
+      if(panel){ panel.classList.toggle("active", sel); panel.hidden = !sel; }
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener("click", function(){ selectTab(t); });
+    t.addEventListener("keydown", function(e){
+      /* در RTL جهت فلش‌ها معکوس است */
+      var next = null;
+      if(e.key === "ArrowLeft") next = tabs[(i+1) % tabs.length];
+      if(e.key === "ArrowRight") next = tabs[(i-1+tabs.length) % tabs.length];
+      if(next){ e.preventDefault(); next.focus(); selectTab(next); }
+    });
+  });
+
+  /* ---------- تعرفه ---------- */
+  var bM = document.getElementById("bMonthly"), bY = document.getElementById("bYearly");
+  var yearly = false;
+  var PLANS = [
+    { name:"پایه",     max:75,   m:490000  },
+    { name:"رشد",      max:400,  m:1700000 },
+    { name:"حرفه‌ای",  max:1500, m:4400000 }
+  ];
+  function setCycle(isYear){
+    yearly = isYear;
+    bM.setAttribute("aria-pressed", isYear ? "false" : "true");
+    bY.setAttribute("aria-pressed", isYear ? "true" : "false");
+    document.querySelectorAll(".plan .price b").forEach(function(b){
+      b.textContent = isYear ? b.getAttribute("data-y") : b.getAttribute("data-m");
+    });
+    updateCalc();
+  }
+  if(bM && bY){
+    bM.addEventListener("click", function(){ setCycle(false); });
+    bY.addEventListener("click", function(){ setCycle(true); });
+  }
+
+  var range = document.getElementById("calcRange");
+  var calcN = document.getElementById("calcN"), calcPlan = document.getElementById("calcPlan");
+  var calcPrice = document.getElementById("calcPrice"), calcCycle = document.getElementById("calcCycle");
+  function updateCalc(){
+    if(!range) return;
+    var n = +range.value;
+    calcN.textContent = faGroup(n);
+    var p = null;
+    for(var i=0;i<PLANS.length;i++){ if(n <= PLANS[i].max){ p = PLANS[i]; break; } }
+    if(!p){
+      calcPlan.textContent = "سازمانی";
+      calcPrice.textContent = "قیمت اختصاصی";
+      calcCycle.textContent = "— با ما تماس بگیرید";
+      return;
+    }
+    var price = yearly ? Math.round(p.m * 0.8) : p.m;
+    calcPlan.textContent = p.name;
+    calcPrice.textContent = faGroup(price) + " تومان";
+    calcCycle.textContent = yearly ? "در ماه، با پرداخت سالانه" : "در ماه";
+  }
+  if(range){ range.addEventListener("input", updateCalc); updateCalc(); }
+
+  /* ---------- فرم دمو ---------- */
+  var form = document.getElementById("demoForm"), formOk = document.getElementById("formOk");
+  function setInvalid(el, bad){
+    var field = el.closest(".field");
+    if(field) field.classList.toggle("invalid", !!bad);
+  }
+  function validPhone(v){
+    var d = enDigits(v).replace(/[\s\-()]/g, "");
+    return /^09\d{9}$/.test(d);
+  }
+  if(form){
+    /* اعتبارسنجی هنگام خروج از فیلد، نه هنگام تایپ */
+    form.querySelectorAll("input, select, textarea").forEach(function(el){
+      el.addEventListener("blur", function(){
+        if(el.id === "f-phone"){ if(el.value.trim()) setInvalid(el, !validPhone(el.value)); return; }
+        if(el.hasAttribute("required")) setInvalid(el, !el.value.trim());
+      });
+      el.addEventListener("input", function(){ if(el.closest(".field").classList.contains("invalid")) setInvalid(el, false); });
+    });
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var firstBad = null;
+      form.querySelectorAll("[required]").forEach(function(el){
+        var bad = !el.value.trim();
+        if(el.id === "f-phone" && !bad) bad = !validPhone(el.value);
+        setInvalid(el, bad);
+        if(bad && !firstBad) firstBad = el;
+      });
+      if(firstBad){ firstBad.focus(); return; }
+      var phone = enDigits(document.getElementById("f-phone").value).replace(/[\s\-()]/g,"");
+      document.getElementById("okPhone").textContent = fa(phone);
+      form.style.display = "none";
+      formOk.classList.add("show");
+      formOk.setAttribute("tabindex","-1");
+      formOk.focus();
+    });
+  }
+
+  /* ---------- ظاهر شدن هنگام اسکرول ---------- */
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var revealables = document.querySelectorAll(".rv");
+  if(reduce || !("IntersectionObserver" in window)){
+    revealables.forEach(function(el){ el.classList.add("in"); });
+  } else {
+    /* فقط حالا که مطمئنیم JS کار می‌کند، اجازهٔ مخفی‌کردن می‌دهیم */
+    document.documentElement.classList.add("js-rv");
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); }
+      });
+    }, { rootMargin:"0px 0px -8% 0px", threshold:0.08 });
+    revealables.forEach(function(el, i){
+      el.style.transitionDelay = Math.min(i % 4, 3) * 50 + "ms";
+      io.observe(el);
+    });
+  }
+
+  /* ---------- اسکرول نرم ---------- */
+  document.addEventListener("click", function(e){
+    var a = e.target.closest('a[href^="#"]');
+    if(!a) return;
+    var id = a.getAttribute("href");
+    if(id === "#" || id.length < 2) return;
+    var t = document.querySelector(id);
+    if(!t) return;
+    e.preventDefault();
+    t.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block:"start" });
+  });
+
+})();
+</script>
+
+</body>
+</html>
