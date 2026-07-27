@@ -203,7 +203,7 @@ Abandoned at step 1 → account exists; a recovery email/SMS goes out at 1 h, 24
 
 ## F.6 Institute overview / dashboard (`/`)
 
-Detailed widget specification in [H. Dashboard structure](H-dashboard-structure.md#h2-institute-dashboard).
+Detailed widget specification in [H. Dashboard structure](H-dashboard-structure.md#h2-institute-dashboard-owner--manager).
 
 **Purpose:** Answer *"what needs me today?"* in under five seconds, then *"how is the term
 going?"* in under thirty.

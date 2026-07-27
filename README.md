@@ -72,7 +72,7 @@ cosmetic choice — it shapes the product core:
 
 Everything above is abstracted behind interfaces (calendar system, payment provider,
 messaging provider, locale) so the same product sells into Turkish, Arabic, and European
-institute markets without a rewrite. See [I. Data model](docs/I-data-model.md#localisation-and-calendar-strategy).
+institute markets without a rewrite. See [I. Data model](docs/I-data-model.md#i10-localisation-and-calendar-strategy).
 
 ---
 
@@ -84,4 +84,4 @@ institute markets without a rewrite. See [I. Data model](docs/I-data-model.md#lo
 | Design system + high-fidelity screens | ⏳ Next |
 | MVP implementation | ⏳ Blocked on design sign-off |
 
-Next action: see [O. Final recommendation](docs/O-final-recommendation.md#the-first-90-days).
+Next action: see [O. Final recommendation](docs/O-final-recommendation.md#o4-the-first-90-days).
