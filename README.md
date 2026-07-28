@@ -7,16 +7,17 @@ workspace to run its entire operation: admissions, academics, scheduling, attend
 exams, tuition, communication, and reporting — in one system instead of a spreadsheet,
 a WhatsApp group, a paper ledger, and someone's memory.
 
-This repository currently contains **the product blueprint only**. No code yet — by design.
-The order is: define the product → define its structure → define its workflows → define its
-growth path → then build.
+This repository contains the **product blueprint** (A–R), a built **Persian marketing site**,
+and an interactive **prototype of the three dashboards**. There is no backend yet — by design.
+The order was: define the product → define its structure → define its workflows → prove the
+critical screens → then build the real thing.
 
 ---
 
 ## How to read this
 
-Documents are numbered A–O and match the agreed output structure. Read in order for the
-full picture; jump directly for a specific working session.
+Documents A–O are the core blueprint; P–R are binding amendments added as the scope
+sharpened. Read in order for the full picture; jump directly for a specific working session.
 
 | # | Document | Use it when |
 |---|---|---|
@@ -84,8 +85,6 @@ Everything is still abstracted behind interfaces (calendar system, payment provi
 messaging provider, locale) so the same product could sell into Turkish or Arabic markets
 later — but Iran is the target, not a configuration.
 See [I. Data model](docs/I-data-model.md#i10-localisation-and-calendar-strategy).
-
----
 
 ---
 
