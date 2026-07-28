@@ -528,6 +528,71 @@ body.lt{
 .ftr-btm .sp{margin-inline-start:auto; display:flex; gap:18px}
 
 
+
+/* ---------- بخش اسکرولی: صفحه ثابت می‌ماند، محتوای نمایشگر عوض می‌شود ----------
+   الگوی «چسبان + مراحل»: یک قاب بلند، یک نمایشگر sticky وسطش، و چند مرحله
+   که با اسکرول فعال می‌شوند. بدون کتابخانه، بدون تصویر خارجی. */
+.reel{background:var(--surface); border-block:1px solid var(--line); position:relative}
+.reel-intro{padding-block:clamp(48px,6vw,88px) 0}
+.reel-track{position:relative}
+.reel-sticky{position:sticky; top:78px; block-size:min(62vh,520px); display:grid;
+  grid-template-columns:1fr 1.15fr; gap:clamp(20px,3vw,48px); align-items:center;
+  padding-block:18px}
+@media (max-width:940px){
+  .reel-sticky{grid-template-columns:1fr; block-size:auto; top:70px; padding-block:14px}
+  .reel-copy{order:2}
+}
+.reel-copy{position:relative}
+.reel-step{opacity:.22; transition:opacity .35s ease; padding-block:12px;
+  border-inline-start:2px solid var(--line); padding-inline-start:18px; margin-inline-start:2px}
+.reel-step.on{opacity:1; border-inline-start-color:var(--brand)}
+.reel-step .wk{font-size:12.5px; font-weight:700; color:var(--brand)}
+.reel-step h3{font-size:clamp(18px,2.2vw,24px); margin-top:5px}
+.reel-step p{font-size:14.5px; color:var(--ink-2); margin-top:7px; line-height:1.9; max-width:44ch}
+@media (max-width:940px){.reel-step{opacity:1; border:none; padding-inline-start:0}
+  .reel-step:not(.on){display:none}}
+
+.screen{background:var(--surface); border:1px solid var(--line-2); border-radius:16px;
+  box-shadow:var(--shadow-lg); overflow:hidden; block-size:100%; display:flex; flex-direction:column}
+.screen-bar{display:flex; align-items:center; gap:8px; padding:10px 14px; flex:none;
+  border-block-end:1px solid var(--line); background:var(--surface-2); font-size:12px; color:var(--ink-3)}
+.screen-body{position:relative; flex:1; min-block-size:0}
+.frame{position:absolute; inset:0; padding:16px; overflow:hidden;
+  opacity:0; transform:translateY(10px); transition:opacity .4s ease, transform .4s ease;
+  pointer-events:none}
+.frame.on{opacity:1; transform:none}
+@media (max-width:940px){.screen{block-size:340px}}
+@media (max-width:560px){.screen{block-size:300px} .frame{padding:12px}}
+
+.reel-spacer{block-size:88vh}
+@media (max-width:940px){.reel-spacer{block-size:62vh}}
+.reel-dots{display:flex; gap:6px; justify-content:center; padding-block:14px 40px}
+.reel-dots i{inline-size:22px; block-size:3px; border-radius:100px; background:var(--line-2); transition:background .3s}
+.reel-dots i.on{background:var(--brand)}
+
+/* اجزای کوچک داخل نمایشگر */
+.mini-row{display:flex; align-items:center; gap:9px; padding:8px 10px; border-block-end:1px solid var(--line); font-size:12.5px}
+.mini-row:last-child{border:none}
+.mini-av{inline-size:24px; block-size:24px; border-radius:50%; background:var(--surface-3);
+  display:grid; place-items:center; font-size:11px; font-weight:700; flex:none; color:var(--ink-2)}
+.mini-tag{margin-inline-start:auto; font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px; flex:none}
+.t-ok{background:var(--ok-soft); color:var(--ok)}
+.t-bad{background:var(--bad-soft); color:var(--bad)}
+.t-warn{background:var(--warn-soft); color:var(--warn)}
+.t-info{background:var(--brand-soft); color:var(--brand)}
+.mini-k{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.mini-k div{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:9px}
+.mini-k .l{font-size:10.5px; color:var(--ink-3)}
+.mini-k .v{font-size:15px; font-weight:700; margin-top:2px}
+.mini-cal{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:10px}
+.mini-cal span{aspect-ratio:1; border-radius:5px; background:var(--surface-2); display:grid;
+  place-items:center; font-size:10.5px; color:var(--ink-3)}
+.mini-cal span.cl{background:var(--brand-soft); color:var(--brand); font-weight:700}
+.mini-cal span.hol{background:var(--bad-soft); color:var(--bad)}
+.mini-bars{display:flex; align-items:flex-end; gap:5px; block-size:70px; margin-top:10px}
+.mini-bars i{flex:1; background:var(--brand); border-radius:3px 3px 0 0; opacity:.85}
+.mini-bars i:last-child{background:var(--accent); opacity:1}
+
 /* ---------- شکل‌های CSS به‌جای گلیف ----------
    فونت دانا برای ·  –  —  ←  ▲  ▼  ✓  🔔 گلیف ندارد و به فونت جایگزین
    می‌افتد؛ نتیجه هم بدشکل است و هم ترتیب دوجهته را به‌هم می‌ریزد.
@@ -756,6 +821,135 @@ body.lt{
     </div>
     <p class="spine-hint"><i class="chev"></i> برای دیدن بقیهٔ مراحل، بکشید</p>
   </div>
+</section>
+
+
+<!-- ═══ بخش اسکرولی ═══ -->
+<section class="reel" id="reel">
+  <div class="wrap reel-intro">
+    <div class="eyebrow">یک ترم، از اول تا آخر</div>
+    <h2 class="h-sec">اسکرول کنید تا یک ترم کامل جلوی چشم‌تان بگذرد</h2>
+    <p class="lead">همان صفحه‌ای که کارکنان آموزشگاه هر روز می‌بینند؛ فقط سریع‌تر.</p>
+  </div>
+
+  <div class="wrap reel-track" id="reelTrack">
+    <div class="reel-sticky">
+      <div class="reel-copy">
+        <div class="reel-step on" data-step="0">
+          <div class="wk">۶ هفته مانده</div>
+          <h3>ترم را بسازید</h3>
+          <p>ترم قبل را کپی کنید و تاریخ‌های شمسی را جابه‌جا کنید. تعطیلات از تولید جلسات
+             حذف می‌شوند و تداخل مدرس همان لحظه قرمز می‌شود.</p>
+        </div>
+        <div class="reel-step" data-step="1">
+          <div class="wk">۴ هفته مانده</div>
+          <h3>زبان‌آموزها را ثبت‌نام کنید</h3>
+          <p>از سرنخ تا رسید، زیر دو دقیقه. ظرفیت زنده است، قسط‌بندی آماده،
+             و رسید همان‌جا پیامک می‌شود.</p>
+        </div>
+        <div class="reel-step" data-step="2">
+          <div class="wk">هفتهٔ اول</div>
+          <h3>کلاس‌ها شروع می‌شوند</h3>
+          <p>کلاس آنلاین روی BigBlueButton یا Google Meet، با یک دکمه. حضور و غیاب
+             در بیست ثانیه، حتی بدون اینترنت.</p>
+        </div>
+        <div class="reel-step" data-step="3">
+          <div class="wk">در طول ترم</div>
+          <h3>پول را دنبال کنید</h3>
+          <p>تابلوی بدهکاران با روزهای تأخیر، یادآوری گروهی با یک کلیک،
+             و وصولی در برابر شهریهٔ مورد انتظار.</p>
+        </div>
+        <div class="reel-step" data-step="4">
+          <div class="wk">پایان ترم</div>
+          <h3>ببینید چه کسی ماند</h3>
+          <p>ماندگاری ترم به ترم، به تفکیک کلاس و مدرس. همان عددی که تا امروز
+             هیچ آموزشگاهی نداشته.</p>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span id="scrTitle" style="margin-inline-start:auto">ترم‌ساز</span>
+        </div>
+        <div class="screen-body" id="scrBody">
+
+          <div class="frame on" data-f="0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:9px">کلاس‌های ترم زمستان ۱۴۰۵</div>
+            <div class="mini-row"><span class="mini-av">۱</span><span>AEF 2A · فرد ۱۸:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
+            <div class="mini-row"><span class="mini-av">۲</span><span>AEF 2B · زوج ۱۶:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
+            <div class="mini-row" style="background:var(--bad-soft)"><span class="mini-av">۳</span><span>Top Notch 1B · فرد ۱۸:۰۰</span><span class="mini-tag t-bad">تداخل مدرس</span></div>
+            <div class="mini-row"><span class="mini-av">۴</span><span>IELTS · پنجشنبه ۰۹:۰۰</span><span class="mini-tag t-ok">علی مرادی</span></div>
+            <div class="mini-cal">
+              <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span>
+              <span class="cl">۱</span><span>۲</span><span class="cl">۳</span><span>۴</span><span class="cl">۵</span><span>۶</span><span class="hol">۷</span>
+              <span class="cl">۸</span><span>۹</span><span class="cl">۱۰</span><span>۱۱</span><span class="cl">۱۲</span><span>۱۳</span><span class="hol">۱۴</span>
+            </div>
+          </div>
+
+          <div class="frame" data-f="1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:9px">ثبت‌نام هستی کریمی</div>
+            <div class="mini-row"><span>سطح از آزمون تعیین سطح</span><span class="mini-tag t-info">AEF 2A</span></div>
+            <div class="mini-row"><span>کلاس · روزهای فرد ۱۸:۰۰</span><span class="mini-tag t-warn">۳ صندلی مانده</span></div>
+            <div class="mini-row"><span>شهریه پس از تخفیف</span><span class="mini-tag t-ok">۱۱٬۶۵۰٬۰۰۰</span></div>
+            <div style="margin-top:10px;font-size:11.5px;color:var(--ink-3)">قسط‌بندی</div>
+            <div class="mini-row"><span>پیش‌پرداخت · امروز</span><span class="mini-tag t-ok">۴٬۶۶۰٬۰۰۰</span></div>
+            <div class="mini-row"><span>قسط دوم · ۲۰ بهمن</span><span class="mini-tag t-info">۳٬۵۰۰٬۰۰۰</span></div>
+            <div class="mini-row"><span>قسط سوم · ۲۰ اسفند</span><span class="mini-tag t-info">۳٬۴۹۰٬۰۰۰</span></div>
+          </div>
+
+          <div class="frame" data-f="2">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span style="font-size:13px;font-weight:700">AEF 2A · جلسهٔ ۷</span>
+              <span class="mini-tag t-info" style="margin:0">BigBlueButton</span>
+              <span class="mini-tag t-bad" style="margin-inline-start:auto">در حال ضبط</span>
+            </div>
+            <div class="mini-row"><span class="mini-av">س</span><span>سینا احمدی</span><span class="mini-tag t-ok">حاضر</span></div>
+            <div class="mini-row"><span class="mini-av">م</span><span>مریم رضایی</span><span class="mini-tag t-ok">حاضر</span></div>
+            <div class="mini-row"><span class="mini-av">ا</span><span>امیر کریمی</span><span class="mini-tag t-bad">غایب</span></div>
+            <div class="mini-row"><span class="mini-av">ن</span><span>نگار موسوی</span><span class="mini-tag t-ok">حاضر</span></div>
+            <div class="mini-row"><span class="mini-av">پ</span><span>پارسا صادقی</span><span class="mini-tag t-warn">تأخیر ۱۲ دقیقه</span></div>
+            <div style="margin-top:10px;font-size:11.5px;color:var(--ink-3)">
+              حضور آنلاین‌ها خودکار پیشنهاد شد؛ فقط تأیید کنید.</div>
+          </div>
+
+          <div class="frame" data-f="3">
+            <div class="mini-k">
+              <div><div class="l">وصولی</div><div class="v num">۶۸٪</div></div>
+              <div><div class="l">معوق</div><div class="v num">۸۴م</div></div>
+              <div><div class="l">بدهکار</div><div class="v num">۳۷</div></div>
+              <div><div class="l">حضور</div><div class="v num">۹۱٪</div></div>
+            </div>
+            <div style="margin-top:12px;font-size:11.5px;color:var(--ink-3)">تابلوی بدهکاران</div>
+            <div class="mini-row"><span class="mini-av">ا</span><span>امیر کریمی</span><span class="mini-tag t-bad">۲۱ روز تأخیر</span></div>
+            <div class="mini-row"><span class="mini-av">پ</span><span>پارسا صادقی</span><span class="mini-tag t-warn">۸ روز تأخیر</span></div>
+            <div class="mini-row"><span class="mini-av">ک</span><span>کیان رستمی</span><span class="mini-tag t-warn">۳ روز تأخیر</span></div>
+          </div>
+
+          <div class="frame" data-f="4">
+            <div style="font-size:13px;font-weight:700">ماندگاری ترم به ترم</div>
+            <div class="mini-bars" aria-hidden="true">
+              <i style="height:52%"></i><i style="height:58%"></i><i style="height:55%"></i>
+              <i style="height:64%"></i><i style="height:61%"></i><i style="height:70%"></i>
+              <i style="height:74%"></i><i style="height:81%"></i>
+            </div>
+            <div style="margin-top:12px" class="mini-k">
+              <div><div class="l">تمدید کردند</div><div class="v num">۶۳٪</div></div>
+              <div><div class="l">ارتقای سطح</div><div class="v num">۸۱٪</div></div>
+              <div><div class="l">میانگین نمره</div><div class="v num">۱۶٫۴</div></div>
+              <div><div class="l">مدرک صادرشده</div><div class="v num">۲۴۰</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="reel-spacer"></div><div class="reel-spacer"></div>
+    <div class="reel-spacer"></div><div class="reel-spacer"></div>
+    <div class="reel-spacer"></div>
+  </div>
+  <div class="wrap"><div class="reel-dots" id="reelDots">
+    <i class="on"></i><i></i><i></i><i></i><i></i></div></div>
 </section>
 
 <!-- ═══ ماژول‌ها ═══ -->
@@ -1516,6 +1710,42 @@ body.lt{
       el.style.transitionDelay = Math.min(i % 4, 3) * 50 + "ms";
       io.observe(el);
     });
+  }
+
+
+  /* ---------- بخش اسکرولی ---------- */
+  var reelTrack=document.getElementById("reelTrack");
+  if(reelTrack){
+    var steps=reelTrack.querySelectorAll(".reel-step");
+    var frames=reelTrack.querySelectorAll(".frame");
+    var dots=document.getElementById("reelDots").children;
+    var titles=["ترم‌ساز","ثبت‌نام زبان‌آموز","حضور و غیاب","تابلوی مالی","گزارش ماندگاری"];
+    var scrTitle=document.getElementById("scrTitle");
+    var cur=-1, ticking=false;
+
+    function setStep(n){
+      if(n===cur)return; cur=n;
+      for(var i=0;i<steps.length;i++)steps[i].classList.toggle("on",i===n);
+      for(var j=0;j<frames.length;j++)frames[j].classList.toggle("on",j===n);
+      for(var k=0;k<dots.length;k++)dots[k].classList.toggle("on",k===n);
+      scrTitle.textContent=titles[n];
+    }
+    function onScroll(){
+      var r=reelTrack.getBoundingClientRect();
+      var vh=window.innerHeight;
+      /* پیشرفت از لحظه‌ای که بالای قاب به بالای صفحه می‌رسد تا انتهایش */
+      var total=r.height-vh;
+      var passed=Math.min(Math.max(-r.top,0),total);
+      var p=total>0?passed/total:0;
+      var n=Math.min(steps.length-1,Math.floor(p*steps.length));
+      setStep(n);
+    }
+    window.addEventListener("scroll",function(){
+      if(ticking)return; ticking=true;
+      window.requestAnimationFrame(function(){onScroll();ticking=false;});
+    },{passive:true});
+    window.addEventListener("resize",onScroll,{passive:true});
+    onScroll(); setStep(0);
   }
 
   /* ---------- اسکرول نرم ---------- */

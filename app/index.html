@@ -178,6 +178,10 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
 .card-h .r{margin-inline-start:auto;display:flex;gap:7px;align-items:center}
 .card-b{padding:16px}
 .grid{display:grid;gap:14px}
+/* بدون این، فرزندِ گرید min-width:auto می‌گیرد و یک جدول پهن، کل ستون را
+   از عرض صفحه بیرون می‌برد؛ آن‌وقت overflow-x روی .tbl-wrap بی‌اثر می‌شود. */
+.grid>*{min-inline-size:0}
+.grader>*{min-inline-size:0}
 .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
 .g4{grid-template-columns:repeat(4,1fr)} .g-side{grid-template-columns:1.55fr 1fr}
 @media (max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)} .g-side{grid-template-columns:1fr}}
@@ -397,6 +401,103 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
 .toast .u{color:#7FB3F5;font-weight:700;white-space:nowrap}
 @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
+/* ───── صفحهٔ تمام‌صفحه (ورود، ثبت‌نام، تعیین سطح) ───── */
+.full{display:none;min-block-size:100dvh;background:var(--paper)}
+.full.on{display:block}
+body.full-mode .shell,body.full-mode .demo-bar{display:none}
+.auth-wrap{min-block-size:100dvh;display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:900px){.auth-wrap{grid-template-columns:1fr}.auth-aside{display:none}}
+.auth-aside{background:var(--brand-deep);color:#EAF1FB;padding:44px;display:flex;
+  flex-direction:column;justify-content:center;gap:20px}
+:root[data-theme="dark"] .auth-aside{background:var(--surface);color:var(--ink);border-inline-end:1px solid var(--line)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .auth-aside{background:var(--surface);color:var(--ink);border-inline-end:1px solid var(--line)}}
+.auth-aside h2{font-size:26px;line-height:1.6}
+.auth-aside ul{display:flex;flex-direction:column;gap:13px;margin-top:6px}
+.auth-aside li{display:flex;gap:11px;font-size:14.5px;align-items:flex-start;opacity:.86}
+.auth-main{display:flex;align-items:center;justify-content:center;padding:28px 20px}
+.auth-box{inline-size:100%;max-inline-size:410px}
+.auth-box .brand{border:none;padding:0 0 22px;justify-content:center}
+.auth-h{font-size:21px;font-weight:700;text-align:center}
+.auth-p{font-size:14px;color:var(--ink-3);text-align:center;margin-top:7px;line-height:1.9}
+.otp{display:flex;gap:9px;direction:ltr;justify-content:center;margin-block:20px}
+.otp input{inline-size:46px;block-size:56px;text-align:center;font-size:22px;font-weight:700;
+  border:1.5px solid var(--line-2);border-radius:var(--r2);background:var(--paper);
+  font-variant-numeric:tabular-nums}
+.otp input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+.otp input.filled{border-color:var(--brand);background:var(--brand-soft)}
+.steps-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
+.steps-dots i{inline-size:26px;block-size:4px;border-radius:100px;background:var(--line-2)}
+.steps-dots i.on{background:var(--brand)}
+
+/* ───── ویزارد ───── */
+.wiz{display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-block-end:2px}
+.wstep{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:100px;
+  font-size:13px;font-weight:700;color:var(--ink-3);background:var(--surface-2);white-space:nowrap;flex:none}
+.wstep .n{inline-size:20px;block-size:20px;border-radius:50%;background:var(--surface-3);
+  display:grid;place-items:center;font-size:11.5px;flex:none}
+.wstep.on{background:var(--brand-soft);color:var(--brand)}
+.wstep.on .n{background:var(--brand);color:#fff}
+:root[data-theme="dark"] .wstep.on .n{color:#07111F}
+.wstep.done{color:var(--ok)}
+.wstep.done .n{background:var(--ok-soft);color:var(--ok)}
+
+/* ───── چک‌لیست راه‌اندازی ───── */
+.chk{display:flex;align-items:center;gap:12px;padding:13px 15px;border-block-end:1px solid var(--line)}
+.chk:last-child{border-block-end:none}
+.chk .box{inline-size:22px;block-size:22px;border-radius:50%;border:2px solid var(--line-2);
+  flex:none;display:grid;place-items:center}
+.chk.done .box{background:var(--ok);border-color:var(--ok);color:#fff}
+.chk .tx{flex:1;font-size:14.5px}
+.chk.done .tx{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.chk .tx small{display:block;font-size:12px;color:var(--ink-3);text-decoration:none}
+
+/* ───── ترم‌ساز: جدول کلاس‌ها و تداخل ───── */
+.cls-row{display:grid;grid-template-columns:1.6fr 1fr 1.2fr .8fr .7fr auto;gap:9px;
+  padding:11px 13px;border-block-end:1px solid var(--line);align-items:center;font-size:13.5px}
+.cls-row.head{background:var(--surface-2);font-weight:700;font-size:12px;color:var(--ink-3)}
+.cls-row.bad{background:var(--bad-soft)}
+.cls-row select,.cls-row input{padding:7px 9px;min-block-size:36px;font-size:13.5px;
+  border:1px solid var(--line-2);border-radius:var(--r1);background:var(--surface);inline-size:100%}
+.cls-row select:focus,.cls-row input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 2px var(--ring)}
+@media (max-width:900px){.cls-row{grid-template-columns:1fr 1fr;gap:8px}.cls-row.head{display:none}}
+.conflict{display:flex;align-items:flex-start;gap:9px;padding:10px 13px;border-radius:var(--r2);
+  background:var(--bad-soft);color:var(--bad);font-size:13px;margin-top:8px}
+.conflict b{font-weight:700}
+.conflict .fix{margin-inline-start:auto;font-weight:700;white-space:nowrap;text-decoration:underline}
+
+/* ───── آزمون ───── */
+.q-nav{display:flex;flex-wrap:wrap;gap:6px}
+.q-nav button{inline-size:34px;block-size:34px;border-radius:var(--r1);border:1px solid var(--line-2);
+  font-size:13px;font-weight:700;color:var(--ink-3)}
+.q-nav button.ans{background:var(--brand);border-color:var(--brand);color:#fff}
+:root[data-theme="dark"] .q-nav button.ans{color:#07111F}
+.q-nav button.cur{box-shadow:0 0 0 3px var(--ring)}
+.opt{display:flex;align-items:center;gap:11px;padding:13px 15px;border:1.5px solid var(--line-2);
+  border-radius:var(--r2);inline-size:100%;text-align:start;font-size:15px;margin-bottom:9px;
+  transition:border-color .14s,background .14s}
+.opt:hover{border-color:var(--brand);background:var(--surface-2)}
+.opt[aria-checked="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.opt .rd{inline-size:19px;block-size:19px;border-radius:50%;border:2px solid var(--line-2);
+  flex:none;display:grid;place-items:center}
+.opt[aria-checked="true"] .rd{border-color:var(--brand)}
+.opt[aria-checked="true"] .rd::after{content:"";inline-size:9px;block-size:9px;border-radius:50%;background:var(--brand)}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.timer-pill{font-variant-numeric:tabular-nums;font-weight:700}
+.timer-pill.low{color:var(--bad)}
+
+/* ───── ابزار حین کلاس ───── */
+.tool{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:16px;text-align:center}
+.tool h4{font-size:14px;color:var(--ink-3);font-weight:700}
+.tool .big{font-size:38px;font-weight:300;letter-spacing:.01em;margin-block:9px;line-height:1.2}
+.tool .big.run{color:var(--brand)}
+.tool .big.done{color:var(--bad)}
+.poll-bar{display:flex;align-items:center;gap:9px;font-size:13.5px;margin-bottom:8px}
+.poll-bar .t{inline-size:74px;flex:none;text-align:start}
+.poll-bar .b{flex:1;block-size:22px;background:var(--surface-2);border-radius:var(--r1);overflow:hidden}
+.poll-bar .b i{display:block;block-size:100%;background:var(--brand);border-radius:var(--r1);transition:inline-size .3s}
+.poll-bar .v{inline-size:34px;flex:none;text-align:end;font-weight:700}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
 
@@ -405,6 +506,7 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
 
 <div class="demo-bar">
   <span><b>نمونهٔ تعاملی:</b> دادهٔ نمایشی. برای دیدن هر سه پنل، نقش را عوض کنید:</span>
+  <button class="btn btn--q btn--sm" data-nav="auth">دیدن صفحهٔ ثبت‌نام</button>
   <div class="role-sw" id="roleSw" role="group" aria-label="تغییر نقش">
     <button data-role="teacher">مدرس</button>
     <button data-role="student">زبان‌آموز</button>
@@ -416,7 +518,13 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
   <aside class="side" id="side">
     <div class="brand"><span class="brand-mark">ل</span><span>لینگوتاک</span></div>
     <div class="side-scroll"><nav id="nav" aria-label="منوی اصلی"></nav></div>
-    <div class="side-foot"><button class="me" id="meBtn"></button></div>
+    <div class="side-foot">
+      <button class="me" id="meBtn"></button>
+      <button class="me" data-act="logout" style="font-size:13px;color:var(--ink-3)">
+        <span class="av" style="background:transparent">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+        </span><span class="nm"><b style="font-weight:400">خروج از حساب</b></span></button>
+    </div>
   </aside>
   <div class="scrim" id="scrim"></div>
 
@@ -439,6 +547,7 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
   </div>
 </div>
 
+<div class="full" id="full"></div>
 <div class="ov" id="ov"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 </div>
@@ -462,6 +571,11 @@ function esc(s){return String(s).replace(/[&<>"']/g,function(c){
 function el(id){return document.getElementById(id);}
 function h(strings){var out=strings[0];
   for(var i=1;i<arguments.length;i++){out+=arguments[i]+strings[i];} return out;}
+function enDigits(s){  /* ارقام فارسی و عربی را به لاتین برمی‌گرداند تا اعتبارسنجی کار کند */
+  return String(s)
+    .replace(/[۰-۹]/g,function(d){return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d));})
+    .replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));});
+}
 function initials(name){return name.trim().charAt(0);}
 function pad(n){return n<10?"0"+n:""+n;}
 function clock(sec){return fa(pad(Math.floor(sec/60))+":"+pad(sec%60));}
@@ -554,10 +668,67 @@ var DB={
   ]
 };
 
+/* دادهٔ ترم‌ساز، آزمون، کتاب و حقوق */
+DB.teachers=[
+  {id:"t1",name:"سارا نوری",langs:"انگلیسی",cap:20,busy:["فرد۱۸","زوج۱۶"],rate:850000},
+  {id:"t2",name:"علی مرادی",langs:"انگلیسی، آیلتس",cap:16,busy:["پنجشنبه۰۹"],rate:1100000},
+  {id:"t3",name:"نگین فتحی",langs:"انگلیسی",cap:12,busy:[],rate:750000},
+  {id:"t4",name:"بهرام اسدی",langs:"آلمانی",cap:18,busy:["فرد۱۸"],rate:900000}
+];
+DB.rooms=[{id:"r1",name:"کلاس ۱",cap:14},{id:"r2",name:"کلاس ۲",cap:16},
+          {id:"r3",name:"کلاس ۳",cap:20},{id:"r4",name:"کلاس ۴",cap:12}];
+DB.dayPatterns=[{id:"فرد",t:"روزهای فرد (شنبه، دوشنبه، چهارشنبه)"},
+                {id:"زوج",t:"روزهای زوج (یکشنبه، سه‌شنبه)"},
+                {id:"پنجشنبه",t:"پنجشنبه‌ها"},{id:"جمعه",t:"جمعه‌ها"},
+                {id:"فشرده",t:"فشرده (شنبه تا چهارشنبه)"}];
+DB.times=["۰۹:۰۰","۱۱:۰۰","۱۴:۰۰","۱۶:۰۰","۱۸:۰۰","۲۰:۰۰"];
+DB.bookSeries=[
+  {id:"aef",name:"American English File",levels:["1A","1B","2A","2B","3A","3B","4A","4B"]},
+  {id:"tn",name:"Top Notch",levels:["Fund","1A","1B","2A","2B","3A","3B"]},
+  {id:"ff",name:"Family and Friends",levels:["1","2","3","4","5","6"]},
+  {id:"ie",name:"Interchange",levels:["Intro A","Intro B","1A","1B","2A","2B"]}
+];
+DB.termDraft=[
+  {id:1,course:"American English File 2A",level:"AEF 2A",day:"فرد",time:"۱۸:۰۰",teacher:"t1",room:"r3",cap:18,price:13500000},
+  {id:2,course:"American English File 2B",level:"AEF 2B",day:"زوج",time:"۱۶:۰۰",teacher:"t1",room:"r2",cap:16,price:13500000},
+  {id:3,course:"Top Notch 1B",level:"TN 1B",day:"فرد",time:"۱۸:۰۰",teacher:"t1",room:"r1",cap:14,price:12800000},
+  {id:4,course:"IELTS Intensive",level:"IELTS",day:"پنجشنبه",time:"۰۹:۰۰",teacher:"t2",room:"r3",cap:12,price:24000000},
+  {id:5,course:"Family and Friends 3",level:"FF 3",day:"زوج",time:"۱۶:۰۰",teacher:"",room:"r4",cap:12,price:11000000}
+];
+DB.exam={
+  id:"e1",title:"آزمون تعیین سطح انگلیسی",minutes:15,
+  qs:[
+    {q:"She ____ to the gym every morning.",o:["go","goes","going","gone"],a:1,lvl:1},
+    {q:"I have lived here ____ 2018.",o:["for","from","since","during"],a:2,lvl:2},
+    {q:"If I ____ more time, I would travel more.",o:["have","had","will have","am having"],a:1,lvl:3},
+    {q:"The meeting was ____ because of the storm.",o:["called off","called on","called at","called for"],a:0,lvl:3},
+    {q:"He is used to ____ early.",o:["wake","woke","waking","wakes"],a:2,lvl:4},
+    {q:"Hardly ____ the door when the phone rang.",o:["I had opened","had I opened","I opened","did I open"],a:1,lvl:5}
+  ]
+};
+DB.books=[
+  {id:"b1",name:"American English File 2 (4th ed.)",price:980000,stock:24,sold:41},
+  {id:"b2",name:"Top Notch 1 (3rd ed.)",price:850000,stock:6,sold:33},
+  {id:"b3",name:"Family and Friends 3",price:720000,stock:0,sold:27},
+  {id:"b4",name:"IELTS Cambridge 18",price:1250000,stock:11,sold:9}
+];
+DB.payroll=[
+  {tid:"t1",sessions:34,hours:51,rate:850000,bonus:0,deduct:850000},
+  {tid:"t2",sessions:18,hours:36,rate:1100000,bonus:2000000,deduct:0},
+  {tid:"t3",sessions:22,hours:33,rate:750000,bonus:0,deduct:0},
+  {tid:"t4",sessions:26,hours:39,rate:900000,bonus:0,deduct:1800000}
+];
+
 /* وضعیت زنده */
 var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        rec:{on:false,sec:0,done:false,timer:null},
-       grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null};
+       grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null,
+       auth:{step:1,phone:"",inst:"",otp:["","","","",""],newInst:true},
+       onboard:{profile:true,levels:true,students:false,term:false,team:false,money:false},
+       term:{step:1,rows:null,name:"زمستان ۱۴۰۵",from:"۱۵ دی",to:"۱۰ فروردین"},
+       enrol:{step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false},
+       exam:{on:false,i:0,ans:{},left:0,timer:null,done:false},
+       tools:{timer:0,run:false,tk:null,picked:"",poll:null}};
 
 DB.students.forEach(function(s){S.att[s.id]="present";});
 
@@ -567,18 +738,20 @@ var NAV={
   {g:"روزانه"},
   {r:"t",t:"امروز",i:"home"},
   {r:"t/classes",t:"کلاس‌های من",i:"book"},
+  {r:"t/tools",t:"ابزار حین کلاس",i:"cog"},
   {r:"t/assignments",t:"تکالیف",i:"file",badge:2},
   {r:"t/grading",t:"صف تصحیح",i:"check",badge:6},
   {g:"آموزشی"},
   {r:"t/gradebook",t:"دفتر نمره",i:"grid"},
-  {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"},
-  {r:"t/materials",t:"فایل‌ها و منابع",i:"folder"}
+  {r:"t/payroll",t:"کارکرد و حقوق من",i:"wallet"},
+  {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"}
  ],
  student:[
   {g:"یادگیری"},
   {r:"s",t:"خانه",i:"home"},
   {r:"s/classes",t:"کلاس‌های من",i:"book"},
   {r:"s/assignments",t:"تکالیف",i:"file",badge:2},
+  {r:"s/exams",t:"آزمون‌ها",i:"check",badge:1},
   {r:"s/grades",t:"نمرات و پیشرفت",i:"chart"},
   {g:"مالی و اداری"},
   {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1},
@@ -589,10 +762,15 @@ var NAV={
   {g:"روزانه"},
   {r:"m",t:"پیشخوان",i:"home"},
   {r:"m/live",t:"کلاس‌های در حال برگزاری",i:"video",badge:1},
+  {r:"m/enrol",t:"ثبت‌نام زبان‌آموز",i:"users"},
   {r:"m/students",t:"زبان‌آموزان",i:"users"},
+  {g:"آموزشی"},
+  {r:"m/term",t:"ترم‌ساز",i:"cal"},
   {r:"m/classes",t:"کلاس‌ها",i:"book"},
   {g:"کسب‌وکار"},
   {r:"m/finance",t:"مالی",i:"wallet"},
+  {r:"m/books",t:"فروش کتاب",i:"book"},
+  {r:"m/payroll",t:"حقوق مدرسان",i:"wallet"},
   {r:"m/reports",t:"گزارش‌ها",i:"chart"},
   {r:"m/settings",t:"تنظیمات",i:"cog"}
  ]
@@ -1116,7 +1294,32 @@ V["s/classes"]=V["s/schedule"]=V["s/certificates"]=function(){
 
 /* ══════════ صفحات: مدیر ══════════ */
 V["m"]=function(){
+  var ob=S.onboard, obDone=Object.keys(ob).filter(function(k){return ob[k];}).length, obAll=6;
   return h`
+  ${obDone<obAll?h`
+  <div class="card" style="margin-bottom:16px;border-color:var(--brand)">
+    <div class="card-h"><h3>راه‌اندازی آموزشگاه</h3>
+      <div class="r"><span class="pill p-info num">${fa(obDone)} از ${fa(obAll)}</span></div></div>
+    <div class="card-b" style="padding-block-end:6px">
+      <div class="bar" style="margin-bottom:12px"><i style="width:${obDone/obAll*100}%"></i></div>
+    </div>
+    <div style="border-block-start:1px solid var(--line)">
+      ${[["profile","مشخصات و لوگوی آموزشگاه","نام، آدرس، ساعت کاری، رنگ برند"],
+         ["levels","ساختار سطح‌ها","از روی سری کتابی که انتخاب کردید ساخته شد"],
+         ["students","ورود لیست زبان‌آموزان","فایل اکسل‌تان را بدهید، ما وارد می‌کنیم"],
+         ["term","ساخت اولین ترم","کلاس‌ها، مدرس‌ها و تقویم"],
+         ["team","دعوت همکاران","منشی، مدیر آموزشی و مدرس‌ها"],
+         ["money","تنظیمات مالی و پیامک","درگاه، قسط‌بندی، خط خدماتی"]].map(function(x){
+        var done=ob[x[0]];
+        return h`<div class="chk ${done?"done":""}">
+          <span class="box">${done?'<i class="ck" style="inline-size:.36em;block-size:.62em"></i>':""}</span>
+          <span class="tx">${x[1]}<small>${x[2]}</small></span>
+          ${done?pill("انجام شد","ok"):
+            '<button class="btn btn--p btn--sm" data-act="ob-do" data-k="'+x[0]+'">شروع</button>'}
+        </div>`;}).join("")}
+    </div>
+  </div>`:""}
+
   <div class="grid g4" style="margin-bottom:16px">
     ${kpi("زبان‌آموز فعال","۴۱۲",'<i class="tri tri--up"></i> ۶٪ نسبت به ترم قبل',"up")}
     ${kpi("وصولی ترم","۶۸٪","۶۱۲ از ۹۰۰ میلیون تومان",null,68)}
@@ -1251,6 +1454,642 @@ V["m/finance"]=function(){
 V["m/classes"]=V["m/reports"]=V["m/settings"]=function(){
   return '<div class="card"><div class="empty"><b>این بخش در این نمونه ساخته نشده</b>'+
   '<p>ساختار کاملش در اسناد E، F و H آمده است.</p></div></div>';
+};
+
+/* ══════════ ورود و ثبت‌نام ══════════ */
+V["auth"]=function(){
+  var a=S.auth;
+  return h`
+  <div class="auth-wrap">
+    <aside class="auth-aside">
+      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ل</span><span>لینگوتاک</span></div>
+      <h2>آموزشگاه‌تان را از یک صفحه اداره کنید</h2>
+      <ul>
+        <li><i class="ck"></i><span>ترم بعد را با کپی ترم قبل، در یک بعدازظهر بسازید</span></li>
+        <li><i class="ck"></i><span>حضور و غیاب با موبایل، در بیست ثانیه</span></li>
+        <li><i class="ck"></i><span>شهریهٔ قسطی، کارت به کارت و درگاه، در یک تابلو</span></li>
+        <li><i class="ck"></i><span>کلاس آنلاین روی BigBlueButton یا Google Meet</span></li>
+      </ul>
+      <p style="font-size:13px;opacity:.6;margin-top:8px">۱۴ روز رایگان، بدون نیاز به کارت بانکی.</p>
+    </aside>
+    <main class="auth-main"><div class="auth-box">
+      <div class="steps-dots">
+        <i class="${a.step>=1?"on":""}"></i><i class="${a.step>=2?"on":""}"></i><i class="${a.step>=3?"on":""}"></i>
+      </div>
+      ${a.step===1?h`
+        <h1 class="auth-h">${a.newInst?"ثبت‌نام آموزشگاه":"ورود"}</h1>
+        <p class="auth-p">شمارهٔ موبایل‌تان را وارد کنید. یک کد پنج‌رقمی برایتان پیامک می‌شود.</p>
+        <div class="fld" style="margin-top:22px">
+          <label for="auPhone">شمارهٔ موبایل <span class="rq">*</span></label>
+          <input id="auPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
+                 placeholder="09121234567" value="${esc(a.phone)}">
+          <span class="hint">با همین شماره وارد می‌شوید؛ رمز عبور لازم نیست.</span>
+        </div>
+        ${a.newInst?h`<div class="fld">
+          <label for="auInst">نام آموزشگاه <span class="rq">*</span></label>
+          <input id="auInst" type="text" placeholder="مثلاً آموزشگاه زبان پردیس" value="${esc(a.inst)}">
+        </div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-send">ارسال کد</button>
+        <p class="auth-p" style="margin-top:16px">
+          ${a.newInst?"قبلاً ثبت‌نام کرده‌اید؟":"آموزشگاه جدید دارید؟"}
+          <button class="btn btn--q btn--sm" data-act="au-toggle">${a.newInst?"ورود":"ثبت‌نام"}</button></p>
+      `:a.step===2?h`
+        <h1 class="auth-h">کد را وارد کنید</h1>
+        <p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>
+        <div class="otp" id="otpBox">
+          ${[0,1,2,3,4].map(function(i){
+            return '<input type="text" inputmode="numeric" maxlength="1" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'">';}).join("")}
+        </div>
+        <button class="btn btn--p btn--b btn--lg" data-act="au-verify" id="auVerify" disabled>تأیید و ورود</button>
+        <p class="auth-p" style="margin-top:14px">
+          کد نرسید؟ <button class="btn btn--q btn--sm" data-act="au-resend">ارسال دوباره</button>
+          <br><span class="muted" style="font-size:12.5px">در این نمونه هر کد پنج‌رقمی پذیرفته می‌شود.</span></p>
+        <button class="btn btn--q btn--b" style="margin-top:8px" data-act="au-back">بازگشت</button>
+      `:h`
+        <h1 class="auth-h">چند سوال کوتاه</h1>
+        <p class="auth-p">با این جواب‌ها، فضای کاری‌تان از قبل تنظیم می‌شود.</p>
+        <div class="fld" style="margin-top:20px">
+          <label for="auLang">چه زبان‌هایی تدریس می‌کنید؟</label>
+          <select id="auLang"><option>انگلیسی</option><option>انگلیسی و آلمانی</option>
+            <option>انگلیسی، آلمانی و ترکی</option><option>فقط آمادگی آزمون</option></select>
+        </div>
+        <div class="fld">
+          <label for="auBook">کدام سری کتاب کار می‌کنید؟</label>
+          <select id="auBook">${DB.bookSeries.map(function(b){
+            return '<option value="'+b.id+'">'+b.name+'</option>';}).join("")}</select>
+          <span class="hint">نردبان سطح‌ها را خودمان از روی همین می‌سازیم.</span>
+        </div>
+        <div class="fld">
+          <label for="auSize">چند زبان‌آموز فعال دارید؟</label>
+          <select id="auSize"><option>زیر ۵۰</option><option selected>۵۰ تا ۱۵۰</option>
+            <option>۱۵۰ تا ۴۰۰</option><option>بیش از ۴۰۰</option></select>
+        </div>
+        <button class="btn btn--p btn--b btn--lg" data-act="au-finish">ساخت فضای کاری</button>
+        <button class="btn btn--q btn--b" style="margin-top:8px" data-act="au-finish">فعلاً رد شو</button>
+      `}
+    </div></main>
+  </div>`;
+};
+
+/* ══════════ ترم‌ساز ══════════ */
+function termConflicts(){
+  var rows=S.term.rows||DB.termDraft, out=[];
+  rows.forEach(function(r,i){
+    if(!r.teacher){out.push({row:r.id,k:"unassigned",t:"کلاس «"+r.course+"» مدرس ندارد"});}
+    rows.forEach(function(o,j){
+      if(j<=i)return;
+      if(r.day===o.day&&r.time===o.time){
+        if(r.teacher&&r.teacher===o.teacher){
+          var tn=(DB.teachers.filter(function(x){return x.id===r.teacher;})[0]||{}).name;
+          out.push({row:r.id,k:"teacher",t:tn+" هم‌زمان در «"+r.course+"» و «"+o.course+"» است"});
+        }
+        if(r.room===o.room){
+          var rn=(DB.rooms.filter(function(x){return x.id===r.room;})[0]||{}).name;
+          out.push({row:r.id,k:"room",t:rn+" هم‌زمان به «"+r.course+"» و «"+o.course+"» داده شده"});
+        }
+      }
+    });
+    var rm=DB.rooms.filter(function(x){return x.id===r.room;})[0];
+    if(rm&&r.cap>rm.cap){out.push({row:r.id,k:"cap",
+      t:"ظرفیت «"+r.course+"» ("+fa(r.cap)+") از ظرفیت "+rm.name+" ("+fa(rm.cap)+") بیشتر است"});}
+  });
+  return out;
+}
+V["m/term"]=function(){
+  var st=S.term, rows=st.rows||(st.rows=JSON.parse(JSON.stringify(DB.termDraft)));
+  var cf=termConflicts(), badRows={};
+  cf.forEach(function(c){badRows[c.row]=true;});
+  var sessions=rows.length*20, revenue=rows.reduce(function(a,r){return a+r.cap*r.price;},0);
+  return h`
+  <div class="wiz">
+    ${[["۱","مشخصات ترم"],["۲","تقویم و تعطیلات"],["۳","کلاس‌ها"],["۴","بازبینی و انتشار"]].map(function(w,i){
+      var n=i+1, c=st.step===n?"on":st.step>n?"done":"";
+      return '<div class="wstep '+c+'"><span class="n">'+(st.step>n?'<i class="ck"></i>':fa(w[0]))+'</span>'+w[1]+'</div>';}).join("")}
+  </div>
+
+  ${st.step===1?h`
+    <div class="card"><div class="card-h"><h3>مشخصات ترم جدید</h3></div><div class="card-b">
+      <div class="alert" style="background:var(--brand-soft);border-color:var(--brand);margin-bottom:16px">
+        <span class="sev s-lo" style="background:var(--brand)"></span>
+        <span>ساختار ترم پاییز کپی شد: <b class="num">${fa(rows.length)} کلاس</b>، با تاریخ‌های جابه‌جاشده.
+        فقط چیزهایی را که عوض شده اصلاح کنید.</span></div>
+      <div class="frow">
+        <div class="fld"><label for="tmName">نام ترم</label>
+          <input id="tmName" value="${esc(st.name)}"></div>
+        <div class="fld"><label for="tmClone">شروع از</label>
+          <select id="tmClone"><option selected>کپی ترم پاییز ۱۴۰۵</option>
+            <option>ترم خالی</option><option>ورود از فایل</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><label for="tmFrom">تاریخ شروع</label><input id="tmFrom" class="num" value="${st.from}"></div>
+        <div class="fld"><label for="tmTo">تاریخ پایان</label><input id="tmTo" class="num" value="${st.to}"></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><label>بازهٔ ثبت‌نام</label><input class="num" value="۱ دی تا ۱۴ دی"></div>
+        <div class="fld"><label>تعداد جلسات هر کلاس</label><input class="num" value="۲۰"></div>
+      </div>
+    </div></div>
+  `:st.step===2?h`
+    <div class="card"><div class="card-h"><h3>تعطیلات این بازه</h3>
+      <div class="r">${pill("۵ روز","warn")}</div></div><div class="card-b">
+      <p class="muted" style="font-size:13.5px;margin-bottom:14px">
+        جلسات روی این تاریخ‌ها ساخته نمی‌شوند و ترم به‌اندازهٔ آن‌ها جلو می‌رود.
+        تعطیلات قمری هر سال جابه‌جا می‌شوند و از تقویم رسمی به‌روز می‌آیند.</p>
+      ${[["۲۲ بهمن","پیروزی انقلاب","شمسی"],["۲۹ اسفند","آخر سال","شمسی"],
+         ["۱ تا ۴ فروردین","نوروز","شمسی"],["۱۷ بهمن","شهادت حضرت فاطمه","قمری"],
+         ["۹ اسفند","تعطیلی آلودگی هوا","اضطراری"]].map(function(x){
+        return h`<div class="chk done"><span class="box"><i class="ck" style="inline-size:.36em;block-size:.62em"></i></span>
+          <span class="tx">${x[1]}<small class="num">${x[0]}</small></span>
+          ${x[2]==="قمری"?pill("قمری","warn"):x[2]==="اضطراری"?pill("اضطراری","bad"):pill("شمسی","mute")}</div>`;}).join("")}
+      <button class="btn btn--g btn--sm" style="margin-top:14px" data-act="noop">افزودن تعطیلی دستی</button>
+    </div></div>
+  `:st.step===3?h`
+    <div class="card">
+      <div class="card-h"><h3>کلاس‌های ترم</h3>
+        <div class="r">${cf.length?pill(fa(cf.length)+" تداخل","bad"):pill("بدون تداخل","ok")}
+          <button class="btn btn--g btn--sm" data-act="tm-add">افزودن کلاس</button></div></div>
+      <div class="tbl-wrap">
+        <div class="cls-row head"><span>دوره</span><span>روزها</span><span>مدرس</span>
+          <span>کلاس</span><span>ظرفیت</span><span></span></div>
+        ${rows.map(function(r){return h`
+          <div class="cls-row ${badRows[r.id]?"bad":""}" data-row="${r.id}">
+            <span><b style="font-weight:700">${esc(r.course)}</b></span>
+            <span>
+              <select data-f="day" data-id="${r.id}">${DB.dayPatterns.map(function(d){
+                return '<option value="'+d.id+'"'+(d.id===r.day?" selected":"")+'>'+d.id+'</option>';}).join("")}</select>
+              <select data-f="time" data-id="${r.id}" style="margin-top:5px">${DB.times.map(function(t){
+                return '<option'+(t===r.time?" selected":"")+'>'+t+'</option>';}).join("")}</select>
+            </span>
+            <span><select data-f="teacher" data-id="${r.id}">
+              <option value="">— انتخاب کنید —</option>
+              ${DB.teachers.map(function(t){
+                return '<option value="'+t.id+'"'+(t.id===r.teacher?" selected":"")+'>'+t.name+'</option>';}).join("")}
+            </select></span>
+            <span><select data-f="room" data-id="${r.id}">${DB.rooms.map(function(m){
+              return '<option value="'+m.id+'"'+(m.id===r.room?" selected":"")+'>'+m.name+' ('+fa(m.cap)+')</option>';}).join("")}</select></span>
+            <span><input type="number" class="num" data-f="cap" data-id="${r.id}" value="${r.cap}" min="1" max="40"></span>
+            <span><button class="btn btn--q btn--sm" data-act="tm-del" data-id="${r.id}">حذف</button></span>
+          </div>`;}).join("")}
+      </div>
+      ${cf.length?'<div class="card-b" style="padding-top:12px">'+cf.map(function(c){
+        return '<div class="conflict"><span>⚠</span><span><b>'+
+          (c.k==="teacher"?"تداخل مدرس":c.k==="room"?"تداخل کلاس":c.k==="cap"?"ظرفیت":"بدون مدرس")+
+          ':</b> '+esc(c.t)+'</span></div>';}).join("")+'</div>':
+        '<div class="card-b"><div class="alert" style="background:var(--ok-soft);border-color:var(--ok)">'+
+        '<span class="sev" style="background:var(--ok)"></span><span>هیچ تداخلی نیست. آمادهٔ انتشار است.</span></div></div>'}
+    </div>
+  `:h`
+    <div class="grid g4" style="margin-bottom:16px">
+      ${kpi("کلاس","'"+fa(rows.length)+"'".replace(/'/g,""),"در این ترم")}
+      ${kpi("جلسه","'"+fa(sessions)+"'".replace(/'/g,""),"با حذف تعطیلات")}
+      ${kpi("ظرفیت کل",fa(rows.reduce(function(a,r){return a+r.cap;},0)),"زبان‌آموز")}
+      ${kpi("درآمد بالقوه",faG(Math.round(revenue/1000000))+" م",'تومان، در ظرفیت کامل')}
+    </div>
+    <div class="card"><div class="card-h"><h3>بازبینی نهایی</h3>
+      <div class="r">${cf.length?pill(fa(cf.length)+" تداخل حل‌نشده","bad"):pill("آماده","ok")}</div></div>
+      <div class="card-b">
+        ${cf.length?'<div class="conflict"><span>⚠</span><span>تا وقتی تداخل هست، انتشار ممکن نیست.'+
+          '</span><button class="fix" data-act="tm-step" data-n="3">رفتن به کلاس‌ها</button></div>':""}
+        <div class="chk done"><span class="box"><i class="ck" style="inline-size:.36em;block-size:.62em"></i></span>
+          <span class="tx">تاریخ‌های ترم و بازهٔ ثبت‌نام<small class="num">${st.from} تا ${st.to}</small></span></div>
+        <div class="chk done"><span class="box"><i class="ck" style="inline-size:.36em;block-size:.62em"></i></span>
+          <span class="tx">تقویم تعطیلات<small class="num">۵ روز تعطیل، از تولید جلسات حذف شد</small></span></div>
+        <div class="chk ${cf.length?"":"done"}"><span class="box">${cf.length?"":'<i class="ck" style="inline-size:.36em;block-size:.62em"></i>'}</span>
+          <span class="tx">تخصیص مدرس و کلاس<small>${cf.length?fa(cf.length)+" مورد حل نشده":"همه تخصیص یافت"}</small></span></div>
+        <div class="opt-row" style="margin-top:14px"><span>بعد از انتشار، کمپین تمدید ترم را هم اجرا کن</span>
+          <button class="sw" role="switch" aria-checked="true"></button></div>
+        <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn--p btn--lg" data-act="tm-publish" ${cf.length?"disabled":""}>انتشار ترم</button>
+          <button class="btn btn--g btn--lg" data-act="noop">ذخیرهٔ پیش‌نویس</button>
+        </div>
+      </div></div>
+  `}
+
+  <div style="display:flex;gap:9px;margin-top:16px">
+    ${st.step>1?'<button class="btn btn--g" data-act="tm-step" data-n="'+(st.step-1)+'"><i class="chev chev--r"></i> مرحلهٔ قبل</button>':""}
+    ${st.step<4?'<button class="btn btn--p" style="margin-inline-start:auto" data-act="tm-step" data-n="'+(st.step+1)+'">مرحلهٔ بعد <i class="chev"></i></button>':""}
+  </div>`;
+};
+
+/* ══════════ ثبت‌نام زبان‌آموز ══════════ */
+V["m/enrol"]=function(){
+  var e=S.enrol;
+  var open=DB.classes.map(function(c){return c;});
+  return h`
+  <div class="wiz">
+    ${[["۱","زبان‌آموز"],["۲","سطح"],["۳","انتخاب کلاس"],["۴","شهریه و پرداخت"]].map(function(w,i){
+      var n=i+1,c=e.step===n?"on":e.step>n?"done":"";
+      return '<div class="wstep '+c+'"><span class="n">'+(e.step>n?'<i class="ck"></i>':fa(w[0]))+'</span>'+w[1]+'</div>';}).join("")}
+  </div>
+
+  ${e.step===1?h`
+    <div class="card"><div class="card-h"><h3>زبان‌آموز</h3>
+      <div class="r">${pill("هدف: زیر ۲ دقیقه","mute")}</div></div><div class="card-b">
+      <div class="frow">
+        <div class="fld"><label for="enName">نام و نام خانوادگی <span class="rq">*</span></label>
+          <input id="enName" value="${esc(e.name)}" placeholder="مثلاً هستی کریمی"></div>
+        <div class="fld"><label for="enPhone">شمارهٔ موبایل <span class="rq">*</span></label>
+          <input id="enPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
+                 value="${esc(e.phone)}" placeholder="09121234567">
+          <span class="hint" id="dupHint">تکراری بودن با موبایل و کد ملی بررسی می‌شود.</span></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><label for="enNid">کد ملی</label>
+          <input id="enNid" inputmode="numeric" dir="ltr" style="text-align:end" placeholder="۱۰ رقم"></div>
+        <div class="fld"><label for="enBirth">تاریخ تولد</label><input id="enBirth" class="num" placeholder="۱۳۸۲/۰۵/۱۲"></div>
+      </div>
+      <div class="fld"><label for="enSrc">از کجا با ما آشنا شد؟</label>
+        <select id="enSrc"><option>مراجعهٔ حضوری</option><option>اینستاگرام</option>
+          <option>معرفی دوست</option><option>سایت آموزشگاه</option><option>تماس تلفنی</option></select></div>
+    </div></div>
+  `:e.step===2?h`
+    <div class="card"><div class="card-h"><h3>تعیین سطح</h3></div><div class="card-b">
+      <p class="muted" style="font-size:13.5px;margin-bottom:15px">
+        سطح را از سابقه، آزمون تعیین سطح، یا دستی مشخص کنید.</p>
+      <div class="prov" role="radiogroup" aria-label="روش تعیین سطح">
+        <button class="prov-o" role="radio" aria-checked="${e.level==="test"}" data-lvl="test">
+          <span class="rd"></span><span style="flex:1">
+            <span class="t">آزمون تعیین سطح آنلاین<span class="pill p-info">پیشنهاد</span></span>
+            <span class="d">لینک آزمون پیامک می‌شود. زبان‌آموز هر ساعتی می‌تواند بدهد و نتیجه خودکار روی پرونده می‌نشیند.</span>
+          </span></button>
+        <button class="prov-o" role="radio" aria-checked="${e.level==="book"}" data-lvl="book">
+          <span class="rd"></span><span style="flex:1">
+            <span class="t">از روی کتاب قبلی</span>
+            <span class="d">اگر جای دیگری درس خوانده: نام کتاب و درسی که تمام کرده.</span>
+          </span></button>
+        <button class="prov-o" role="radio" aria-checked="${e.level==="manual"}" data-lvl="manual">
+          <span class="rd"></span><span style="flex:1">
+            <span class="t">تعیین دستی</span>
+            <span class="d">مصاحبهٔ حضوری با مدرس. دلیل ثبت می‌شود.</span>
+          </span></button>
+      </div>
+      ${e.level==="manual"||e.level==="book"?h`
+        <div class="fld" style="margin-top:16px"><label for="enLvl">سطح</label>
+          <select id="enLvl">${DB.bookSeries[0].levels.map(function(l){
+            return '<option'+(l==="2A"?" selected":"")+'>American English File '+l+'</option>';}).join("")}</select></div>`:""}
+      ${e.level==="test"?h`
+        <div class="alert" style="margin-top:16px;background:var(--brand-soft);border-color:var(--brand)">
+          <span class="sev s-lo" style="background:var(--brand)"></span>
+          <span>برای دیدن خود آزمون، به پنل زبان‌آموز بروید و «آزمون‌ها» را باز کنید.</span>
+          <button class="a" data-act="go-exam">دیدن آزمون <i class="chev"></i></button></div>`:""}
+    </div></div>
+  `:e.step===3?h`
+    <div class="card"><div class="card-h"><h3>کلاس‌های باز در این سطح</h3>
+      <div class="r">${pill("سطح: AEF 2A","info")}</div></div>
+      <div class="card-b" style="padding:10px">
+        ${open.map(function(c){
+          var left=c.cap-c.enrolled, full=left<=0;
+          return h`<button class="rrow" style="border-radius:10px" data-cls-pick="${c.id}"
+             ${full?"disabled":""} aria-pressed="${e.clsId===c.id}">
+            <span class="av">${c.enrolled}</span>
+            <span class="nm"><span>${esc(c.name)}</span>
+              <small class="num">${c.days}، ${c.time}، ${c.room}، استاد ${c.teacher}</small></span>
+            ${full?pill("تکمیل، لیست انتظار","bad"):
+              left<=3?pill(fa(left)+" صندلی مانده","warn"):pill(fa(left)+" صندلی خالی","ok")}
+            ${e.clsId===c.id?'<span class="pill p-info"><i class="ck"></i> انتخاب شد</span>':""}
+          </button>`;}).join("")}
+      </div>
+      <div class="card-b" style="border-block-start:1px solid var(--line)">
+        <p class="muted" style="font-size:12.5px">اگر کلاسی وقتِ مناسب زبان‌آموز را ندارد، می‌توانید
+        او را به لیست انتظار اضافه کنید؛ به‌محض خالی شدن صندلی، پیشنهاد با مهلت ۲۴ ساعته می‌رود.</p>
+      </div>
+    </div>
+  `:h`
+    <div class="grid g-side">
+      <div class="card"><div class="card-h"><h3>شهریه و قسط‌بندی</h3></div><div class="card-b">
+        <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:8px 0">
+          <span>شهریهٔ دوره</span><b class="num">۱۳٬۵۰۰٬۰۰۰ تومان</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:8px 0;color:var(--ok)">
+          <span>تخفیف ثبت‌نام زودهنگام (۱۰٪)</span><b class="num">− ۱٬۳۵۰٬۰۰۰</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:8px 0;color:var(--ok)">
+          <span>تخفیف معرفی دوست</span><b class="num">− ۵۰۰٬۰۰۰</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:700;
+             padding:13px 0;border-block-start:1px solid var(--line);margin-top:6px">
+          <span>قابل پرداخت</span><b class="num">۱۱٬۶۵۰٬۰۰۰ تومان</b></div>
+        <div class="prov" style="margin-top:14px" role="radiogroup" aria-label="نحوهٔ پرداخت">
+          <button class="prov-o" role="radio" aria-checked="${e.plan==="full"}" data-plan="full">
+            <span class="rd"></span><span style="flex:1"><span class="t">پرداخت کامل</span>
+            <span class="d">یک‌جا، همین حالا.</span></span></button>
+          <button class="prov-o" role="radio" aria-checked="${e.plan==="instal"}" data-plan="instal">
+            <span class="rd"></span><span style="flex:1"><span class="t">قسطی<span class="pill p-info">رایج</span></span>
+            <span class="d">پیش‌پرداخت ۴۰٪ و دو قسط. سررسیدها شمسی ثبت می‌شوند.</span></span></button>
+          <button class="prov-o" role="radio" aria-checked="${e.plan==="hold"}" data-plan="hold">
+            <span class="rd"></span><span style="flex:1"><span class="t">رزرو بدون پرداخت</span>
+            <span class="d">صندلی ۴۸ ساعت نگه داشته می‌شود، بعد آزاد می‌شود.</span></span></button>
+        </div>
+      </div></div>
+      <div>
+        ${e.plan==="instal"?h`
+        <div class="card" style="margin-bottom:14px"><div class="card-h"><h3>جدول اقساط</h3></div>
+          <div class="tbl-wrap"><table class="tbl"><tbody>
+            <tr><td>پیش‌پرداخت</td><td class="num">۴٬۶۶۰٬۰۰۰</td><td class="num">امروز</td></tr>
+            <tr><td>قسط دوم</td><td class="num">۳٬۵۰۰٬۰۰۰</td><td class="num">۲۰ بهمن</td></tr>
+            <tr><td>قسط سوم</td><td class="num">۳٬۴۹۰٬۰۰۰</td><td class="num">۲۰ اسفند</td></tr>
+          </tbody></table></div></div>`:""}
+        <div class="card"><div class="card-h"><h3>روش پرداخت</h3></div><div class="card-b">
+          <button class="btn btn--p btn--b btn--lg" data-act="en-pay">درگاه پرداخت</button>
+          <button class="btn btn--g btn--b" style="margin-top:9px" data-act="en-pay">نقدی، دریافت شد</button>
+          <button class="btn btn--g btn--b" style="margin-top:9px" data-act="en-pay">کارتخوان</button>
+          <button class="btn btn--g btn--b" style="margin-top:9px" data-act="en-pay">کارت به کارت، ثبت فیش</button>
+          <p class="muted" style="font-size:12px;margin-top:12px;line-height:1.85">
+            بعد از ثبت: رسید صادر می‌شود، برنامهٔ کلاسی و لینک پرتال پیامک می‌شود،
+            و صندلی کلاس به‌صورت تراکنشی کم می‌شود.</p>
+        </div></div>
+      </div>
+    </div>
+  `}
+
+  <div style="display:flex;gap:9px;margin-top:16px">
+    ${e.step>1?'<button class="btn btn--g" data-act="en-step" data-n="'+(e.step-1)+'"><i class="chev chev--r"></i> قبل</button>':""}
+    ${e.step<4?'<button class="btn btn--p" style="margin-inline-start:auto" data-act="en-step" data-n="'+(e.step+1)+'">بعد <i class="chev"></i></button>':""}
+  </div>`;
+};
+
+/* ══════════ پروندهٔ زبان‌آموز ══════════ */
+V["m/student"]=function(){
+  var s=DB.students[0];
+  return h`
+  <div class="crumb"><a href="#/m/students">زبان‌آموزان</a><i class="chev"></i><span>${esc(s.name)}</span></div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-b" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <span class="av" style="inline-size:56px;block-size:56px;font-size:20px;border-radius:50%;
+        background:var(--surface-3);display:grid;place-items:center;font-weight:700">${initials(s.name)}</span>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:20px;font-weight:700">${esc(s.name)}</div>
+        <div class="metaline muted" style="font-size:13px;margin-top:4px">
+          <span class="num">کد ۱۰۴۲</span><span>AEF 2A</span>
+          <span class="num" dir="ltr">۰۹۱۲۳۴۵۶۷۸۹</span></div>
+      </div>
+      <div style="text-align:center">
+        <div class="muted" style="font-size:12px">مانده حساب</div>
+        <div class="num" style="font-size:20px;font-weight:700;color:var(--bad)">${money(s.balance)}</div>
+      </div>
+      <button class="btn btn--p" data-act="pay">ثبت پرداخت</button>
+      <button class="btn btn--g" data-act="noop">پیام</button>
+    </div>
+  </div>
+  <div class="alert" style="background:var(--warn-soft);border-color:var(--warn);margin-bottom:14px">
+    <span class="sev s-md"></span><span>قسط دوم <b class="num">۸ روز</b> دیگر سررسید می‌شود.</span>
+    <button class="a" data-act="noop">یادآوری پیامکی <i class="chev"></i></button></div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab on">خلاصه</button><button class="tab">ثبت‌نام‌ها</button>
+    <button class="tab">حضور</button><button class="tab">نمرات</button>
+    <button class="tab">مالی</button><button class="tab">پیام‌ها</button></div>
+
+  <div class="grid g-side">
+    <div>
+      <div class="card" style="margin-bottom:14px"><div class="card-h"><h3>ثبت‌نام‌ها</h3></div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>ترم</th><th>کلاس</th><th>نمره</th><th>حضور</th><th>وضعیت</th></tr></thead>
+          <tbody>
+            <tr><td class="num">پاییز ۱۴۰۵</td><td>AEF 2A</td><td class="num">۱۷٫۵</td>
+                <td class="num">۹۴٪</td><td>${pill("در حال گذراندن","info")}</td></tr>
+            <tr><td class="num">تابستان ۱۴۰۵</td><td>AEF 1B</td><td class="num">۱۶٫۰</td>
+                <td class="num">۸۹٪</td><td>${pill("قبول","ok")}</td></tr>
+            <tr><td class="num">بهار ۱۴۰۵</td><td>AEF 1A</td><td class="num">۱۵٫۵</td>
+                <td class="num">۹۲٪</td><td>${pill("قبول","ok")}</td></tr>
+          </tbody></table></div></div>
+      <div class="card"><div class="card-h"><h3>سابقهٔ مالی</h3></div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>تاریخ</th><th>بابت</th><th>مبلغ</th><th>روش</th><th>وضعیت</th></tr></thead>
+          <tbody>
+            <tr><td class="num">۱ مهر</td><td>پیش‌پرداخت پاییز</td><td class="num">۵٬۴۰۰٬۰۰۰</td>
+                <td>درگاه</td><td>${pill("پرداخت شد","ok")}</td></tr>
+            <tr><td class="num">۲۰ مهر</td><td>قسط دوم پاییز</td><td class="num">۴٬۵۰۰٬۰۰۰</td>
+                <td>—</td><td>${pill("سررسید نزدیک","warn")}</td></tr>
+            <tr><td class="num">۵ تیر</td><td>کتاب AEF 2</td><td class="num">۹۸۰٬۰۰۰</td>
+                <td>نقدی</td><td>${pill("پرداخت شد","ok")}</td></tr>
+          </tbody></table></div></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px"><div class="card-h"><h3>پیشرفت سطح</h3></div><div class="card-b">
+        ${["AEF 1A","AEF 1B","AEF 2A","AEF 2B","AEF 3A"].map(function(l,i){
+          var st=i<2?"done":i===2?"cur":"next";
+          return h`<div class="chk ${st==="done"?"done":""}" style="border:none;padding:8px 0">
+            <span class="box" style="${st==="cur"?"border-color:var(--brand)":""}">${st==="done"?'<i class="ck" style="inline-size:.36em;block-size:.62em"></i>':""}</span>
+            <span class="tx">${l}</span>
+            ${st==="cur"?pill("فعلی","info"):st==="done"?pill("قبول","ok"):""}</div>`;}).join("")}
+      </div></div>
+      <div class="card"><div class="card-h"><h3>یادداشت داخلی</h3></div><div class="card-b">
+        <p style="font-size:13.5px;line-height:1.9">صبح‌ها نمی‌تواند بیاید. اگر ترم بعد کلاس عصر نبود،
+        قبلش خبر بدهید.</p>
+        <p class="muted num" style="font-size:12px;margin-top:8px">مریم رضایی، ۳ مهر</p>
+        <button class="btn btn--g btn--sm" style="margin-top:11px" data-act="noop">افزودن یادداشت</button>
+      </div></div>
+    </div>
+  </div>`;
+};
+
+/* ══════════ کتاب و حقوق ══════════ */
+V["m/books"]=function(){
+  var rev=DB.books.reduce(function(a,b){return a+b.price*b.sold;},0);
+  return h`
+  <div class="grid g3" style="margin-bottom:16px">
+    ${kpi("فروش کتاب این ترم",faG(Math.round(rev/1000000))+" م","تومان")}
+    ${kpi("جلد فروخته‌شده",fa(DB.books.reduce(function(a,b){return a+b.sold;},0)),"در ۴ عنوان")}
+    ${kpi("عنوان رو به اتمام","۲",'یکی موجودی صفر دارد',"down")}
+  </div>
+  <div class="card"><div class="card-h"><h3>موجودی و فروش</h3>
+    <div class="r"><button class="btn btn--g btn--sm" data-act="noop">ثبت ورود کتاب</button>
+      <button class="btn btn--p btn--sm" data-act="noop">فروش به زبان‌آموز</button></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>عنوان</th><th>قیمت</th><th>موجودی</th><th>فروش این ترم</th><th>درآمد</th><th></th></tr></thead>
+      <tbody>${DB.books.map(function(b){return h`<tr>
+        <td><b style="font-weight:700">${esc(b.name)}</b></td>
+        <td class="num">${money(b.price)}</td>
+        <td class="num">${b.stock===0?'<span style="color:var(--bad)">ناموجود</span>':
+            b.stock<10?'<span style="color:var(--warn)">'+fa(b.stock)+'</span>':fa(b.stock)}</td>
+        <td class="num">${fa(b.sold)}</td>
+        <td class="num">${faG(Math.round(b.price*b.sold/1000000))} م تومان</td>
+        <td>${b.stock<10?'<button class="btn btn--g btn--sm" data-act="noop">سفارش</button>':""}</td>
+      </tr>`;}).join("")}</tbody></table></div></div>
+  <p class="muted" style="font-size:12.5px;margin-top:11px">
+    فروش کتاب به پروندهٔ مالی همان زبان‌آموز وصل می‌شود، پس در مانده حسابش دیده می‌شود
+    و لازم نیست دفتر جدا داشته باشید.</p>`;
+};
+
+V["m/payroll"]=function(){
+  var tot=DB.payroll.reduce(function(a,p){return a+p.hours*p.rate+p.bonus-p.deduct;},0);
+  return h`
+  <div class="grid g3" style="margin-bottom:16px">
+    ${kpi("حقوق این ماه",faG(Math.round(tot/1000000))+" م","تومان، ۴ مدرس")}
+    ${kpi("ساعت تدریس",fa(DB.payroll.reduce(function(a,p){return a+p.hours;},0)),"در این ماه")}
+    ${kpi("جلسهٔ جبرانی","۳","محاسبه شده")}
+  </div>
+  <div class="card"><div class="card-h"><h3>کارکرد مدرسان</h3>
+    <div class="r"><span class="pill p-mute num">دی ۱۴۰۵</span>
+      <button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button>
+      <button class="btn btn--p btn--sm" data-act="noop">تأیید و پرداخت</button></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>مدرس</th><th>جلسه</th><th>ساعت</th><th>نرخ ساعتی</th>
+        <th>پاداش</th><th>کسر</th><th>خالص</th></tr></thead>
+      <tbody>${DB.payroll.map(function(p){
+        var t=DB.teachers.filter(function(x){return x.id===p.tid;})[0];
+        var net=p.hours*p.rate+p.bonus-p.deduct;
+        return h`<tr>
+          <td><span class="who"><span class="av">${initials(t.name)}</span><b>${esc(t.name)}</b></span></td>
+          <td class="num">${fa(p.sessions)}</td><td class="num">${fa(p.hours)}</td>
+          <td class="num">${faG(p.rate)}</td>
+          <td class="num" style="color:var(--ok)">${p.bonus?"+"+faG(p.bonus):"—"}</td>
+          <td class="num" style="color:var(--bad)">${p.deduct?"−"+faG(p.deduct):"—"}</td>
+          <td class="num" style="font-weight:700">${faG(net)}</td></tr>`;}).join("")}
+      </tbody></table></div></div>
+  <p class="muted" style="font-size:12.5px;margin-top:11px">
+    ساعت‌ها از جلسات واقعاً برگزارشده می‌آید، نه از برنامهٔ ترم. جلسهٔ لغوشده حساب نمی‌شود
+    و جلسهٔ جبرانی به مدرسی که واقعاً تدریس کرده تعلق می‌گیرد.</p>`;
+};
+
+V["t/payroll"]=function(){
+  var p=DB.payroll[0], t=DB.teachers[0];
+  return h`
+  <div class="grid g3" style="margin-bottom:16px">
+    ${kpi("خالص این ماه",faG(Math.round((p.hours*p.rate+p.bonus-p.deduct)/1000000))+" م","تومان")}
+    ${kpi("جلسهٔ برگزارشده",fa(p.sessions),"از ۳۶ جلسهٔ برنامه")}
+    ${kpi("ساعت تدریس",fa(p.hours),"در دی ماه")}
+  </div>
+  <div class="card"><div class="card-h"><h3>ریز کارکرد</h3></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>کلاس</th><th>جلسه</th><th>ساعت</th><th>مبلغ</th></tr></thead>
+      <tbody>
+        <tr><td>American English File 2A</td><td class="num">۱۸</td><td class="num">۲۷</td><td class="num">۲۲٬۹۵۰٬۰۰۰</td></tr>
+        <tr><td>Top Notch 1B</td><td class="num">۱۶</td><td class="num">۲۴</td><td class="num">۲۰٬۴۰۰٬۰۰۰</td></tr>
+        <tr><td>کسر بابت ۱ جلسهٔ غیبت</td><td class="num">۱</td><td class="num">−۱٫۵</td>
+            <td class="num" style="color:var(--bad)">−۸۵۰٬۰۰۰</td></tr>
+      </tbody></table></div></div>`;
+};
+
+/* ══════════ ابزار حین کلاس ══════════ */
+V["t/tools"]=function(){
+  var tl=S.tools;
+  return h`
+  <p class="muted" style="font-size:13.5px;margin-bottom:16px;max-width:62ch;line-height:1.9">
+    سه ابزار کوچک برای وسط کلاس. عمداً ساده نگه داشته شده‌اند تا پنل مدرس سنگین نشود.</p>
+  <div class="grid g3">
+    <div class="tool">
+      <h4>تایمر فعالیت</h4>
+      <div class="big num ${tl.run?"run":tl.timer===0&&tl.started?"done":""}" id="tmDisp">${clock(tl.timer)}</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+        <button class="btn btn--g btn--sm" data-act="tl-set" data-s="60">۱ دقیقه</button>
+        <button class="btn btn--g btn--sm" data-act="tl-set" data-s="180">۳ دقیقه</button>
+        <button class="btn btn--g btn--sm" data-act="tl-set" data-s="300">۵ دقیقه</button>
+      </div>
+      <button class="btn ${tl.run?"btn--d":"btn--p"} btn--b" style="margin-top:11px" data-act="tl-toggle">
+        ${tl.run?"توقف":"شروع"}</button>
+    </div>
+
+    <div class="tool">
+      <h4>انتخاب تصادفی زبان‌آموز</h4>
+      <div class="big" id="pickDisp" style="font-size:${tl.picked?"24px":"38px"};font-weight:${tl.picked?"700":"300"}">
+        ${tl.picked?esc(tl.picked):"—"}</div>
+      <p class="muted" style="font-size:12.5px">هرکس یک‌بار انتخاب شود، تا دور بعد تکرار نمی‌شود.</p>
+      <button class="btn btn--p btn--b" style="margin-top:11px" data-act="tl-pick">انتخاب کن</button>
+      <button class="btn btn--q btn--b" style="margin-top:6px" data-act="tl-reset">شروع دور جدید</button>
+    </div>
+
+    <div class="tool" style="text-align:start">
+      <h4 style="text-align:center">نظرسنجی سریع</h4>
+      ${tl.poll?h`
+        <div style="margin-top:14px">
+          ${["خیلی راحت","متوسط","سخت بود"].map(function(o,i){
+            var v=tl.poll[i], mx=Math.max.apply(null,tl.poll)||1;
+            return h`<div class="poll-bar"><span class="t">${o}</span>
+              <span class="b"><i style="width:${v/mx*100}%"></i></span>
+              <span class="v num">${fa(v)}</span></div>`;}).join("")}
+        </div>
+        <button class="btn btn--g btn--b" style="margin-top:10px" data-act="tl-poll-end">پایان نظرسنجی</button>
+      `:h`
+        <p class="muted" style="font-size:13px;text-align:center;margin-top:12px;line-height:1.9">
+          «درس امروز چطور بود؟» را به همهٔ حاضرین کلاس بفرستید و جواب‌ها را زنده ببینید.</p>
+        <button class="btn btn--p btn--b" style="margin-top:14px" data-act="tl-poll">شروع نظرسنجی</button>
+      `}
+    </div>
+  </div>`;
+};
+
+/* ══════════ آزمون ══════════ */
+V["s/exams"]=function(){
+  return h`
+  <div class="asg">
+    <span class="ic t-quiz">${typeIcon("quiz")}</span>
+    <div class="bd"><b>${esc(DB.exam.title)}</b>
+      <p class="muted" style="font-size:13px;margin-top:5px;line-height:1.85">
+        ${fa(DB.exam.qs.length)} سوال چندگزینه‌ای، ${fa(DB.exam.minutes)} دقیقه.
+        نتیجه بلافاصله اعلام می‌شود و سطح پیشنهادی روی پرونده‌تان ثبت می‌شود.</p>
+      <div class="metaline m" style="margin-top:7px">
+        <span>تعیین سطح</span><span class="num">۱ تلاش</span><span>نمره‌گذاری خودکار</span></div></div>
+    <div class="rt">${pill("داده نشده","warn")}
+      <button class="btn btn--p btn--sm" data-act="ex-start">شروع آزمون</button></div>
+  </div>
+  <div class="asg">
+    <span class="ic t-quiz">${typeIcon("quiz")}</span>
+    <div class="bd"><b>Unit 3 Grammar quiz</b>
+      <div class="metaline m" style="margin-top:5px"><span>آزمونک کلاسی</span>
+        <span class="num">۱۵ سوال</span></div></div>
+    <div class="rt">${pill("نمره ۱۸ از ۲۰","ok")}
+      <button class="btn btn--g btn--sm" data-nav="s/grades">دیدن پاسخ‌ها</button></div>
+  </div>`;
+};
+
+V["s/exam"]=function(){
+  var ex=S.exam, E=DB.exam;
+  if(ex.done){
+    var right=0;
+    E.qs.forEach(function(q,i){if(ex.ans[i]===q.a)right++;});
+    var pct=Math.round(right/E.qs.length*100);
+    var lvl=pct>=84?"AEF 3A":pct>=67?"AEF 2B":pct>=50?"AEF 2A":pct>=34?"AEF 1B":"AEF 1A";
+    return h`
+    <div class="card" style="max-width:640px;margin-inline:auto">
+      <div class="card-b" style="text-align:center;padding:32px 22px">
+        <div style="inline-size:66px;block-size:66px;border-radius:50%;background:var(--ok-soft);color:var(--ok);
+          display:grid;place-items:center;margin:0 auto 16px"><i class="ck" style="inline-size:.8em;block-size:1.4em;border-width:3px"></i></div>
+        <h2 style="font-size:21px">آزمون تمام شد</h2>
+        <div class="num" style="font-size:44px;font-weight:300;margin-block:14px">${fa(right)} از ${fa(E.qs.length)}</div>
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border-radius:100px;
+          background:var(--brand-soft);color:var(--brand);font-weight:700;font-size:16px">
+          سطح پیشنهادی: ${lvl}</div>
+        <p class="muted" style="font-size:13.5px;margin-top:18px;line-height:1.95">
+          این سطح روی پروندهٔ شما ثبت شد و کلاس‌های باز همین سطح را می‌بینید.
+          تعیین سطح نهایی با مصاحبهٔ کوتاه مدرس تأیید می‌شود.</p>
+        <div style="display:flex;gap:9px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+          <button class="btn btn--p" data-nav="s">دیدن کلاس‌های این سطح</button>
+          <button class="btn btn--g" data-act="ex-review">مرور پاسخ‌ها</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  var q=E.qs[ex.i];
+  var low=ex.left<60;
+  return h`
+  <div class="gbar">
+    <span class="pill p-mute num">سوال ${fa(ex.i+1)} از ${fa(E.qs.length)}</span>
+    <div class="mid"><b>${esc(E.title)}</b>
+      <div class="gprog"><i style="width:${(ex.i+1)/E.qs.length*100}%;background:var(--brand)"></i></div></div>
+    <span class="pill ${low?"p-bad":"p-info"}"><span class="timer-pill ${low?"low":""}" id="exTime">${clock(ex.left)}</span></span>
+  </div>
+  <div class="grid g-side">
+    <div class="card"><div class="card-b">
+      <p style="font-size:18px;line-height:2;margin-bottom:18px" dir="auto">${esc(q.q)}</p>
+      ${q.o.map(function(o,i){
+        return '<button class="opt" role="radio" aria-checked="'+(ex.ans[ex.i]===i)+'" data-opt="'+i+'">'+
+          '<span class="rd"></span><span dir="auto">'+esc(o)+'</span></button>';}).join("")}
+      <div style="display:flex;gap:9px;margin-top:16px">
+        <button class="btn btn--g" data-act="ex-prev" ${ex.i===0?"disabled":""}><i class="chev chev--r"></i> قبلی</button>
+        ${ex.i<E.qs.length-1
+          ?'<button class="btn btn--p" style="margin-inline-start:auto" data-act="ex-next">بعدی <i class="chev"></i></button>'
+          :'<button class="btn btn--p" style="margin-inline-start:auto" data-act="ex-submit">پایان و مشاهدهٔ نتیجه</button>'}
+      </div>
+    </div></div>
+    <div>
+      <div class="card"><div class="card-h"><h3>سوال‌ها</h3></div><div class="card-b">
+        <div class="q-nav">${E.qs.map(function(_,i){
+          return '<button class="'+(ex.ans[i]!=null?"ans ":"")+(i===ex.i?"cur":"")+'" data-goq="'+i+'">'+fa(i+1)+'</button>';}).join("")}</div>
+        <p class="muted" style="font-size:12.5px;margin-top:13px;line-height:1.85">
+          پاسخ‌ها خودکار ذخیره می‌شوند. اگر اینترنت قطع شود، از همین‌جا ادامه می‌دهید
+          و زمان روی سرور حساب می‌شود، نه روی مرورگر.</p>
+      </div></div>
+    </div>
+  </div>`;
 };
 
 /* ══════════ مودال‌ها ══════════ */
@@ -1410,16 +2249,35 @@ function wordCount(){
 /* ══════════ مسیریابی ══════════ */
 var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance":"حضور و غیاب",
  "t/assignments":"تکالیف","t/grading":"صف تصحیح","t/gradebook":"دفتر نمره",
- "t/schedule":"برنامهٔ هفتگی","t/materials":"فایل‌ها",
+ "t/schedule":"برنامهٔ هفتگی","t/materials":"فایل‌ها","t/tools":"ابزار حین کلاس",
+ "t/payroll":"کارکرد و حقوق من",
  "s":"خانه","s/classes":"کلاس‌های من","s/assignments":"تکالیف","s/grades":"نمرات و پیشرفت",
  "s/payments":"شهریه و اقساط","s/schedule":"برنامهٔ کلاسی","s/certificates":"مدارک",
+ "s/exams":"آزمون‌ها","s/exam":"آزمون در حال برگزاری",
  "m":"پیشخوان","m/live":"کلاس‌های در حال برگزاری","m/students":"زبان‌آموزان",
- "m/classes":"کلاس‌ها","m/finance":"مالی","m/reports":"گزارش‌ها","m/settings":"تنظیمات"};
+ "m/student":"پروندهٔ زبان‌آموز","m/classes":"کلاس‌ها","m/finance":"مالی",
+ "m/reports":"گزارش‌ها","m/settings":"تنظیمات","m/term":"ترم‌ساز",
+ "m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
+
+/* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
+var FULL={"auth":1};
 
 function go(route){location.hash="#/"+route;}
 function render(){
   var r=(location.hash||"#/t").replace(/^#\/?/,"")||"t";
   if(!V[r]){r=S.role==="student"?"s":S.role==="manager"?"m":"t";}
+
+  if(FULL[r]){
+    document.body.classList.add("full-mode");
+    el("full").classList.add("on");
+    el("full").innerHTML=V[r]();
+    S.route=r; window.scrollTo(0,0);
+    var f=el("full").querySelector("input"); if(f)f.focus();
+    return;
+  }
+  document.body.classList.remove("full-mode");
+  el("full").classList.remove("on"); el("full").innerHTML="";
+
   var first=r.split("/")[0];
   S.role=first==="s"?"student":first==="m"?"manager":"teacher";
   S.route=r;
@@ -1427,10 +2285,32 @@ function render(){
   el("page").innerHTML=V[r]();
   renderNav();
   el("side").classList.remove("open"); el("scrim").classList.remove("on");
-  if(r==="s/assignments"||r==="t/assignments"){}
+  if(r==="s/exam"&&S.exam.on&&!S.exam.timer){startExamTimer();}
+  if(r!=="s/exam"&&S.exam.timer){clearInterval(S.exam.timer);S.exam.timer=null;}
   window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",render);
+
+/* ── تایمر آزمون ── */
+function startExamTimer(){
+  S.exam.timer=setInterval(function(){
+    S.exam.left--;
+    var t=el("exTime");
+    if(t){t.textContent=clock(Math.max(0,S.exam.left));
+      t.classList.toggle("low",S.exam.left<60);}
+    if(S.exam.left<=0){clearInterval(S.exam.timer);S.exam.timer=null;
+      S.exam.done=true;S.exam.on=false;
+      toast("زمان آزمون تمام شد و پاسخ‌ها خودکار ثبت شدند");render();}
+  },1000);
+}
+
+/* ── تایمر ابزار کلاس ── */
+function tickTool(){
+  S.tools.timer--;
+  var d=el("tmDisp"); if(d)d.textContent=clock(Math.max(0,S.tools.timer));
+  if(S.tools.timer<=0){clearInterval(S.tools.tk);S.tools.tk=null;S.tools.run=false;
+    toast("وقت تمام شد");render();}
+}
 
 /* ══════════ رویدادها ══════════ */
 document.addEventListener("click",function(e){
@@ -1491,11 +2371,140 @@ document.addEventListener("click",function(e){
   var sw=t.closest(".sw");
   if(sw){sw.setAttribute("aria-checked",sw.getAttribute("aria-checked")==="true"?"false":"true");return;}
 
+  /* انتخاب سطح در ثبت‌نام */
+  var lvlBtn=t.closest("[data-lvl]");
+  if(lvlBtn){S.enrol.level=lvlBtn.dataset.lvl;render();return;}
+  var planBtn=t.closest("[data-plan]");
+  if(planBtn){S.enrol.plan=planBtn.dataset.plan;render();return;}
+  var clsPick=t.closest("[data-cls-pick]");
+  if(clsPick){S.enrol.clsId=clsPick.dataset.clsPick;render();return;}
+
+  /* گزینهٔ آزمون */
+  var optBtn=t.closest("[data-opt]");
+  if(optBtn&&optBtn.classList.contains("opt")){
+    S.exam.ans[S.exam.i]=+optBtn.dataset.opt;
+    Array.prototype.forEach.call(optBtn.parentNode.querySelectorAll(".opt"),function(b){
+      b.setAttribute("aria-checked",b===optBtn?"true":"false");});
+    var qn=document.querySelector('[data-goq="'+S.exam.i+'"]');
+    if(qn)qn.classList.add("ans");
+    return;
+  }
+  var goq=t.closest("[data-goq]");
+  if(goq){S.exam.i=+goq.dataset.goq;render();return;}
+
+  /* ویرایش ردیف ترم‌ساز */
   var act=t.closest("[data-act]");
   if(!act)return;
   var a=act.dataset.act;
 
-  if(a==="close"){closeModal();}
+  /* ── ورود و ثبت‌نام ── */
+  if(a==="au-toggle"){S.auth.newInst=!S.auth.newInst;render();}
+  else if(a==="au-send"){
+    var ph=enDigits((el("auPhone")||{}).value||"").replace(/\s/g,"");
+    if(!/^09\d{9}$/.test(ph)){toast("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود");return;}
+    if(S.auth.newInst){var iv=(el("auInst")||{}).value||"";
+      if(!iv.trim()){toast("نام آموزشگاه را وارد کنید");return;}
+      S.auth.inst=iv;}
+    S.auth.phone=ph; S.auth.step=2; render();
+    toast("کد به "+fa(ph)+" پیامک شد");
+  }
+  else if(a==="au-back"){S.auth.step=1;render();}
+  else if(a==="au-resend"){toast("کد دوباره ارسال شد");}
+  else if(a==="au-verify"){
+    if(S.auth.newInst){S.auth.step=3;render();}
+    else{go("m");toast("خوش آمدید");}
+  }
+  else if(a==="au-finish"){
+    if(S.auth.inst)DB.institute.name=S.auth.inst;
+    S.onboard.profile=true; S.onboard.levels=true;
+    go("m"); toast("فضای کاری «"+DB.institute.name+"» ساخته شد");
+  }
+  else if(a==="logout"){S.auth={step:1,phone:"",inst:"",otp:["","","","",""],newInst:false};go("auth");}
+
+  /* ── ترم‌ساز ── */
+  else if(a==="tm-step"){S.term.step=+act.dataset.n;render();}
+  else if(a==="tm-del"){
+    var id=+act.dataset.id;
+    S.term.rows=S.term.rows.filter(function(r){return r.id!==id;});
+    render(); toast("کلاس حذف شد");
+  }
+  else if(a==="tm-add"){
+    var nid=Math.max.apply(null,S.term.rows.map(function(r){return r.id;}))+1;
+    S.term.rows.push({id:nid,course:"دورهٔ جدید",level:"",day:"فرد",time:"۱۸:۰۰",
+                      teacher:"",room:"r1",cap:14,price:13500000});
+    render();
+  }
+  else if(a==="tm-publish"){
+    toast("ترم منتشر شد؛ "+fa(S.term.rows.length*20)+" جلسه ساخته شد و کمپین تمدید اجرا شد");
+    S.onboard.term=true; go("m");
+  }
+
+  /* ── ثبت‌نام زبان‌آموز ── */
+  else if(a==="en-step"){
+    var n=+act.dataset.n;
+    if(n===2&&S.enrol.step===1){
+      var nm=(el("enName")||{}).value||"", pp=enDigits((el("enPhone")||{}).value||"");
+      if(!nm.trim()){toast("نام زبان‌آموز را وارد کنید");return;}
+      if(!/^09\d{9}$/.test(pp)){toast("شمارهٔ موبایل معتبر نیست");return;}
+      S.enrol.name=nm; S.enrol.phone=pp;
+    }
+    if(n===3&&!S.enrol.level){toast("روش تعیین سطح را انتخاب کنید");return;}
+    if(n===4&&!S.enrol.clsId){toast("یک کلاس انتخاب کنید");return;}
+    S.enrol.step=n; render();
+  }
+  else if(a==="en-pay"){
+    var who=S.enrol.name||"زبان‌آموز";
+    toast("ثبت‌نام "+esc(who)+" کامل شد؛ رسید و برنامهٔ کلاسی پیامک شد");
+    S.enrol={step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false};
+    go("m/students");
+  }
+  else if(a==="go-exam"){go("s/exams");}
+
+  /* ── آزمون ── */
+  else if(a==="ex-start"){
+    S.exam={on:true,i:0,ans:{},left:DB.exam.minutes*60,timer:null,done:false};
+    go("s/exam");
+  }
+  else if(a==="ex-next"){if(S.exam.i<DB.exam.qs.length-1){S.exam.i++;render();}}
+  else if(a==="ex-prev"){if(S.exam.i>0){S.exam.i--;render();}}
+  else if(a==="ex-submit"){
+    var un=DB.exam.qs.length-Object.keys(S.exam.ans).length;
+    if(un>0&&!act.dataset.sure){
+      act.dataset.sure="1"; toast(fa(un)+" سوال بی‌پاسخ است. دوباره بزنید تا ثبت شود.");return;}
+    if(S.exam.timer){clearInterval(S.exam.timer);S.exam.timer=null;}
+    S.exam.done=true;S.exam.on=false;render();
+  }
+  else if(a==="ex-review"){toast("مرور پاسخ‌ها در نسخهٔ کامل، هر سوال را با پاسخ درست نشان می‌دهد.");}
+
+  /* ── ابزار حین کلاس ── */
+  else if(a==="tl-set"){S.tools.timer=+act.dataset.s;S.tools.started=true;
+    if(S.tools.tk){clearInterval(S.tools.tk);S.tools.tk=null;S.tools.run=false;}render();}
+  else if(a==="tl-toggle"){
+    if(S.tools.run){clearInterval(S.tools.tk);S.tools.tk=null;S.tools.run=false;}
+    else{if(S.tools.timer<=0){toast("اول یک مدت انتخاب کنید");return;}
+      S.tools.run=true;S.tools.started=true;S.tools.tk=setInterval(tickTool,1000);}
+    render();
+  }
+  else if(a==="tl-pick"){
+    var pool=DB.students.filter(function(s){return (S.tools.used||[]).indexOf(s.id)<0;});
+    if(!pool.length){toast("همه یک‌بار انتخاب شدند. دور جدید را شروع کنید.");return;}
+    var pick=pool[Math.floor(Math.random()*pool.length)];
+    S.tools.used=(S.tools.used||[]).concat([pick.id]);
+    S.tools.picked=pick.name; render();
+  }
+  else if(a==="tl-reset"){S.tools.used=[];S.tools.picked="";render();toast("دور جدید شروع شد");}
+  else if(a==="tl-poll"){
+    S.tools.poll=[0,0,0]; render();
+    toast("نظرسنجی برای ۸ نفر ارسال شد");
+    var n=0, iv=setInterval(function(){
+      if(!S.tools.poll||n>=8){clearInterval(iv);return;}
+      S.tools.poll[Math.floor(Math.random()*3)]++; n++;
+      if(S.route==="t/tools")render();
+    },700);
+  }
+  else if(a==="tl-poll-end"){S.tools.poll=null;render();toast("نظرسنجی بسته شد");}
+
+  else if(a==="close"){closeModal();}
   else if(a==="start-class"){modalStartClass(act.dataset.cls);}
   else if(a==="do-start"){
     var rec=el("modal").querySelector('[data-opt="record"]').getAttribute("aria-checked")==="true";
@@ -1563,11 +2572,57 @@ document.addEventListener("click",function(e){
   else if(a==="upload-receipt"){toast("فیش آپلود شد و به صف تأیید مالی رفت.");}
   else if(a==="new-assignment"){toast("فرم ساخت تکلیف بر اساس نوع، در سند R تعریف شده است.");}
   else if(a==="go-teacher"){go("t");}
+  else if(a==="ob-do"){
+    var k=act.dataset.k;
+    if(k==="term"){go("m/term");return;}
+    if(k==="students"){go("m/enrol");return;}
+    S.onboard[k]=true; render();
+    toast(k==="team"?"دعوت‌نامه برای ۴ همکار ارسال شد"
+        :k==="money"?"تنظیمات مالی و پنل پیامک ثبت شد":"انجام شد");
+  }
   else if(a==="noop"){toast("این بخش در نمونهٔ تعاملی فعال نیست.");}
 });
 
 document.addEventListener("input",function(e){
-  if(e.target.id==="subText")wordCount();
+  if(e.target.id==="subText"){wordCount();return;}
+
+  /* کد یک‌بارمصرف: رقم که خورد، خودکار برو خانهٔ بعد */
+  if(e.target.dataset&&e.target.dataset.otp!=null){
+    var box=el("otpBox"), inputs=box.querySelectorAll("input");
+    e.target.value=enDigits(e.target.value).replace(/\D/g,"").slice(0,1);
+    e.target.classList.toggle("filled",!!e.target.value);
+    var i=+e.target.dataset.otp;
+    if(e.target.value&&i<inputs.length-1)inputs[i+1].focus();
+    var all=Array.prototype.every.call(inputs,function(x){return x.value;});
+    var v=el("auVerify"); if(v)v.disabled=!all;
+    return;
+  }
+
+  /* ویرایش ردیف ترم‌ساز → تداخل زنده بازمحاسبه می‌شود */
+  var f=e.target.dataset&&e.target.dataset.f;
+  if(f&&e.target.dataset.id){
+    var id=+e.target.dataset.id;
+    S.term.rows.forEach(function(r){
+      if(r.id===id)r[f]=(f==="cap")?(+e.target.value||0):e.target.value;});
+    render();
+    var again=document.querySelector('[data-f="'+f+'"][data-id="'+id+'"]');
+    if(again)again.focus();
+  }
+});
+document.addEventListener("change",function(e){
+  var f=e.target.dataset&&e.target.dataset.f;
+  if(f&&e.target.dataset.id){
+    var id=+e.target.dataset.id;
+    S.term.rows.forEach(function(r){
+      if(r.id===id)r[f]=(f==="cap")?(+e.target.value||0):e.target.value;});
+    render();
+  }
+});
+document.addEventListener("keydown",function(e){
+  if(e.target.dataset&&e.target.dataset.otp!=null&&e.key==="Backspace"&&!e.target.value){
+    var inputs=el("otpBox").querySelectorAll("input"), i=+e.target.dataset.otp;
+    if(i>0)inputs[i-1].focus();
+  }
 });
 
 document.addEventListener("keydown",function(e){
