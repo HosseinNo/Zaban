@@ -39,6 +39,7 @@ sharpened. Read in order for the full picture; jump directly for a specific work
 | **P** | **[تطبیق با بازار ایران](docs/P-iran-market.md)** | **Binding amendment to A–O. Read before building anything.** |
 | Q | [کلاس آنلاین](docs/Q-online-classroom.md) | Virtual classroom: provider adapter, BBB vs Meet trade-off, auto-attendance, recordings |
 | R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
+| S | [استقرار روی زیرساخت ایران](docs/S-deployment.md) | Iranian hosting, OTP, BBB/Meet wiring, automatic recording upload |
 
 ---
 
@@ -144,6 +145,28 @@ python3 app/build-standalone.py    # → build/lingotalk-app-preview.html
 
 ---
 
+## کد سرور — `server/` و `infra/`
+
+Real code, not prototype. Verified, not assumed.
+
+| Path | What it is | Verified how |
+|---|---|---|
+| `server/db/001_init.sql` | Schema with row-level tenant isolation, capacity trigger, append-only financial records | Run against PostgreSQL 16; 6 invariants tested including a cross-tenant leakage suite |
+| `server/meetings/provider.ts` | Provider interface + failover, so a dead API never cancels a class | `tsc --noEmit` clean |
+| `server/meetings/bigbluebutton.ts` | BBB adapter: SHA-1 signed create/join/getMeetingInfo/end/getRecordings | `tsc --noEmit` clean |
+| `server/meetings/googlemeet.ts` | Meet adapter, with its real limits encoded as `attendanceReliable = false` | `tsc --noEmit` clean |
+| `server/workers/recording.ts` | Recording pipeline: wait, stream-download, multipart upload, publish, delete from BBB | `tsc --noEmit` clean |
+| `server/auth/otp.ts` | SMS OTP: hashed codes, rate limits, uniform response so users can't be enumerated | `tsc --noEmit` clean |
+| `infra/docker-compose.yml` | app, worker, Postgres, Redis, nginx, encrypted daily backup | Parsed; DB and Redis confirmed to have no exposed ports |
+| `infra/nginx.conf` | TLS, HSTS, CSP with no external origins, strict rate limit on the OTP route | — |
+| `infra/bootstrap.sh` | Fresh Ubuntu 24.04 → firewall, key-only SSH, fail2ban, UTC clock, Docker | — |
+
+**Tenant isolation, actually tested:** with two institutes seeded, the app role sees 2 rows
+for one and 1 for the other, 0 when querying another tenant's ID explicitly, 0 with no
+tenant set, and a cross-tenant INSERT is refused.
+
+---
+
 ## Status
 
 | Phase | State |
@@ -154,7 +177,7 @@ python3 app/build-standalone.py    # → build/lingotalk-app-preview.html
 | Assignments & grading spec (R) | ✅ Complete |
 | Marketing site | ✅ Draft built — needs real content |
 | Dashboard prototype | ✅ Four core flows built |
-| Backend | ❌ Not started — the prototype has no server |
+| Backend | ◐ Schema, auth, meeting adapters and recording worker written and verified; API routes and payment gateway not yet |
 | MVP implementation | ⏳ Blocked on design sign-off |
 
 Next action: see [O. Final recommendation](docs/O-final-recommendation.md#o4-the-first-90-days).

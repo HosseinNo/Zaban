@@ -1,2 +1,7 @@
 build/
 __pycache__/
+node_modules/
+server/node_modules/
+server/package-lock.json
+infra/.env
+infra/backups/

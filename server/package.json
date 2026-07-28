@@ -1,0 +1,16 @@
+{
+  "name": "lingotalk-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/001_init.sql"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}
