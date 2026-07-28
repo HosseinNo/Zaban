@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>لینگوتاک؛ پنل آموزشگاه، مدرس و زبان‌آموز</title>
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   LINGO TALK — نمونهٔ تعاملی پنل‌ها
+   سیستم طراحی: docs/M-ui-ux-direction.md
+   بازار: docs/P-iran-market.md | کلاس آنلاین: docs/Q | تکالیف: docs/R
+   ═══════════════════════════════════════════════════════════ */
+
+@font-face{font-family:"Dana";src:url("../site/fonts/dana-light.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"Dana";src:url("../site/fonts/dana-regular.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Dana";src:url("../site/fonts/dana-bold.woff2") format("woff2");font-weight:700;font-display:swap}
+
+:root{
+  --paper:#F4F6F9; --surface:#FFFFFF; --surface-2:#F1F4F8; --surface-3:#E6ECF4;
+  --ink:#0B1220; --ink-2:#2C3A56; --ink-3:#5A6A85;
+  --line:#E1E7EF; --line-2:#CBD5E1;
+  --brand:#2563C7; --brand-deep:#0F2A54; --brand-soft:#E9F0FB; --ring:rgba(37,99,199,.3);
+  --accent:#D98324; --accent-soft:#FBF0E1;
+  --ok:#0A7048; --ok-soft:#E4F4EC;
+  --warn:#A65F00; --warn-soft:#FBF1E0;
+  --bad:#B42318; --bad-soft:#FCEAE8;
+  --live:#C2185B; --live-soft:#FCE8EF;
+  --sh-sm:0 1px 2px rgba(11,18,32,.05),0 2px 8px rgba(11,18,32,.05);
+  --sh-md:0 8px 26px rgba(11,18,32,.09);
+  --sh-lg:0 22px 56px rgba(11,18,32,.16);
+  --r1:6px; --r2:10px; --r3:14px; --r4:20px;
+  --nav-w:246px; --top-h:58px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#070C14; --surface:#101825; --surface-2:#17202E; --surface-3:#1F2937;
+  --ink:#EEF3F9; --ink-2:#B9C6D6; --ink-3:#8496AC;
+  --line:#1F2937; --line-2:#2E3A4C;
+  --brand:#6BA0EA; --brand-deep:#C9DDF7; --brand-soft:#13233A; --ring:rgba(107,160,234,.34);
+  --accent:#E9A24E; --accent-soft:#2A1F11;
+  --ok:#43C08C; --ok-soft:#0E2A20;
+  --warn:#DFA24A; --warn-soft:#2A200F;
+  --bad:#F0736A; --bad-soft:#2B1514;
+  --live:#F06292; --live-soft:#2C1119;
+  --sh-sm:0 1px 2px rgba(0,0,0,.45); --sh-md:0 8px 26px rgba(0,0,0,.5); --sh-lg:0 22px 56px rgba(0,0,0,.62);
+}}
+:root[data-theme="dark"]{
+  --paper:#070C14; --surface:#101825; --surface-2:#17202E; --surface-3:#1F2937;
+  --ink:#EEF3F9; --ink-2:#B9C6D6; --ink-3:#8496AC;
+  --line:#1F2937; --line-2:#2E3A4C;
+  --brand:#6BA0EA; --brand-deep:#C9DDF7; --brand-soft:#13233A; --ring:rgba(107,160,234,.34);
+  --accent:#E9A24E; --accent-soft:#2A1F11;
+  --ok:#43C08C; --ok-soft:#0E2A20;
+  --warn:#DFA24A; --warn-soft:#2A200F;
+  --bad:#F0736A; --bad-soft:#2B1514;
+  --live:#F06292; --live-soft:#2C1119;
+  --sh-sm:0 1px 2px rgba(0,0,0,.45); --sh-md:0 8px 26px rgba(0,0,0,.5); --sh-lg:0 22px 56px rgba(0,0,0,.62);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body.lt{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Dana",Tahoma,system-ui,sans-serif;font-size:15px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.lt h1,.lt h2,.lt h3,.lt h4{margin:0;font-weight:700;line-height:1.5;text-wrap:balance}
+.lt p{margin:0}.lt ul{margin:0;padding:0;list-style:none}
+.lt a{color:inherit;text-decoration:none}
+.lt button,.lt input,.lt select,.lt textarea{font:inherit;color:inherit}
+.lt button{cursor:pointer}
+:where(.lt button){background:none;border:none;padding:0}  /* ویژگی‌مندی صفر تا کلاس‌ها همیشه ببرند */
+.lt :focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);border-radius:var(--r1)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* شکل‌های CSS — فونت دانا برای ✓ · — ← ▲ ▼ گلیف ندارد */
+.ck{display:inline-block;inline-size:.42em;block-size:.74em;flex:none;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg);margin-block-end:.2em}
+.chev{display:inline-block;inline-size:.4em;block-size:.4em;flex:none;
+  border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+.chev--r{transform:rotate(-135deg)}
+.tri{display:inline-block;inline-size:0;block-size:0;flex:none;
+  border-left:4px solid transparent;border-right:4px solid transparent}
+.tri--up{border-bottom:5px solid currentColor}
+.tri--down{border-top:5px solid currentColor}
+.metaline{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+.metaline>span{display:inline-flex;align-items:center;gap:8px;unicode-bidi:isolate}
+.dash{display:inline-block;inline-size:12px;block-size:1.5px;background:currentColor;opacity:.5;vertical-align:middle}
+.metaline>span:not(:last-child)::after{content:"";inline-size:3px;block-size:3px;
+  border-radius:50%;background:currentColor;opacity:.36;flex:none}
+
+/* ───── دکمه ───── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-block-size:40px;padding-inline:16px;border-radius:var(--r2);border:1px solid transparent;
+  font-weight:700;font-size:14px;transition:background .15s,border-color .15s,color .15s,transform .12s}
+.btn:active{transform:translateY(1px)}
+.btn--p{background:var(--brand);color:#fff;border-color:var(--brand)}
+:root[data-theme="dark"] .btn--p{color:#07111F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn--p{color:#07111F}}
+.btn--p:hover{background:var(--brand-deep)}
+:root[data-theme="dark"] .btn--p:hover{background:#8FB9F0}
+.btn--g{background:var(--surface);border-color:var(--line-2);color:var(--ink)}
+.btn--g:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.btn--q{color:var(--ink-2)}
+.btn--q:hover{background:var(--surface-2)}
+.btn--d{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn--live{background:var(--live);color:#fff;border-color:var(--live)}
+.btn--sm{min-block-size:32px;padding-inline:11px;font-size:13px}
+.btn--lg{min-block-size:48px;padding-inline:22px;font-size:15.5px}
+.btn--b{inline-size:100%}
+.btn[disabled]{opacity:.45;pointer-events:none}
+
+/* ───── پوسته ───── */
+.shell{display:grid;grid-template-columns:var(--nav-w) 1fr;min-block-size:100dvh}
+.side{background:var(--surface);border-inline-start:1px solid var(--line);
+  display:flex;flex-direction:column;position:sticky;top:0;block-size:100dvh}
+.brand{display:flex;align-items:center;gap:9px;padding:15px 18px;border-block-end:1px solid var(--line);
+  font-weight:700;font-size:16.5px;flex:none}
+.brand-mark{inline-size:28px;block-size:28px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--brand),var(--brand-deep));color:#fff;font-size:14px}
+:root[data-theme="dark"] .brand-mark{background:linear-gradient(150deg,#3E7FD8,#1B3E6E);color:#EAF2FD}
+.side-scroll{flex:1;overflow-y:auto;padding:10px}
+.nav-grp{font-size:11px;font-weight:700;color:var(--ink-3);padding:12px 10px 5px;letter-spacing:.03em}
+.nav-a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r2);
+  font-size:14.5px;color:var(--ink-2);transition:background .13s,color .13s;position:relative}
+.nav-a:hover{background:var(--surface-2);color:var(--ink)}
+.nav-a.on{background:var(--brand-soft);color:var(--brand);font-weight:700}
+.nav-a .ico{inline-size:18px;block-size:18px;flex:none;opacity:.9}
+.nav-a .badge{margin-inline-start:auto;background:var(--bad);color:#fff;font-size:11px;font-weight:700;
+  min-inline-size:19px;block-size:19px;border-radius:100px;display:grid;place-items:center;padding-inline:5px}
+.nav-a.on .badge{background:var(--brand);color:#fff}
+.side-foot{padding:11px;border-block-start:1px solid var(--line);flex:none}
+.me{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r2);font-size:13.5px}
+.me:hover{background:var(--surface-2)}
+.me .av{inline-size:32px;block-size:32px;border-radius:50%;background:var(--surface-3);
+  display:grid;place-items:center;font-weight:700;font-size:13px;flex:none;color:var(--ink-2)}
+.me .nm{flex:1;min-inline-size:0}
+.me .nm b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me .nm span{display:block;font-size:11.5px;color:var(--ink-3)}
+
+.scrim{display:none}   /* قانون پایه: در دسکتاپ نباید خانهٔ گرید بگیرد */
+.main{min-inline-size:0;display:flex;flex-direction:column}
+.top{block-size:var(--top-h);flex:none;position:sticky;top:0;z-index:30;
+  background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);
+  border-block-end:1px solid var(--line);display:flex;align-items:center;gap:10px;padding-inline:18px}
+.top h1{font-size:16.5px}
+.top-r{margin-inline-start:auto;display:flex;align-items:center;gap:7px}
+.ib{inline-size:34px;block-size:34px;display:grid;place-items:center;flex:none;
+  border:1px solid var(--line-2);border-radius:var(--r2);background:var(--surface);color:var(--ink-2)}
+.ib:hover{background:var(--surface-2);color:var(--ink)}
+.page{padding:20px 18px 44px;max-inline-size:1240px;inline-size:100%}
+.burg{display:none}
+
+@media (max-width:1080px){:root{--nav-w:64px} .brand span:not(.brand-mark){display:none}
+  .nav-a span:not(.badge){display:none} .nav-a{justify-content:center} .nav-grp{display:none}
+  .me .nm,.me .chev{display:none} .me{justify-content:center}}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .side{position:fixed;inset-block:0;inset-inline-start:0;inline-size:250px;z-index:60;
+    transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1);
+    border-inline-start:none;border-inline-end:1px solid var(--line);box-shadow:var(--sh-lg)}
+  :root{--nav-w:0px}
+  .side.open{transform:none}
+  .side .brand span:not(.brand-mark){display:inline} .nav-a span{display:inline!important}
+  .nav-a{justify-content:flex-start} .nav-grp{display:block} .me .nm{display:block}
+  .burg{display:grid} .page{padding:14px 13px 80px}
+  .scrim{position:fixed;inset:0;background:rgba(3,8,16,.5);z-index:55}
+  .scrim.on{display:block}
+}
+
+/* ───── اجزای عمومی ───── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--sh-sm)}
+.card-h{padding:14px 16px;border-block-end:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card-h h3{font-size:15px}
+.card-h .r{margin-inline-start:auto;display:flex;gap:7px;align-items:center}
+.card-b{padding:16px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)} .g-side{grid-template-columns:1.55fr 1fr}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)} .g-side{grid-template-columns:1fr}}
+@media (max-width:820px){.g3,.g2{grid-template-columns:1fr}}
+@media (max-width:520px){.g4{grid-template-columns:1fr}}
+
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:15px;box-shadow:var(--sh-sm)}
+.kpi .l{font-size:12.5px;color:var(--ink-3);line-height:1.5}
+.kpi .v{font-size:25px;font-weight:700;letter-spacing:-.02em;margin-top:5px;line-height:1.25}
+.kpi .d{font-size:12.5px;margin-top:3px;display:flex;align-items:center;gap:5px}
+.up{color:var(--ok)} .down{color:var(--bad)}
+.bar{block-size:5px;background:var(--surface-3);border-radius:100px;overflow:hidden;margin-top:9px}
+.bar i{display:block;block-size:100%;background:var(--brand);border-radius:100px}
+
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;
+  font-size:12px;font-weight:700;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-info{background:var(--brand-soft);color:var(--brand)}
+.p-mute{background:var(--surface-2);color:var(--ink-3)}
+.p-live{background:var(--live-soft);color:var(--live)}
+.dot-live{inline-size:6px;block-size:6px;border-radius:50%;background:currentColor;flex:none;
+  animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.28}}
+
+.tbl{inline-size:100%;border-collapse:collapse}
+.tbl th{font-size:12px;font-weight:700;color:var(--ink-3);text-align:start;padding:10px 14px;
+  border-block-end:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.tbl td{padding:11px 14px;border-block-end:1px solid var(--line);font-size:14px;vertical-align:middle}
+.tbl tbody tr:last-child td{border-block-end:none}
+.tbl tbody tr:hover{background:var(--surface-2)}
+.tbl-wrap{overflow-x:auto}
+.who{display:flex;align-items:center;gap:9px}
+.who .av{inline-size:30px;block-size:30px;border-radius:50%;background:var(--surface-3);
+  display:grid;place-items:center;font-size:12.5px;font-weight:700;flex:none;color:var(--ink-2)}
+.who b{font-weight:400;font-size:14px}
+
+.alert{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--r2);
+  border:1px solid var(--line);background:var(--surface-2);font-size:13.5px}
+.alert+.alert{margin-top:8px}
+.alert .sev{inline-size:7px;block-size:7px;border-radius:50%;flex:none}
+.s-hi{background:var(--bad)} .s-md{background:var(--warn)} .s-lo{background:var(--ink-3)}
+.alert .a{margin-inline-start:auto;color:var(--brand);font-weight:700;font-size:12.5px;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+
+.empty{text-align:center;padding:38px 18px;color:var(--ink-3)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+.empty p{font-size:13.5px;max-inline-size:44ch;margin-inline:auto;line-height:1.9}
+
+.tabs{display:flex;gap:4px;border-block-end:1px solid var(--line);overflow-x:auto;margin-bottom:16px}
+.tab{padding:10px 15px;font-size:14px;font-weight:700;color:var(--ink-3);white-space:nowrap;
+  border-block-end:2.5px solid transparent;margin-block-end:-1px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--brand);border-block-end-color:var(--brand)}
+
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-3);margin-bottom:12px}
+.crumb a:hover{color:var(--brand)}
+
+/* ───── فرم ───── */
+.fld{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.fld label{font-size:13px;font-weight:700}
+.fld label .rq{color:var(--bad)}
+.fld input,.fld select,.fld textarea{padding:10px 12px;min-block-size:42px;background:var(--paper);
+  border:1px solid var(--line-2);border-radius:var(--r2);font-size:14.5px;transition:border-color .14s,box-shadow .14s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+.fld textarea{min-block-size:96px;resize:vertical;line-height:1.85}
+.fld .hint{font-size:12px;color:var(--ink-3)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+@media (max-width:600px){.frow{grid-template-columns:1fr}}
+
+/* ───── مودال ───── */
+.ov{position:fixed;inset:0;background:rgba(3,8,16,.52);z-index:80;display:none;
+  align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+.ov.on{display:flex}
+.modal{background:var(--surface);border-radius:var(--r4);box-shadow:var(--sh-lg);
+  inline-size:100%;max-inline-size:560px;max-block-size:92dvh;display:flex;flex-direction:column;
+  border:1px solid var(--line)}
+.modal--w{max-inline-size:780px}
+.modal-h{padding:16px 20px;border-block-end:1px solid var(--line);display:flex;align-items:center;gap:10px;flex:none}
+.modal-h h3{font-size:16.5px}
+.modal-h .x{margin-inline-start:auto;inline-size:32px;block-size:32px;border-radius:var(--r2);
+  display:grid;place-items:center;color:var(--ink-3);font-size:20px;line-height:1}
+.modal-h .x:hover{background:var(--surface-2);color:var(--ink)}
+.modal-b{padding:20px;overflow-y:auto;flex:1}
+.modal-f{padding:14px 20px;border-block-start:1px solid var(--line);display:flex;gap:9px;
+  justify-content:flex-end;flex:none;background:var(--surface-2);
+  border-end-start-radius:var(--r4);border-end-end-radius:var(--r4)}
+@media (max-width:560px){.modal-f{flex-direction:column-reverse}.modal-f .btn{inline-size:100%}}
+
+/* ───── انتخاب ارائه‌دهندهٔ کلاس آنلاین ───── */
+.prov{display:flex;flex-direction:column;gap:10px}
+.prov-o{display:flex;gap:12px;padding:14px;border:1.5px solid var(--line-2);border-radius:var(--r3);
+  text-align:start;transition:border-color .15s,background .15s;inline-size:100%;align-items:flex-start}
+.prov-o:hover{border-color:var(--brand);background:var(--surface-2)}
+.prov-o[aria-checked="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.prov-o .rd{inline-size:18px;block-size:18px;border-radius:50%;border:2px solid var(--line-2);
+  flex:none;margin-top:3px;display:grid;place-items:center}
+.prov-o[aria-checked="true"] .rd{border-color:var(--brand)}
+.prov-o[aria-checked="true"] .rd::after{content:"";inline-size:9px;block-size:9px;border-radius:50%;background:var(--brand)}
+.prov-o .t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prov-o .d{font-size:13px;color:var(--ink-3);margin-top:5px;line-height:1.8}
+.prov-o .warn-note{color:var(--warn);font-weight:700}
+.opt-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--line);
+  border-radius:var(--r2);margin-top:8px;font-size:14px}
+.opt-row .sw{margin-inline-start:auto;flex:none}
+.sw{inline-size:42px;block-size:24px;border-radius:100px;background:var(--line-2);position:relative;
+  transition:background .16s;flex:none}
+.sw::after{content:"";position:absolute;inset-block-start:3px;inset-inline-start:3px;inline-size:18px;block-size:18px;
+  border-radius:50%;background:#fff;transition:transform .16s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw[aria-checked="true"]{background:var(--brand)}
+.sw[aria-checked="true"]::after{transform:translateX(-18px)}
+
+/* ───── حضور و غیاب ───── */
+.roster{border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;background:var(--surface)}
+.rrow{inline-size:100%;display:flex;align-items:center;gap:11px;padding:11px 14px;text-align:start;
+  border-block-end:1px solid var(--line);transition:background .13s}
+.rrow:last-child{border-block-end:none}
+.rrow:hover{background:var(--surface-2)}
+.rrow .av{inline-size:34px;block-size:34px;border-radius:50%;background:var(--surface-3);
+  display:grid;place-items:center;font-weight:700;font-size:13px;flex:none;color:var(--ink-2)}
+.rrow .nm{flex:1;font-size:14.5px;min-inline-size:0}
+.rrow .nm small{display:block;font-size:11.5px;color:var(--ink-3)}
+.rrow[data-st="absent"] .nm>span{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.seg{display:flex;gap:3px;background:var(--surface-2);padding:3px;border-radius:100px;flex:none}
+.seg button{padding:5px 11px;border-radius:100px;font-size:12.5px;font-weight:700;color:var(--ink-3);min-block-size:30px}
+.seg button.on{background:var(--surface);box-shadow:var(--sh-sm);color:var(--ink)}
+.seg button.on[data-v="present"]{color:var(--ok)}
+.seg button.on[data-v="late"]{color:var(--warn)}
+.seg button.on[data-v="absent"]{color:var(--bad)}
+@media (max-width:520px){.seg button{padding:5px 8px;font-size:11.5px}.rrow{gap:8px;padding:10px}}
+
+/* ───── تکالیف ───── */
+.asg{display:flex;gap:13px;padding:15px;border:1px solid var(--line);border-radius:var(--r3);
+  background:var(--surface);align-items:flex-start;transition:border-color .15s,box-shadow .15s}
+.asg:hover{border-color:var(--brand);box-shadow:var(--sh-md)}
+.asg+.asg{margin-top:10px}
+.asg .ic{inline-size:38px;block-size:38px;border-radius:var(--r2);display:grid;place-items:center;flex:none;
+  background:var(--brand-soft);color:var(--brand)}
+.asg .ic.t-speaking{background:var(--accent-soft);color:var(--accent)}
+.asg .ic.t-quiz{background:var(--ok-soft);color:var(--ok)}
+.asg .bd{flex:1;min-inline-size:0}
+.asg .bd b{font-size:15px;display:block}
+.asg .bd .m{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.asg .rt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+@media (max-width:600px){.asg{flex-wrap:wrap}.asg .rt{inline-size:100%;flex-direction:row;align-items:center}}
+
+/* ضبط صدا */
+.rec{border:1px solid var(--line);border-radius:var(--r3);padding:18px;text-align:center;background:var(--surface-2)}
+.rec-btn{inline-size:66px;block-size:66px;border-radius:50%;background:var(--bad);color:#fff;
+  display:grid;place-items:center;margin:0 auto;box-shadow:0 4px 16px rgba(180,35,24,.34);transition:transform .15s}
+.rec-btn:hover{transform:scale(1.04)}
+.rec-btn.on{animation:recpulse 1.3s ease-in-out infinite}
+@keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(180,35,24,.5)}50%{box-shadow:0 0 0 13px rgba(180,35,24,0)}}
+.rec .tm{font-size:26px;font-weight:300;margin-top:13px;letter-spacing:.02em}
+.rec .hl{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.wave{display:flex;align-items:center;justify-content:center;gap:2.5px;block-size:40px;margin-top:13px}
+.wave i{inline-size:3px;background:var(--brand);border-radius:2px;display:block;opacity:.72;
+  transition:block-size .12s ease}
+.player{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);
+  border-radius:var(--r2);background:var(--surface)}
+.player .pb{inline-size:38px;block-size:38px;border-radius:50%;background:var(--brand);color:#fff;
+  display:grid;place-items:center;flex:none}
+:root[data-theme="dark"] .player .pb{color:#07111F}
+.player .tr{flex:1;min-inline-size:0}
+.track{block-size:5px;background:var(--surface-3);border-radius:100px;position:relative;cursor:pointer}
+.track i{display:block;block-size:100%;background:var(--brand);border-radius:100px;inline-size:0%}
+.track .mk{position:absolute;inset-block-start:-3px;inline-size:2px;block-size:11px;background:var(--accent);border-radius:2px}
+
+/* ───── صفحهٔ تصحیح ───── */
+.grader{display:grid;grid-template-columns:1.42fr 1fr;gap:16px;align-items:start}
+@media (max-width:980px){.grader{grid-template-columns:1fr}}
+.gbar{display:flex;align-items:center;gap:11px;padding:12px 15px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r3);margin-bottom:14px;flex-wrap:wrap;box-shadow:var(--sh-sm)}
+.gbar .mid{flex:1;text-align:center;min-inline-size:150px}
+.gbar .mid b{font-size:15px;display:block}
+.gbar .mid span{font-size:12px;color:var(--ink-3)}
+.gprog{block-size:4px;background:var(--surface-3);border-radius:100px;overflow:hidden;margin-top:8px;inline-size:100%}
+.gprog i{display:block;block-size:100%;background:var(--ok);border-radius:100px;transition:inline-size .3s}
+.work{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:18px;
+  font-size:15px;line-height:2.1;box-shadow:var(--sh-sm)}
+.work p+p{margin-top:13px}
+.rub{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--sh-sm)}
+.crit{padding:13px 15px;border-block-end:1px solid var(--line)}
+.crit:last-of-type{border-block-end:none}
+.crit .ct{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.crit .ct span{margin-inline-start:auto;font-size:12px;color:var(--ink-3);font-weight:400}
+.scale{display:flex;gap:5px;margin-top:9px}
+.scale button{flex:1;min-block-size:38px;border:1px solid var(--line-2);border-radius:var(--r1);
+  font-size:14px;font-weight:700;color:var(--ink-3);transition:all .13s}
+.scale button:hover{border-color:var(--brand);color:var(--brand)}
+.scale button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+:root[data-theme="dark"] .scale button.on{color:#07111F}
+.rub-total{padding:13px 15px;border-block-start:1px solid var(--line);background:var(--surface-2);
+  display:flex;align-items:center;gap:9px;font-weight:700}
+.rub-total .v{margin-inline-start:auto;font-size:20px}
+.phrases{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.phrase{padding:5px 10px;border:1px solid var(--line-2);border-radius:100px;font-size:12.5px;color:var(--ink-2)}
+.phrase:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+/* ───── نوار وضعیت نمونه ───── */
+.demo-bar{background:var(--accent-soft);border-block-end:1px solid var(--line);font-size:12.5px;
+  padding:7px 16px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;position:relative;z-index:40}
+.demo-bar b{color:var(--accent)}
+.role-sw{margin-inline-start:auto;display:flex;gap:3px;background:var(--surface);padding:3px;
+  border-radius:100px;border:1px solid var(--line-2)}
+.role-sw button{padding:4px 12px;border-radius:100px;font-size:12.5px;font-weight:700;color:var(--ink-3)}
+.role-sw button.on{background:var(--brand);color:#fff}
+:root[data-theme="dark"] .role-sw button.on{color:#07111F}
+
+/* ───── توست ───── */
+.toasts{position:fixed;inset-block-end:18px;inset-inline-start:18px;z-index:90;display:flex;
+  flex-direction:column;gap:8px;max-inline-size:calc(100vw - 36px)}
+.toast{background:var(--ink);color:var(--paper);padding:12px 15px;border-radius:var(--r2);
+  font-size:13.5px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:10px;
+  animation:tin .22s cubic-bezier(.2,.8,.2,1)}
+.toast .u{color:#7FB3F5;font-weight:700;white-space:nowrap}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+
+
+<div class="lt" id="root" dir="rtl" lang="fa">
+
+<div class="demo-bar">
+  <span><b>نمونهٔ تعاملی:</b> دادهٔ نمایشی. برای دیدن هر سه پنل، نقش را عوض کنید:</span>
+  <div class="role-sw" id="roleSw" role="group" aria-label="تغییر نقش">
+    <button data-role="teacher">مدرس</button>
+    <button data-role="student">زبان‌آموز</button>
+    <button data-role="manager">مدیر</button>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="brand"><span class="brand-mark">ل</span><span>لینگوتاک</span></div>
+    <div class="side-scroll"><nav id="nav" aria-label="منوی اصلی"></nav></div>
+    <div class="side-foot"><button class="me" id="meBtn"></button></div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="top">
+      <button class="ib burg" id="burg" aria-label="منو">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <h1 id="pageTitle">پیشخوان</h1>
+      <div class="top-r">
+        <button class="ib" id="themeBtn" aria-label="حالت روشن و تاریک">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button class="ib" aria-label="اعلان‌ها">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        </button>
+      </div>
+    </header>
+    <main class="page" id="page"></main>
+  </div>
+</div>
+
+<div class="ov" id="ov"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+</div>
+
+
+<script>
+(function(){
+"use strict";
+
+try{ document.documentElement.setAttribute("dir","rtl");
+     document.documentElement.setAttribute("lang","fa");
+     document.body.classList.add("lt"); }catch(e){}
+
+/* ══════════ کمکی‌ها ══════════ */
+var FA=["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+function fa(n){return String(n).replace(/[0-9]/g,function(d){return FA[+d];});}
+function faG(n){return fa(String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"٬"));}
+function money(n){return faG(n)+" تومان";}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function el(id){return document.getElementById(id);}
+function h(strings){var out=strings[0];
+  for(var i=1;i<arguments.length;i++){out+=arguments[i]+strings[i];} return out;}
+function initials(name){return name.trim().charAt(0);}
+function pad(n){return n<10?"0"+n:""+n;}
+function clock(sec){return fa(pad(Math.floor(sec/60))+":"+pad(sec%60));}
+
+function toast(msg,undo){
+  var t=document.createElement("div");
+  t.className="toast";
+  t.innerHTML='<span>'+msg+'</span>'+(undo?'<button class="u">برگرداندن</button>':'');
+  el("toasts").appendChild(t);
+  var kill=setTimeout(function(){t.remove();},4200);
+  if(undo){t.querySelector(".u").addEventListener("click",function(){
+    clearTimeout(kill); t.remove(); undo();});}
+}
+
+/* ══════════ دادهٔ نمایشی ══════════ */
+var DB={
+  institute:{name:"آموزشگاه زبان پردیس",term:"پاییز ۱۴۰۵",week:4,weeks:12,today:"شنبه ۱۲ مهر ۱۴۰۵"},
+  me:{teacher:{name:"سارا نوری",role:"مدرس"},
+      student:{name:"سینا احمدی",role:"زبان‌آموز، AEF 2A"},
+      manager:{name:"رضا کیانی",role:"مدیر آموزشگاه"}},
+  providers:[
+    {id:"bbb",name:"BigBlueButton",tag:"پیشنهاد آموزشگاه",
+     good:"حضور و غیاب خودکار ثبت می‌شود و ضبط کلاس در پروندهٔ جلسه می‌ماند.",bad:""},
+    {id:"meet",name:"Google Meet",tag:"",
+     good:"راه‌اندازی ساده‌تر، بدون نیاز به سرور.",
+     bad:"حضور و غیاب باید دستی زده شود؛ گوگل هویت زبان‌آموز را به ما نمی‌دهد."},
+    {id:"skyroom",name:"اسکای‌روم",tag:"",
+     good:"سرور داخل ایران، حضور و غیاب خودکار.",bad:""}
+  ],
+  classes:[
+    {id:"c1",name:"American English File 2A",level:"AEF 2A",days:"روزهای فرد",time:"۱۸:۰۰",
+     room:"کلاس ۳",mode:"hybrid",teacher:"سارا نوری",session:7,total:20,cap:18,enrolled:18,
+     provider:"bbb",avg:16.4,attendance:91},
+    {id:"c2",name:"Top Notch 1B",level:"TN 1B",days:"روزهای زوج",time:"۱۶:۰۰",
+     room:"کلاس ۲",mode:"online",teacher:"سارا نوری",session:9,total:20,cap:16,enrolled:14,
+     provider:"meet",avg:15.1,attendance:84},
+    {id:"c3",name:"IELTS Intensive",level:"IELTS",days:"پنجشنبه‌ها",time:"۰۹:۰۰",
+     room:"کلاس ۱",mode:"in_person",teacher:"علی مرادی",session:5,total:12,cap:12,enrolled:11,
+     provider:"bbb",avg:17.2,attendance:95}
+  ],
+  students:[
+    {id:"s1",name:"سینا احمدی",cls:"c1",att:94,grade:17.5,balance:4500000,due:"۲۰ مهر"},
+    {id:"s2",name:"مریم رضایی",cls:"c1",att:88,grade:16.0,balance:0,due:null},
+    {id:"s3",name:"امیر کریمی",cls:"c1",att:76,grade:14.5,balance:9000000,due:"۵ مهر"},
+    {id:"s4",name:"نگار موسوی",cls:"c1",att:97,grade:18.5,balance:0,due:null},
+    {id:"s5",name:"پارسا صادقی",cls:"c1",att:69,grade:12.0,balance:4500000,due:"۲۰ مهر"},
+    {id:"s6",name:"هستی یزدانی",cls:"c1",att:91,grade:17.0,balance:0,due:null},
+    {id:"s7",name:"کیان رستمی",cls:"c1",att:83,grade:15.5,balance:2250000,due:"۲۸ مهر"},
+    {id:"s8",name:"آیدا شریفی",cls:"c1",att:100,grade:19.0,balance:0,due:null}
+  ],
+  assignments:[
+    {id:"a1",cls:"c1",title:"Unit 4 Writing: My last holiday",type:"writing",
+     due:"۱۶ مهر",dueIn:4,max:20,submitted:6,total:8,graded:0,
+     desc:"در ۱۲۰ تا ۱۵۰ کلمه دربارهٔ آخرین سفرتان بنویسید. حتماً از زمان گذشتهٔ ساده و حداقل سه فعل بی‌قاعده استفاده کنید."},
+    {id:"a2",cls:"c1",title:"Unit 4 Speaking: Describe a photo",type:"speaking",
+     due:"۱۸ مهر",dueIn:6,max:20,submitted:3,total:8,graded:0,
+     desc:"عکس صفحهٔ ۳۶ کتاب را در حداکثر ۲ دقیقه توصیف کنید. روی تلفظ صدای th دقت کنید."},
+    {id:"a3",cls:"c1",title:"Unit 3 Grammar quiz",type:"quiz",
+     due:"۹ مهر",dueIn:-3,max:20,submitted:8,total:8,graded:8,
+     desc:"۱۵ سوال چندگزینه‌ای از گرامر درس ۳. نمره‌گذاری خودکار است."}
+  ],
+  rubric:{name:"Writing عمومی",crits:[
+    {id:"r1",t:"محتوا و پاسخ به سوال",max:5},
+    {id:"r2",t:"انسجام و ترتیب",max:5},
+    {id:"r3",t:"دامنهٔ واژگان",max:5},
+    {id:"r4",t:"دقت گرامری",max:5}
+  ]},
+  phrases:["به فعل گذشتهٔ بی‌قاعده دقت کن","ساختار جمله خوب بود","از واژگان متنوع‌تری استفاده کن",
+           "حرف اضافه اشتباه است","پاراگراف‌بندی را رعایت کن","پیشرفت خوبی داشتی"],
+  submissions:[
+    {sid:"s3",aid:"a1",at:"۱۴ مهر، ۲۱:۳۴",late:false,words:138,state:"submitted",
+     text:"Last summer I went to Shiraz with my family. We stayed there for five days. The weather was very hot but the city was beautiful.\n\nWe visited Persepolis and Hafez tomb. I took many photos. My father drove the car and we listened to music. I ate the best ice cream in my life there.\n\nOn the last day we bought some gifts for my grandmother. I was very tired but happy. I want to go there again next year."},
+    {sid:"s2",aid:"a1",at:"۱۴ مهر، ۱۸:۰۲",late:false,words:145,state:"submitted",
+     text:"My last holiday was in Nowruz. I traveled to the north of Iran with my friends. We rented a small villa near the sea.\n\nEvery morning we walked on the beach and drank tea. The sea was cold so we did not swim. We cooked food together and played games at night.\n\nOne day we went to a local market and I bought some handmade things. It was a short holiday but I enjoyed every minute of it."},
+    {sid:"s4",aid:"a1",at:"۱۵ مهر، ۰۹:۱۱",late:false,words:151,state:"submitted",
+     text:"I did not go anywhere in my last holiday because I had to study for my exams. But I still had a good time at home.\n\nI read two books and watched several movies in English without subtitles. It was difficult at first but after a few days I could understand more.\n\nMy cousin came to our house for one week. We cooked together and talked a lot. Sometimes a holiday at home is better than travelling."},
+    {sid:"s5",aid:"a1",at:"۱۶ مهر، ۲۳:۵۸",late:true,words:96,state:"submitted",
+     text:"Last holiday I go to Isfahan. It was very good city. I see Naghshe Jahan square and it was very big.\n\nI eat beryani and it was delicious. My brother come with me. We stay two days in hotel.\n\nI want go again."},
+    {sid:"s6",aid:"a1",at:"۱۳ مهر، ۱۶:۴۵",late:false,words:129,state:"submitted",
+     text:"My family and I traveled to Kish island last winter. We went there by plane which was my first flight ever.\n\nThe sea was warm and clear. I tried diving for the first time and I was a little scared but my instructor was very kind and patient with me.\n\nWe also went shopping in the big malls. I bought a watch for my brother. The holiday was expensive but it was worth it."},
+    {sid:"s8",aid:"a1",at:"۱۳ مهر، ۱۱:۲۰",late:false,words:142,state:"submitted",
+     text:"Last year my school organized a trip to Kashan. We visited old houses and a beautiful garden called Fin.\n\nOur guide explained the history of each building. I did not know that Iranian architects were so clever with water and light hundreds of years ago.\n\nWe stayed in a traditional hotel. The rooms were around a yard with a pool in the middle. I slept very well there. It was the best school trip I have ever had."}
+  ],
+  alerts:[
+    {sev:"hi",t:"۳ جلسهٔ دیروز حضور و غیاب نخورده",a:"یادآوری به مدرس"},
+    {sev:"hi",t:"۱۲ زبان‌آموز بیش از ۱۴ روز معوق دارند",a:"پیامک گروهی"},
+    {sev:"md",t:"۲ کلاس زیر حد نصاب، ۹ روز تا شروع ترم بعد",a:"بررسی"},
+    {sev:"md",t:"کلاس Top Notch 1B روی Google Meet است و حضورش دستی می‌ماند",a:"تغییر به BBB"},
+    {sev:"lo",t:"۵ سرنخ بیش از ۳ روز پیگیری نشده",a:"لیست تماس"}
+  ]
+};
+
+/* وضعیت زنده */
+var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
+       rec:{on:false,sec:0,done:false,timer:null},
+       grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null};
+
+DB.students.forEach(function(s){S.att[s.id]="present";});
+
+/* ══════════ منو ══════════ */
+var NAV={
+ teacher:[
+  {g:"روزانه"},
+  {r:"t",t:"امروز",i:"home"},
+  {r:"t/classes",t:"کلاس‌های من",i:"book"},
+  {r:"t/assignments",t:"تکالیف",i:"file",badge:2},
+  {r:"t/grading",t:"صف تصحیح",i:"check",badge:6},
+  {g:"آموزشی"},
+  {r:"t/gradebook",t:"دفتر نمره",i:"grid"},
+  {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"},
+  {r:"t/materials",t:"فایل‌ها و منابع",i:"folder"}
+ ],
+ student:[
+  {g:"یادگیری"},
+  {r:"s",t:"خانه",i:"home"},
+  {r:"s/classes",t:"کلاس‌های من",i:"book"},
+  {r:"s/assignments",t:"تکالیف",i:"file",badge:2},
+  {r:"s/grades",t:"نمرات و پیشرفت",i:"chart"},
+  {g:"مالی و اداری"},
+  {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1},
+  {r:"s/schedule",t:"برنامهٔ کلاسی",i:"cal"},
+  {r:"s/certificates",t:"مدارک",i:"award"}
+ ],
+ manager:[
+  {g:"روزانه"},
+  {r:"m",t:"پیشخوان",i:"home"},
+  {r:"m/live",t:"کلاس‌های در حال برگزاری",i:"video",badge:1},
+  {r:"m/students",t:"زبان‌آموزان",i:"users"},
+  {r:"m/classes",t:"کلاس‌ها",i:"book"},
+  {g:"کسب‌وکار"},
+  {r:"m/finance",t:"مالی",i:"wallet"},
+  {r:"m/reports",t:"گزارش‌ها",i:"chart"},
+  {r:"m/settings",t:"تنظیمات",i:"cog"}
+ ]
+};
+
+var ICONS={
+ home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
+ book:'<path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 0-3 3z"/><path d="M4 4v16"/>',
+ file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+ check:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+ grid:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+ cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+ folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ chart:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
+ wallet:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/>',
+ award:'<circle cx="12" cy="9" r="6"/><path d="M9 14.5 8 22l4-2 4 2-1-7.5"/>',
+ users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/>',
+ video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/>',
+ cog:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 3V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15.6 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 21 9h0a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'
+};
+function icon(n,sz){return '<svg class="ico" width="'+(sz||18)+'" height="'+(sz||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[n]||"")+'</svg>';}
+
+function renderNav(){
+  var items=NAV[S.role],out="";
+  items.forEach(function(it){
+    if(it.g){out+='<div class="nav-grp">'+it.g+'</div>';return;}
+    var on=(S.route===it.r)?" on":"";
+    out+='<a class="nav-a'+on+'" href="#/'+it.r+'">'+icon(it.i)+'<span>'+it.t+'</span>'+
+         (it.badge?'<span class="badge num">'+fa(it.badge)+'</span>':'')+'</a>';
+  });
+  el("nav").innerHTML=out;
+  var m=DB.me[S.role];
+  el("meBtn").innerHTML='<span class="av">'+initials(m.name)+'</span>'+
+    '<span class="nm"><b>'+esc(m.name)+'</b><span>'+esc(m.role)+'</span></span>'+
+    '<i class="chev"></i>';
+  Array.prototype.forEach.call(el("roleSw").children,function(b){
+    b.classList.toggle("on",b.dataset.role===S.role);});
+}
+
+/* ══════════ اجزای مشترک ══════════ */
+function kpi(l,v,d,cls,barPct){
+  return '<div class="kpi"><div class="l">'+l+'</div><div class="v num">'+v+'</div>'+
+    (d?'<div class="d '+(cls||"muted")+' num">'+d+'</div>':'')+
+    (barPct!=null?'<div class="bar"><i style="width:'+barPct+'%"></i></div>':'')+'</div>';
+}
+function pill(t,k){return '<span class="pill p-'+k+'">'+t+'</span>';}
+function cls(id){return DB.classes.filter(function(c){return c.id===id;})[0];}
+function stu(id){return DB.students.filter(function(s){return s.id===id;})[0];}
+function asg(id){return DB.assignments.filter(function(a){return a.id===id;})[0];}
+function typeName(t){return {writing:"نوشتاری",speaking:"صوتی",quiz:"آزمون",file:"فایل"}[t]||t;}
+function typeIcon(t){return t==="speaking"
+  ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>'
+  : t==="quiz" ? icon("check",19) : icon("file",19);}
+
+function modeLabel(m){
+  return m==="online"?pill("آنلاین","info"):m==="hybrid"?pill("ترکیبی","warn"):pill("حضوری","mute");
+}
+
+/* ══════════ صفحات: مدرس ══════════ */
+var V={};
+
+V["t"]=function(){
+  var c=DB.classes[0];
+  var live=S.live?cls(S.live.classId):null;
+  return h`
+  ${live?`
+  <div class="card" style="border-color:var(--live);margin-bottom:14px">
+    <div class="card-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span class="pill p-live"><i class="dot-live"></i> در حال برگزاری</span>
+      <div style="flex:1;min-width:180px">
+        <b style="font-size:15.5px">${esc(live.name)}</b>
+        <div class="metaline muted" style="font-size:12.5px;margin-top:3px">
+          <span>${esc(providerName(S.live.provider))}</span>
+          <span class="num">${fa(S.live.joined)} از ${fa(live.enrolled)} نفر داخل کلاس</span>
+          ${S.live.record?'<span>در حال ضبط</span>':''}
+        </div>
+      </div>
+      <button class="btn btn--g btn--sm" data-act="open-room">بازکردن اتاق</button>
+      <button class="btn btn--d btn--sm" data-act="end-class">پایان کلاس</button>
+    </div>
+  </div>`:""}
+
+  <div class="grid g-side">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>کلاس بعدی</h3>
+          <div class="r">${modeLabel(c.mode)}<span class="pill p-mute num">۲۵ دقیقهٔ دیگر</span></div></div>
+        <div class="card-b">
+          <div style="font-size:20px;font-weight:700">${esc(c.name)}</div>
+          <div class="metaline muted" style="font-size:13px;margin-top:6px">
+            <span class="num">${c.days}، ${c.time}</span><span>${c.room}</span>
+            <span class="num">جلسهٔ ${fa(c.session)} از ${fa(c.total)}</span>
+            <span class="num">${fa(c.enrolled)} زبان‌آموز</span>
+          </div>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:16px">
+            ${S.live?'':'<button class="btn btn--p btn--lg" data-act="start-class" data-cls="'+c.id+'">شروع کلاس آنلاین</button>'}
+            <button class="btn btn--g btn--lg" data-nav="t/attendance">ثبت حضور و غیاب</button>
+            <button class="btn btn--g btn--lg" data-nav="t/classes">پروندهٔ کلاس</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>کارهای مانده</h3><div class="r">${pill("۳ مورد","warn")}</div></div>
+        <div class="card-b">
+          <div class="alert"><span class="sev s-hi"></span>
+            <span><b>۶ تکلیف</b> تصحیح‌نشده از Unit 4 Writing</span>
+            <button class="a" data-nav="t/grading">شروع تصحیح <i class="chev"></i></button></div>
+          <div class="alert"><span class="sev s-md"></span>
+            <span>حضور و غیاب جلسهٔ پنجشنبه ثبت نشده</span>
+            <button class="a" data-nav="t/attendance">ثبت کن <i class="chev"></i></button></div>
+          <div class="alert"><span class="sev s-lo"></span>
+            <span>نمرات آزمونک درس ۳ منتشر نشده</span>
+            <button class="a" data-act="publish-grades">انتشار <i class="chev"></i></button></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>برنامهٔ امروز</h3></div>
+        <div class="card-b" style="padding:8px">
+          ${DB.classes.map(function(k,i){
+            var st=i===0?pill("بعدی","info"):i===1?pill("انجام شد","ok"):pill("فردا","mute");
+            return '<div class="rrow" style="border-radius:8px">'+
+              '<span class="av num">'+fa(i+1)+'</span>'+
+              '<span class="nm"><span>'+esc(k.name)+'</span>'+
+              '<small class="num">'+k.time+"، "+k.room+'</small></span>'+st+'</div>';
+          }).join("")}
+        </div>
+      </div>
+      <div class="grid g2" style="gap:10px">
+        ${kpi("کلاس این هفته","۸","۱۲ ساعت تدریس")}
+        ${kpi('میانگین حضور','۹۱٪','<i class="tri tri--down"></i> ۲ واحد','down')}
+      </div>
+    </div>
+  </div>`;
+};
+
+V["t/classes"]=function(){
+  return h`
+  <div class="card">
+    <div class="card-h"><h3>کلاس‌های من</h3><div class="r">${pill("ترم "+DB.institute.term,"mute")}</div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>کلاس</th><th>روز و ساعت</th><th>حالت</th><th>ظرفیت</th>
+        <th>حضور</th><th>میانگین نمره</th><th></th></tr></thead>
+      <tbody>${DB.classes.map(function(c){return h`
+        <tr>
+          <td><b style="font-weight:700">${esc(c.name)}</b>
+              <div class="muted num" style="font-size:12px">جلسهٔ ${fa(c.session)} از ${fa(c.total)}</div></td>
+          <td class="num">${c.days}<div class="muted" style="font-size:12px">${c.time}، ${c.room}</div></td>
+          <td>${modeLabel(c.mode)}</td>
+          <td class="num">${fa(c.enrolled)} / ${fa(c.cap)}
+              <div class="bar" style="width:70px"><i style="width:${Math.round(c.enrolled/c.cap*100)}%"></i></div></td>
+          <td class="num">${fa(c.attendance)}٪</td>
+          <td class="num">${fa(c.avg)}</td>
+          <td><button class="btn btn--g btn--sm" data-nav="t/attendance">حضور و غیاب</button></td>
+        </tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["t/attendance"]=function(){
+  var c=DB.classes[0];
+  var counts=countAtt();
+  return h`
+  <div class="crumb"><a href="#/t/classes">کلاس‌های من</a><i class="chev"></i><span>${esc(c.name)}</span></div>
+  <div class="card">
+    <div class="card-h">
+      <h3>حضور و غیاب، جلسهٔ ${fa(c.session)}</h3>
+      <div class="r">
+        <span class="pill p-ok num" id="cOk">${fa(counts.p)} حاضر</span>
+        <span class="pill p-warn num" id="cLate">${fa(counts.l)} تأخیر</span>
+        <span class="pill p-bad num" id="cNo">${fa(counts.a)} غایب</span>
+      </div>
+    </div>
+    <div class="card-b">
+      <div class="alert" style="margin-bottom:13px;background:var(--brand-soft);border-color:var(--brand)">
+        <span class="sev s-lo" style="background:var(--brand)"></span>
+        <span>این کلاس ترکیبی است. حضور <b>آنلاین‌ها</b> از BigBlueButton خودکار پیشنهاد شده؛ فقط تأیید کنید.</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn--g btn--sm" data-act="all-present">همه حاضر</button>
+        <button class="btn btn--g btn--sm" data-act="cancel-session">جلسه لغو شد</button>
+      </div>
+      <div class="roster" id="roster">${rosterRows()}</div>
+      <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn--p" data-act="submit-att" id="attSubmit">ثبت حضور و غیاب</button>
+        <button class="btn btn--q" data-nav="t">انصراف</button>
+      </div>
+    </div>
+  </div>`;
+};
+function rosterRows(){
+  return DB.students.map(function(s,i){
+    var st=S.att[s.id], online=i%3!==2;
+    return h`<div class="rrow" data-st="${st==='absent'?'absent':''}" data-sid="${s.id}">
+      <span class="av">${initials(s.name)}</span>
+      <span class="nm"><span>${esc(s.name)}</span>
+        <small>${online?'آنلاین، BBB':'حضوری'}${st==='present'&&online?'، خودکار':''}</small></span>
+      <span class="seg" role="group" aria-label="وضعیت ${esc(s.name)}">
+        <button data-v="present" class="${st==='present'?'on':''}">حاضر</button>
+        <button data-v="late" class="${st==='late'?'on':''}">تأخیر</button>
+        <button data-v="absent" class="${st==='absent'?'on':''}">غایب</button>
+      </span></div>`;
+  }).join("");
+}
+function countAtt(){var p=0,l=0,a=0;
+  DB.students.forEach(function(s){var v=S.att[s.id];
+    if(v==="present")p++;else if(v==="late")l++;else a++;});
+  return {p:p,l:l,a:a};}
+
+V["t/assignments"]=function(){
+  return h`
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <h2 style="font-size:18px">تکالیف ${esc(DB.classes[0].name)}</h2>
+    <button class="btn btn--p btn--sm" style="margin-inline-start:auto" data-act="new-assignment">تکلیف جدید</button>
+  </div>
+  ${DB.assignments.map(function(a){
+    var pend=a.submitted-a.graded;
+    return h`<div class="asg">
+      <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
+      <div class="bd">
+        <b>${esc(a.title)}</b>
+        <div class="metaline m">
+          <span>${typeName(a.type)}</span>
+          <span class="num">مهلت ${a.due}</span>
+          <span class="num">${fa(a.max)} نمره</span>
+        </div>
+        <div class="bar" style="max-width:220px;margin-top:9px"><i style="width:${Math.round(a.submitted/a.total*100)}%"></i></div>
+        <div class="muted num" style="font-size:12px;margin-top:5px">
+          ${fa(a.submitted)} از ${fa(a.total)} تحویل داده‌اند${a.graded?"، "+fa(a.graded)+" نمره خورده":""}</div>
+      </div>
+      <div class="rt">
+        ${a.dueIn<0?pill("مهلت گذشته","mute"):a.dueIn<=4?pill(fa(a.dueIn)+" روز مانده","warn"):pill(fa(a.dueIn)+" روز مانده","ok")}
+        ${pend>0?'<button class="btn btn--p btn--sm" data-nav="t/grading">تصحیح '+fa(pend)+' مورد</button>'
+                :'<button class="btn btn--g btn--sm" data-act="noop">مشاهده</button>'}
+      </div></div>`;}).join("")}`;
+};
+
+V["t/grading"]=function(){
+  var subs=DB.submissions.filter(function(x){return x.aid==="a1";});
+  var i=Math.min(S.grade.idx,subs.length-1);
+  var sub=subs[i], s=stu(sub.sid), a=asg("a1");
+  var done=Object.keys(S.grade.scores).length;
+  var total=rubTotal(sub.sid);
+  return h`
+  <div class="gbar">
+    <button class="btn btn--g btn--sm" data-act="g-prev" ${i===0?"disabled":""}>
+      <i class="chev chev--r"></i> قبلی</button>
+    <div class="mid">
+      <b>${esc(s.name)}</b>
+      <span class="num">زبان‌آموز ${fa(i+1)} از ${fa(subs.length)}، ${fa(done)} تصحیح شد</span>
+      <div class="gprog"><i style="width:${Math.round(done/subs.length*100)}%"></i></div>
+    </div>
+    <button class="btn btn--g btn--sm" data-act="g-next" ${i===subs.length-1?"disabled":""}>
+      بعدی <i class="chev"></i></button>
+  </div>
+
+  <div class="grader">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-h"><h3>${esc(a.title)}</h3>
+          <div class="r">${sub.late?pill("با تأخیر","warn"):pill("به‌موقع","ok")}
+            <span class="pill p-mute num">${fa(sub.words)} کلمه</span></div></div>
+      </div>
+      <div class="work">${sub.text.split("\n\n").map(function(p){
+        return '<p dir="auto">'+esc(p)+"</p>";}).join("")}</div>
+      <p class="muted num" style="font-size:12.5px;margin-top:9px">تحویل: ${sub.at}</p>
+    </div>
+
+    <div>
+      <div class="rub">
+        <div class="card-h"><h3>روبریک: ${DB.rubric.name}</h3></div>
+        ${DB.rubric.crits.map(function(cr){
+          var cur=(S.grade.scores[sub.sid]||{})[cr.id];
+          return h`<div class="crit">
+            <div class="ct">${cr.t}<span class="num">${fa(cr.max)} نمره</span></div>
+            <div class="scale" data-crit="${cr.id}">
+              ${[1,2,3,4,5].map(function(n){
+                return '<button data-n="'+n+'" class="'+(cur===n?"on":"")+'">'+fa(n)+'</button>';}).join("")}
+            </div></div>`;}).join("")}
+        <div class="rub-total">جمع نمره
+          <span class="v num" id="rubTotal">${total==null?'<i class="dash"></i>':fa(total)+" از "+fa(a.max)}</span></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-b">
+          <div class="fld" style="margin-bottom:6px">
+            <label for="fb">بازخورد کلی</label>
+            <textarea id="fb" placeholder="چند جمله دربارهٔ کار…">${esc((S.grade.fb[sub.sid]||""))}</textarea>
+          </div>
+          <div class="phrases">${DB.phrases.map(function(p){
+            return '<button class="phrase" data-phrase="'+esc(p)+'">'+esc(p)+'</button>';}).join("")}</div>
+          <div style="display:flex;gap:8px;margin-top:13px;flex-wrap:wrap">
+            <button class="btn btn--g btn--sm" data-act="noop"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg> بازخورد صوتی</button>
+            <button class="btn btn--p" style="flex:1" data-act="g-save">ثبت و رفتن به بعدی</button>
+          </div>
+          <p class="muted" style="font-size:12px;margin-top:9px">
+            میان‌بر: <span class="num">Ctrl</span> + <span class="num">Enter</span></p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+function rubTotal(sid){
+  var sc=S.grade.scores[sid]; if(!sc)return null;
+  var ks=Object.keys(sc); if(ks.length<DB.rubric.crits.length)return null;
+  return ks.reduce(function(a,k){return a+sc[k];},0);
+}
+
+V["t/gradebook"]=function(){
+  return h`
+  <div class="card">
+    <div class="card-h"><h3>دفتر نمرهٔ ${esc(DB.classes[0].name)}</h3>
+      <div class="r"><button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button>
+        <button class="btn btn--p btn--sm" data-act="publish-grades">انتشار نمرات</button></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>زبان‌آموز</th><th>تکالیف<div class="muted">۲۰٪</div></th>
+        <th>آزمونک<div class="muted">۱۵٪</div></th><th>میان‌ترم<div class="muted">۲۵٪</div></th>
+        <th>پایان‌ترم<div class="muted">۳۰٪</div></th><th>مشارکت<div class="muted">۱۰٪</div></th>
+        <th>نمرهٔ کل</th><th>وضعیت</th></tr></thead>
+      <tbody>${DB.students.map(function(s){
+        var g=s.grade, pass=g>=12;
+        return h`<tr>
+          <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
+          <td class="num">${fa((g-0.5).toFixed(1))}</td><td class="num">${fa((g+0.3).toFixed(1))}</td>
+          <td class="num">${fa((g-1).toFixed(1))}</td><td class="num">${fa(g.toFixed(1))}</td>
+          <td class="num">${fa(Math.min(20,Math.round(s.att/5)))}</td>
+          <td class="num" style="font-weight:700">${fa(g.toFixed(1))}</td>
+          <td>${pass?pill("قبول","ok"):pill("مشروط","bad")}</td></tr>`;}).join("")}
+      </tbody></table></div>
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:11px">
+    نمرهٔ کل از ضریب بخش‌ها محاسبه می‌شود. جمع ضرایب باید دقیقاً <span class="num">۱۰۰</span> باشد
+    وگرنه به‌جای عدد، هشدار نشان داده می‌شود.</p>`;
+};
+
+V["t/schedule"]=V["t/materials"]=function(){
+  return '<div class="card"><div class="empty"><b>این بخش در این نمونه ساخته نشده</b>'+
+  '<p>ساختارش در سند E و F تعریف شده است. برای این نمونه، تمرکز روی چهار جریانی بود که '+
+  'بیشترین استفادهٔ روزانه را دارند: شروع کلاس آنلاین، حضور و غیاب، تحویل تکلیف، و تصحیح.</p></div></div>';
+};
+
+/* ══════════ صفحات: زبان‌آموز ══════════ */
+V["s"]=function(){
+  var c=DB.classes[0], me=DB.students[0];
+  var liveNow=S.live&&S.live.classId===c.id;
+  return h`
+  <div class="grid g-side">
+    <div>
+      <div class="card" style="margin-bottom:14px;${liveNow?'border-color:var(--live)':''}">
+        <div class="card-h">
+          <h3>${liveNow?"کلاس در حال برگزاری است":"کلاس بعدی"}</h3>
+          <div class="r">${liveNow?'<span class="pill p-live"><i class="dot-live"></i> زنده</span>'
+            :'<span class="pill p-info num">فردا ۱۸:۰۰</span>'}</div>
+        </div>
+        <div class="card-b">
+          <div style="font-size:20px;font-weight:700">${esc(c.name)}</div>
+          <div class="metaline muted" style="font-size:13px;margin-top:6px">
+            <span class="num">${c.days}، ${c.time}</span><span>${c.room}</span><span>استاد ${c.teacher}</span></div>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:16px">
+            ${liveNow?'<button class="btn btn--live btn--lg" data-act="join-class">ورود به کلاس</button>'
+                     :'<button class="btn btn--g btn--lg" disabled>ورود ۱۵ دقیقه قبل از کلاس فعال می‌شود</button>'}
+            <button class="btn btn--g btn--lg" data-nav="s/schedule">برنامهٔ کامل</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;border-color:var(--warn)">
+        <div class="card-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:170px">
+            <div class="muted" style="font-size:12.5px">قسط دوم شهریه</div>
+            <div class="num" style="font-size:22px;font-weight:700;margin-top:2px">${money(me.balance)}</div>
+            <div class="metaline muted num" style="font-size:12.5px;margin-top:3px">
+              <span>سررسید ${me.due}</span><span>۸ روز مانده</span></div>
+          </div>
+          <button class="btn btn--p btn--lg" data-act="pay">پرداخت</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>تکالیف پیش‌رو</h3>
+          <div class="r"><button class="btn btn--q btn--sm" data-nav="s/assignments">همه</button></div></div>
+        <div class="card-b">
+          ${DB.assignments.filter(function(a){return a.dueIn>0;}).map(function(a){
+            return h`<div class="asg" style="border:none;padding:11px 0;box-shadow:none">
+              <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
+              <div class="bd"><b>${esc(a.title)}</b>
+                <div class="metaline m"><span>${typeName(a.type)}</span>
+                  <span class="num">مهلت ${a.due}</span></div></div>
+              <div class="rt"><button class="btn btn--p btn--sm" data-act="open-sub" data-aid="${a.id}">
+                ${a.type==="speaking"?"ضبط و ارسال":"نوشتن و ارسال"}</button></div></div>`;}).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>پیشرفت من</h3></div>
+        <div class="card-b">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span class="muted">سطح فعلی</span><b>AEF 2A</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:9px">
+            <span class="muted">پیشرفت ترم</span><b class="num">هفتهٔ ${fa(DB.institute.week)} از ${fa(DB.institute.weeks)}</b></div>
+          <div class="bar"><i style="width:${DB.institute.week/DB.institute.weeks*100}%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:14px">
+            <span class="muted">درصد حضور</span><b class="num up">${fa(me.att)}٪</b></div>
+          <div class="bar"><i style="width:${me.att}%;background:var(--ok)"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:14px">
+            <span class="muted">نمرهٔ جاری</span><b class="num">${fa(me.grade)} از ۲۰</b></div>
+          <div class="bar"><i style="width:${me.grade/20*100}%"></i></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>اطلاعیه‌ها</h3></div>
+        <div class="card-b">
+          <p style="font-size:14px">پنجشنبهٔ این هفته به مناسبت تعطیلی رسمی کلاس نداریم. جلسهٔ جبرانی
+             شنبهٔ آینده ساعت <span class="num">۱۶:۰۰</span> برگزار می‌شود.</p>
+          <p class="muted num" style="font-size:12px;margin-top:7px">۲ روز پیش، آموزشگاه</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+V["s/assignments"]=function(){
+  return h`
+  <div class="tabs" role="tablist">
+    <button class="tab on">همه</button><button class="tab">تحویل‌نشده</button>
+    <button class="tab">تحویل‌شده</button><button class="tab">نمره‌خورده</button></div>
+  ${DB.assignments.map(function(a){
+    var mine=DB.submissions.filter(function(x){return x.aid===a.id&&x.sid==="s1";})[0];
+    var st=a.id==="a3"?pill("نمره ۱۸ از ۲۰","ok"):mine?pill("تحویل شد","info"):
+           a.dueIn<0?pill("تحویل نشد","bad"):pill("تحویل‌نشده","warn");
+    return h`<div class="asg">
+      <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
+      <div class="bd"><b>${esc(a.title)}</b>
+        <p class="muted" style="font-size:13px;margin-top:5px;line-height:1.85">${esc(a.desc)}</p>
+        <div class="metaline m" style="margin-top:7px">
+          <span>${typeName(a.type)}</span><span class="num">مهلت ${a.due}</span>
+          <span class="num">${fa(a.max)} نمره</span></div></div>
+      <div class="rt">${st}
+        ${a.id==="a3"?'<button class="btn btn--g btn--sm" data-nav="s/grades">دیدن بازخورد</button>'
+          :mine?'<button class="btn btn--g btn--sm" data-act="noop">مشاهدهٔ تحویل</button>'
+          :'<button class="btn btn--p btn--sm" data-act="open-sub" data-aid="'+a.id+'">'+
+            (a.type==="speaking"?"ضبط و ارسال":"نوشتن و ارسال")+'</button>'}</div></div>`;}).join("")}`;
+};
+
+V["s/grades"]=function(){
+  return h`
+  <div class="grid g2" style="margin-bottom:14px">
+    ${kpi("نمرهٔ جاری ترم","۱۷٫۵","از ۲۰",null,87)}
+    ${kpi("درصد حضور","۹۴٪","۱ غیبت از ۱۷ جلسه","up")}
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h3>بازخورد آخرین تکلیف</h3><div class="r">${pill("Unit 3 Grammar quiz","mute")}</div></div>
+    <div class="card-b">
+      <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:14px">
+        <span class="num" style="font-size:30px;font-weight:700">۱۸</span>
+        <span class="muted num">از ۲۰</span>${pill("قبول","ok")}</div>
+      ${DB.rubric.crits.map(function(cr,i){var v=[5,4,4,5][i];
+        return h`<div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;font-size:13.5px">
+            <span>${cr.t}</span><b class="num">${fa(v)} از ${fa(cr.max)}</b></div>
+          <div class="bar"><i style="width:${v/cr.max*100}%"></i></div></div>`;}).join("")}
+      <div class="alert" style="margin-top:15px">
+        <span class="sev s-lo" style="background:var(--brand)"></span>
+        <span>ساختار جمله‌هایت خیلی بهتر شده. فقط به فعل گذشتهٔ بی‌قاعده دقت کن؛ «go» را «goed» ننویس.</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>کارنامهٔ ترم</h3></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>بخش</th><th>ضریب</th><th>نمره</th><th>سهم از نمرهٔ کل</th></tr></thead>
+      <tbody>
+        ${[["تکالیف و کلاس‌کار",20,17.0],["آزمونک",15,18.0],["میان‌ترم",25,16.5],
+           ["پایان‌ترم",30,null],["مشارکت و حضور",10,19.0]].map(function(r){
+          return h`<tr><td>${r[0]}</td><td class="num">${fa(r[1])}٪</td>
+            <td class="num">${r[2]==null?'<span class="muted">هنوز نگرفته</span>':fa(r[2].toFixed(1))}</td>
+            <td class="num">${r[2]==null?'<i class="dash"></i>':fa((r[2]*r[1]/100).toFixed(2))}</td></tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["s/payments"]=function(){
+  var me=DB.students[0];
+  return h`
+  <div class="card" style="margin-bottom:14px;border-color:var(--warn)">
+    <div class="card-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div class="muted" style="font-size:12.5px">مانده حساب</div>
+        <div class="num" style="font-size:26px;font-weight:700">${money(me.balance)}</div>
+        <div class="muted num" style="font-size:12.5px">سررسید ${me.due}</div>
+      </div>
+      <button class="btn btn--p btn--lg" data-act="pay">پرداخت آنلاین</button>
+      <button class="btn btn--g btn--lg" data-act="upload-receipt">آپلود فیش کارت به کارت</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>قسط‌بندی شهریهٔ ترم پاییز</h3>
+      <div class="r"><span class="pill p-mute num">جمع ۱۳٬۵۰۰٬۰۰۰ تومان</span></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>قسط</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>پیش‌پرداخت</td><td class="num">۵٬۴۰۰٬۰۰۰</td><td class="num">۱ مهر</td>
+            <td>${pill("پرداخت شد","ok")}</td><td><button class="btn btn--q btn--sm" data-act="noop">رسید</button></td></tr>
+        <tr><td>قسط دوم</td><td class="num">۴٬۵۰۰٬۰۰۰</td><td class="num">۲۰ مهر</td>
+            <td>${pill("سررسید نزدیک","warn")}</td><td><button class="btn btn--p btn--sm" data-act="pay">پرداخت</button></td></tr>
+        <tr><td>قسط سوم</td><td class="num">۳٬۶۰۰٬۰۰۰</td><td class="num">۱۵ آبان</td>
+            <td>${pill("در انتظار","mute")}</td><td></td></tr>
+      </tbody></table></div>
+  </div>`;
+};
+
+V["s/classes"]=V["s/schedule"]=V["s/certificates"]=function(){
+  return '<div class="card"><div class="empty"><b>این بخش در این نمونه ساخته نشده</b>'+
+  '<p>ساختارش در سند F آمده است. تمرکز این نمونه روی چهار جریان اصلی است.</p></div></div>';
+};
+
+/* ══════════ صفحات: مدیر ══════════ */
+V["m"]=function(){
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("زبان‌آموز فعال","۴۱۲",'<i class="tri tri--up"></i> ۶٪ نسبت به ترم قبل',"up")}
+    ${kpi("وصولی ترم","۶۸٪","۶۱۲ از ۹۰۰ میلیون تومان",null,68)}
+    ${kpi("معوق","۸۴ میلیون",'<i class="tri tri--up"></i> ۳۷ نفر بدهکار',"down")}
+    ${kpi("حضور این هفته","۹۱٪",'<i class="tri tri--down"></i> ۲ واحد',"down")}
+  </div>
+
+  <div class="grid g-side">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>نیاز به رسیدگی</h3>
+          <div class="r">${pill("۵ مورد","bad")}</div></div>
+        <div class="card-b">${DB.alerts.map(function(al){
+          return h`<div class="alert"><span class="sev s-${al.sev}"></span>
+            <span>${esc(al.t)}</span>
+            <button class="a" data-act="noop">${esc(al.a)} <i class="chev"></i></button></div>`;}).join("")}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>کلاس‌های ترم</h3>
+          <div class="r"><button class="btn btn--q btn--sm" data-nav="m/classes">همه</button></div></div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>کلاس</th><th>مدرس</th><th>حالت</th><th>ظرفیت</th><th>حضور</th></tr></thead>
+          <tbody>${DB.classes.map(function(c){return h`<tr>
+            <td><b style="font-weight:700">${esc(c.name)}</b>
+              <div class="muted num" style="font-size:12px">${c.days}، ${c.time}</div></td>
+            <td>${esc(c.teacher)}</td><td>${modeLabel(c.mode)}</td>
+            <td class="num">${fa(c.enrolled)}/${fa(c.cap)}</td>
+            <td class="num ${c.attendance<85?"down":""}">${fa(c.attendance)}٪</td></tr>`;}).join("")}
+          </tbody></table></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>در حال برگزاری</h3>
+          <div class="r">${S.live?'<span class="pill p-live"><i class="dot-live"></i> ۱ کلاس</span>':pill("۰ کلاس","mute")}</div></div>
+        <div class="card-b">${S.live?(function(){var c=cls(S.live.classId);
+          return h`<div style="font-weight:700">${esc(c.name)}</div>
+            <div class="metaline muted" style="font-size:12.5px;margin-top:4px">
+              <span>${esc(providerName(S.live.provider))}</span>
+              <span class="num">${fa(S.live.joined)} از ${fa(c.enrolled)} نفر</span></div>
+            <button class="btn btn--g btn--sm btn--b" style="margin-top:11px" data-act="noop">نظارت بر کلاس</button>`;})()
+          :'<p class="muted" style="font-size:13.5px">الان کلاس آنلاینی در حال برگزاری نیست. وقتی مدرسی کلاس را شروع کند، اینجا زنده دیده می‌شود.</p>'}
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>ارائه‌دهندهٔ کلاس آنلاین</h3></div>
+        <div class="card-b">
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:9px">
+            <span>BigBlueButton</span><span class="num">۲ کلاس</span></div>
+          <div class="bar"><i style="width:67%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin:13px 0 9px">
+            <span>Google Meet</span><span class="num">۱ کلاس</span></div>
+          <div class="bar"><i style="width:33%;background:var(--warn)"></i></div>
+          <p class="muted" style="font-size:12.5px;margin-top:12px;line-height:1.85">
+            کلاس‌های روی Meet حضور و غیاب خودکار ندارند و در صف «علامت‌نخورده» می‌آیند.</p>
+        </div>
+      </div>
+
+      <div class="grid g2" style="gap:10px">
+        ${kpi("درصد پر شدن","۸۶٪","۴۱۲ از ۴۸۰")}
+        ${kpi("تمدید ترم","۶۳٪","۲۶۰ نفر")}
+      </div>
+    </div>
+  </div>`;
+};
+
+V["m/live"]=function(){
+  return h`<div class="card">
+    <div class="card-h"><h3>کلاس‌های در حال برگزاری</h3></div>
+    ${S.live?(function(){var c=cls(S.live.classId);return h`
+      <div class="card-b">
+        <div class="alert" style="border-color:var(--live);background:var(--live-soft)">
+          <span class="sev" style="background:var(--live)"></span>
+          <span><b>${esc(c.name)}</b> روی ${esc(providerName(S.live.provider))}، 
+            <span class="num">${fa(S.live.joined)} از ${fa(c.enrolled)} نفر</span>
+            ${S.live.record?"، در حال ضبط":""}</span>
+          <button class="a" data-act="noop">ورود به‌عنوان ناظر <i class="chev"></i></button></div>
+      </div>`;})()
+    :'<div class="empty"><b>الان کلاسی برگزار نمی‌شود</b><p>برای دیدن این صفحه در حالت زنده، '+
+     'به پنل مدرس بروید و یک کلاس آنلاین را شروع کنید.</p>'+
+     '<button class="btn btn--g" style="margin-top:14px" data-act="go-teacher">رفتن به پنل مدرس</button></div>'}
+  </div>`;
+};
+
+V["m/students"]=function(){
+  return h`<div class="card">
+    <div class="card-h"><h3>زبان‌آموزان</h3>
+      <div class="r"><span class="pill p-mute num">۸ نفر از ۴۱۲</span>
+        <button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب</th><th>وضعیت</th></tr></thead>
+      <tbody>${DB.students.map(function(s){
+        var risk=s.att<80||s.grade<13;
+        return h`<tr>
+          <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
+          <td class="num">AEF 2A</td>
+          <td class="num ${s.att<80?"down":""}">${fa(s.att)}٪</td>
+          <td class="num">${fa(s.grade)}</td>
+          <td class="num ${s.balance?"down":""}">${s.balance?money(s.balance):"تسویه"}</td>
+          <td>${risk?pill("در معرض ریزش","warn"):pill("عادی","ok")}</td></tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["m/finance"]=function(){
+  return h`
+  <div class="grid g3" style="margin-bottom:16px">
+    ${kpi("وصول‌شده","۶۱۲ میلیون","تومان، این ترم")}
+    ${kpi("مانده","۲۸۸ میلیون","تومان")}
+    ${kpi("معوق بیش از ۱۴ روز","۸۴ میلیون","۳۷ نفر","down")}
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>تابلوی بدهکاران</h3>
+      <div class="r"><button class="btn btn--p btn--sm" data-act="noop">پیامک گروهی یادآوری</button></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>زبان‌آموز</th><th>مبلغ</th><th>سررسید</th><th>تأخیر</th><th></th></tr></thead>
+      <tbody>${DB.students.filter(function(s){return s.balance;}).map(function(s,i){
+        var d=[8,21,3][i]||5;
+        return h`<tr>
+          <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
+          <td class="num">${money(s.balance)}</td><td class="num">${s.due}</td>
+          <td>${d>14?pill(fa(d)+" روز","bad"):pill(fa(d)+" روز","warn")}</td>
+          <td><button class="btn btn--g btn--sm" data-act="noop">یادآوری</button></td></tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["m/classes"]=V["m/reports"]=V["m/settings"]=function(){
+  return '<div class="card"><div class="empty"><b>این بخش در این نمونه ساخته نشده</b>'+
+  '<p>ساختار کاملش در اسناد E، F و H آمده است.</p></div></div>';
+};
+
+/* ══════════ مودال‌ها ══════════ */
+function providerName(id){
+  var p=DB.providers.filter(function(x){return x.id===id;})[0];
+  return p?p.name:id;
+}
+function openModal(html,wide){
+  el("modal").className="modal"+(wide?" modal--w":"");
+  el("modal").innerHTML=html;
+  el("ov").classList.add("on");
+  var f=el("modal").querySelector("input,textarea,button:not(.x)");
+  if(f)f.focus();
+}
+function closeModal(){el("ov").classList.remove("on");el("modal").innerHTML="";}
+
+function modalStartClass(clsId){
+  var c=cls(clsId);
+  S.provider=c.provider;
+  openModal(h`
+    <div class="modal-h"><h3>شروع کلاس آنلاین</h3>
+      <button class="x" data-act="close" aria-label="بستن">×</button></div>
+    <div class="modal-b">
+      <p class="muted" style="font-size:13.5px;margin-bottom:15px">
+        ${esc(c.name)}، <span class="num">${fa(c.enrolled)} زبان‌آموز</span>، 
+        جلسهٔ <span class="num">${fa(c.session)}</span></p>
+      <div class="prov" id="provList" role="radiogroup" aria-label="ارائه‌دهندهٔ کلاس">
+        ${DB.providers.map(function(p){return h`
+          <button class="prov-o" role="radio" aria-checked="${p.id===S.provider}" data-prov="${p.id}">
+            <span class="rd"></span>
+            <span style="flex:1">
+              <span class="t">${esc(p.name)}${p.tag?'<span class="pill p-info">'+esc(p.tag)+'</span>':''}</span>
+              <span class="d">${esc(p.good)}${p.bad?' <span class="warn-note">'+esc(p.bad)+'</span>':''}</span>
+            </span></button>`;}).join("")}
+      </div>
+      <div class="opt-row"><span>ضبط شود</span>
+        <button class="sw" role="switch" aria-checked="true" data-opt="record"></button></div>
+      <div class="opt-row"><span>اتاق انتظار فعال باشد</span>
+        <button class="sw" role="switch" aria-checked="false" data-opt="lobby"></button></div>
+      <div class="opt-row"><span>این انتخاب را برای این کلاس به‌خاطر بسپار</span>
+        <button class="sw" role="switch" aria-checked="true" data-opt="remember"></button></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="do-start" data-cls="${clsId}">شروع کلاس</button>
+    </div>`);
+}
+
+function modalSubmit(aid){
+  var a=asg(aid);
+  if(a.type==="speaking"){
+    S.rec={on:false,sec:0,done:false,timer:null};
+    openModal(h`
+      <div class="modal-h"><h3>${esc(a.title)}</h3>
+        <button class="x" data-act="close" aria-label="بستن">×</button></div>
+      <div class="modal-b">
+        <p style="font-size:14px;line-height:1.95;margin-bottom:15px">${esc(a.desc)}</p>
+        <div class="metaline muted" style="font-size:12.5px;margin-bottom:15px">
+          <span class="num">حداکثر ۲ دقیقه</span><span class="num">۲ تلاش مجاز</span>
+          <span class="num">مهلت ${a.due}</span></div>
+        <div class="rec" id="recBox">
+          <button class="rec-btn" id="recBtn" aria-label="شروع ضبط">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
+          </button>
+          <div class="tm num" id="recTime">۰۰:۰۰</div>
+          <div class="hl" id="recHint">برای شروع ضبط بزنید</div>
+          <div class="wave" id="wave" aria-hidden="true">${Array(28).fill(0).map(function(){
+            return '<i style="height:4px"></i>';}).join("")}</div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:11px;text-align:center">
+          در محصول واقعی، ضبط با میکروفن مرورگر انجام و قبل از آپلود فشرده می‌شود.</p>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn--g" data-act="close">بعداً</button>
+        <button class="btn btn--p" data-act="send-audio" id="sendAudio" disabled>ارسال تکلیف</button>
+      </div>`);
+    return;
+  }
+  openModal(h`
+    <div class="modal-h"><h3>${esc(a.title)}</h3>
+      <button class="x" data-act="close" aria-label="بستن">×</button></div>
+    <div class="modal-b">
+      <p style="font-size:14px;line-height:1.95;margin-bottom:15px">${esc(a.desc)}</p>
+      <div class="metaline muted" style="font-size:12.5px;margin-bottom:15px">
+        <span class="num">۱۲۰ تا ۱۵۰ کلمه</span><span class="num">مهلت ${a.due}</span>
+        <span class="num">${fa(a.max)} نمره</span></div>
+      <div class="fld">
+        <label for="subText">متن شما</label>
+        <textarea id="subText" dir="auto" style="min-height:170px" placeholder="Last summer I went to…">${esc(S.subDraft)}</textarea>
+        <span class="hint"><span class="num" id="wc">۰</span> کلمه، پیش‌نویس خودکار ذخیره می‌شود</span>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">ذخیرهٔ پیش‌نویس</button>
+      <button class="btn btn--p" data-act="send-text" id="sendText" disabled>ارسال تکلیف</button>
+    </div>`, true);
+  wordCount();
+}
+
+function modalRoom(){
+  var c=cls(S.live.classId);
+  openModal(h`
+    <div class="modal-h"><h3>اتاق کلاس</h3>
+      <button class="x" data-act="close" aria-label="بستن">×</button></div>
+    <div class="modal-b" style="text-align:center;padding:32px 20px">
+      <div style="inline-size:64px;block-size:64px;border-radius:50%;background:var(--live-soft);color:var(--live);
+        display:grid;place-items:center;margin:0 auto 16px">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></svg></div>
+      <h3 style="font-size:18px">${esc(c.name)}</h3>
+      <p class="muted" style="font-size:13.5px;margin-top:8px;line-height:1.9">
+        در محصول واقعی، اینجا اتاق <b>${esc(providerName(S.live.provider))}</b> در تب جدید باز می‌شود
+        و شما با نقش <b>مدیر جلسه</b> وارد می‌شوید.<br>
+        لینک ورود امضاشده و <span class="num">۳۰</span> دقیقه‌ای است.</p>
+      <div class="metaline" style="justify-content:center;margin-top:16px;font-size:13px">
+        <span class="num">${fa(S.live.joined)} از ${fa(c.enrolled)} نفر</span>
+        ${S.live.record?'<span style="color:var(--live)">در حال ضبط</span>':''}
+        <span>${S.live.provider==="meet"?"حضور و غیاب: دستی":"حضور و غیاب: خودکار"}</span>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn btn--p" data-act="close">بستن</button></div>`);
+}
+
+/* ══════════ ضبط صدا (شبیه‌سازی) ══════════ */
+function recTick(){
+  S.rec.sec++;
+  var t=el("recTime"); if(t)t.textContent=clock(S.rec.sec);
+  var w=el("wave");
+  if(w){Array.prototype.forEach.call(w.children,function(b,i){
+    var v=6+Math.abs(Math.sin((S.rec.sec*1.7+i*0.55)))*26;
+    b.style.height=v.toFixed(0)+"px";});}
+  if(S.rec.sec>=120)stopRec();
+}
+function stopRec(){
+  clearInterval(S.rec.timer); S.rec.timer=null; S.rec.on=false; S.rec.done=true;
+  var b=el("recBtn"); if(b)b.classList.remove("on");
+  var hnt=el("recHint"); if(hnt)hnt.textContent="ضبط شد. می‌توانید گوش کنید یا دوباره ضبط کنید.";
+  var s=el("sendAudio"); if(s)s.disabled=false;
+  var w=el("wave"); if(w){Array.prototype.forEach.call(w.children,function(b2,i){
+    b2.style.height=(6+Math.abs(Math.sin(i*0.9))*22).toFixed(0)+"px";});}
+}
+function toggleRec(){
+  if(S.rec.on){stopRec();return;}
+  S.rec.on=true; S.rec.sec=0; S.rec.done=false;
+  el("recBtn").classList.add("on");
+  el("recHint").textContent="در حال ضبط… برای پایان دوباره بزنید";
+  el("sendAudio").disabled=true;
+  S.rec.timer=setInterval(recTick,1000);
+}
+function wordCount(){
+  var t=el("subText"); if(!t)return;
+  var n=t.value.trim()?t.value.trim().split(/\s+/).length:0;
+  var wc=el("wc"); if(wc)wc.textContent=fa(n);
+  var b=el("sendText"); if(b)b.disabled=n<20;
+  S.subDraft=t.value;
+}
+
+/* ══════════ مسیریابی ══════════ */
+var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance":"حضور و غیاب",
+ "t/assignments":"تکالیف","t/grading":"صف تصحیح","t/gradebook":"دفتر نمره",
+ "t/schedule":"برنامهٔ هفتگی","t/materials":"فایل‌ها",
+ "s":"خانه","s/classes":"کلاس‌های من","s/assignments":"تکالیف","s/grades":"نمرات و پیشرفت",
+ "s/payments":"شهریه و اقساط","s/schedule":"برنامهٔ کلاسی","s/certificates":"مدارک",
+ "m":"پیشخوان","m/live":"کلاس‌های در حال برگزاری","m/students":"زبان‌آموزان",
+ "m/classes":"کلاس‌ها","m/finance":"مالی","m/reports":"گزارش‌ها","m/settings":"تنظیمات"};
+
+function go(route){location.hash="#/"+route;}
+function render(){
+  var r=(location.hash||"#/t").replace(/^#\/?/,"")||"t";
+  if(!V[r]){r=S.role==="student"?"s":S.role==="manager"?"m":"t";}
+  var first=r.split("/")[0];
+  S.role=first==="s"?"student":first==="m"?"manager":"teacher";
+  S.route=r;
+  el("pageTitle").textContent=TITLES[r]||"لینگوتاک";
+  el("page").innerHTML=V[r]();
+  renderNav();
+  el("side").classList.remove("open"); el("scrim").classList.remove("on");
+  if(r==="s/assignments"||r==="t/assignments"){}
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange",render);
+
+/* ══════════ رویدادها ══════════ */
+document.addEventListener("click",function(e){
+  var t=e.target;
+
+  var navBtn=t.closest("[data-nav]");
+  if(navBtn){e.preventDefault();go(navBtn.dataset.nav);return;}
+
+  var roleBtn=t.closest("#roleSw button");
+  if(roleBtn){var r=roleBtn.dataset.role;
+    go(r==="student"?"s":r==="manager"?"m":"t");return;}
+
+  /* حضور و غیاب */
+  var segBtn=t.closest(".seg button");
+  if(segBtn){
+    var row=segBtn.closest(".rrow"), sid=row.dataset.sid, v=segBtn.dataset.v;
+    S.att[sid]=v;
+    Array.prototype.forEach.call(segBtn.parentNode.children,function(b){
+      b.classList.toggle("on",b===segBtn);});
+    row.dataset.st=(v==="absent")?"absent":"";
+    var c=countAtt();
+    if(el("cOk"))el("cOk").textContent=fa(c.p)+" حاضر";
+    if(el("cLate"))el("cLate").textContent=fa(c.l)+" تأخیر";
+    if(el("cNo"))el("cNo").textContent=fa(c.a)+" غایب";
+    return;
+  }
+
+  /* روبریک */
+  var scaleBtn=t.closest(".scale button");
+  if(scaleBtn){
+    var crit=scaleBtn.closest(".scale").dataset.crit;
+    var subs=DB.submissions.filter(function(x){return x.aid==="a1";});
+    var sid2=subs[Math.min(S.grade.idx,subs.length-1)].sid;
+    S.grade.scores[sid2]=S.grade.scores[sid2]||{};
+    S.grade.scores[sid2][crit]=+scaleBtn.dataset.n;
+    Array.prototype.forEach.call(scaleBtn.parentNode.children,function(b){
+      b.classList.toggle("on",b===scaleBtn);});
+    var tot=rubTotal(sid2);
+    el("rubTotal").innerHTML=tot==null?'<i class="dash"></i>':fa(tot)+" از ۲۰";
+    return;
+  }
+
+  var phraseBtn=t.closest(".phrase");
+  if(phraseBtn){
+    var fb=el("fb");
+    fb.value=(fb.value?fb.value.replace(/\s*$/,"")+" ":"")+phraseBtn.dataset.phrase+".";
+    fb.focus(); return;
+  }
+
+  /* ارائه‌دهنده */
+  var provBtn=t.closest("[data-prov]");
+  if(provBtn){
+    S.provider=provBtn.dataset.prov;
+    Array.prototype.forEach.call(provBtn.parentNode.children,function(b){
+      b.setAttribute("aria-checked",b===provBtn?"true":"false");});
+    return;
+  }
+  var sw=t.closest(".sw");
+  if(sw){sw.setAttribute("aria-checked",sw.getAttribute("aria-checked")==="true"?"false":"true");return;}
+
+  var act=t.closest("[data-act]");
+  if(!act)return;
+  var a=act.dataset.act;
+
+  if(a==="close"){closeModal();}
+  else if(a==="start-class"){modalStartClass(act.dataset.cls);}
+  else if(a==="do-start"){
+    var rec=el("modal").querySelector('[data-opt="record"]').getAttribute("aria-checked")==="true";
+    S.live={classId:act.dataset.cls,provider:S.provider,record:rec,joined:1};
+    closeModal();
+    toast("کلاس روی "+providerName(S.provider)+" شروع شد");
+    var c2=cls(S.live.classId);
+    setTimeout(function(){ if(S.live){S.live.joined=Math.min(c2.enrolled,11); render();
+      toast("زبان‌آموزها در حال ورودند، "+fa(S.live.joined)+" نفر داخل کلاس");}},1400);
+    render();
+  }
+  else if(a==="open-room"){modalRoom();}
+  else if(a==="end-class"){
+    var prov=S.live.provider; S.live=null; closeModal(); render();
+    if(prov==="meet"){toast("کلاس پایان یافت. حضور و غیاب را دستی ثبت کنید.");}
+    else{toast("کلاس پایان یافت. حضور و غیاب خودکار آماده است."); }
+  }
+  else if(a==="join-class"){
+    if(S.live)S.live.joined++;
+    toast("وارد کلاس شدید. حضورتان خودکار ثبت می‌شود.");
+    render();
+  }
+  else if(a==="all-present"){
+    DB.students.forEach(function(s){S.att[s.id]="present";});
+    el("roster").innerHTML=rosterRows();
+    var cc=countAtt();
+    el("cOk").textContent=fa(cc.p)+" حاضر"; el("cLate").textContent=fa(cc.l)+" تأخیر";
+    el("cNo").textContent=fa(cc.a)+" غایب";
+  }
+  else if(a==="cancel-session"){
+    toast("جلسه لغو شد. همه «نامربوط» ثبت شدند و به زبان‌آموزها پیامک رفت.");
+    go("t");
+  }
+  else if(a==="submit-att"){
+    var cnt=countAtt();
+    var msg=cnt.a>0?"ثبت شد؛ به "+fa(cnt.a)+" زبان‌آموز پیامک غیبت رفت"
+                   :"ثبت شد؛ همه حاضر بودند";
+    var snap=JSON.parse(JSON.stringify(S.att));
+    toast(msg,function(){S.att=snap;toast("ثبت برگردانده شد");});
+    go("t");
+  }
+  else if(a==="open-sub"){modalSubmit(act.dataset.aid);}
+  else if(a==="send-text"){
+    closeModal(); S.subDraft="";
+    toast("تکلیف ارسال شد. رسید تحویل برایتان پیامک شد.");
+  }
+  else if(a==="send-audio"){
+    closeModal();
+    toast("فایل صوتی ارسال شد ("+clock(S.rec.sec)+")");
+  }
+  else if(a==="g-next"||a==="g-save"){
+    var subsN=DB.submissions.filter(function(x){return x.aid==="a1";});
+    if(a==="g-save"){
+      var sidS=subsN[S.grade.idx].sid;
+      if(rubTotal(sidS)==null){toast("همهٔ معیارهای روبریک را نمره بدهید");return;}
+      S.grade.fb[sidS]=el("fb").value;
+      toast("نمرهٔ "+esc(stu(sidS).name)+" ثبت شد");
+    }
+    if(S.grade.idx<subsN.length-1){S.grade.idx++;render();}
+    else{toast("همهٔ تکالیف تصحیح شد. برای انتشار نمرات به دفتر نمره بروید.");go("t/gradebook");}
+  }
+  else if(a==="g-prev"){if(S.grade.idx>0){S.grade.idx--;render();}}
+  else if(a==="publish-grades"){toast("نمرات منتشر شد و به زبان‌آموزها اطلاع داده شد.");}
+  else if(a==="pay"){toast("در محصول واقعی، اینجا به درگاه پرداخت منتقل می‌شوید.");}
+  else if(a==="upload-receipt"){toast("فیش آپلود شد و به صف تأیید مالی رفت.");}
+  else if(a==="new-assignment"){toast("فرم ساخت تکلیف بر اساس نوع، در سند R تعریف شده است.");}
+  else if(a==="go-teacher"){go("t");}
+  else if(a==="noop"){toast("این بخش در نمونهٔ تعاملی فعال نیست.");}
+});
+
+document.addEventListener("input",function(e){
+  if(e.target.id==="subText")wordCount();
+});
+
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&el("ov").classList.contains("on")){closeModal();}
+  if((e.ctrlKey||e.metaKey)&&e.key==="Enter"&&S.route==="t/grading"){
+    e.preventDefault();
+    var b=document.querySelector('[data-act="g-save"]'); if(b)b.click();
+  }
+});
+
+el("ov").addEventListener("click",function(e){if(e.target===el("ov"))closeModal();});
+document.addEventListener("click",function(e){
+  if(e.target.closest("#recBtn")){toggleRec();}
+});
+
+el("burg").addEventListener("click",function(){
+  el("side").classList.add("open"); el("scrim").classList.add("on");});
+el("scrim").addEventListener("click",function(){
+  el("side").classList.remove("open"); el("scrim").classList.remove("on");});
+
+el("themeBtn").addEventListener("click",function(){
+  var root=document.documentElement, cur=root.getAttribute("data-theme");
+  if(!cur){cur=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
+  root.setAttribute("data-theme",cur==="dark"?"light":"dark");
+});
+
+render();
+})();
+</script>
+
+</body>
+</html>

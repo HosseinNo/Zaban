@@ -36,6 +36,8 @@ full picture; jump directly for a specific working session.
 | N | [Risks and edge cases](docs/N-risks-edge-cases.md) | QA planning, defensive design, support playbooks |
 | O | [Final recommendation](docs/O-final-recommendation.md) | Deciding what to build first and how to launch |
 | **P** | **[تطبیق با بازار ایران](docs/P-iran-market.md)** | **Binding amendment to A–O. Read before building anything.** |
+| Q | [کلاس آنلاین](docs/Q-online-classroom.md) | Virtual classroom: provider adapter, BBB vs Meet trade-off, auto-attendance, recordings |
+| R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
 
 ---
 
@@ -114,14 +116,46 @@ banner at the top of the page. Fill them in before this goes public.
 
 ---
 
+## پنل‌ها — `app/`
+
+Interactive prototype of all three dashboards, in Persian.
+
+| File | What it is |
+|---|---|
+| `app/index.html` | The prototype. Hash-routed, mock data, fonts from `site/fonts/` |
+| `app/build-standalone.py` | Inlines fonts → `build/lingotalk-app-preview.html` |
+
+**Four flows are built end to end** — the ones with the highest daily use:
+
+1. **Start an online class** — teacher picks BigBlueButton / Google Meet / Skyroom, with the
+   real trade-off stated under each option (see [Q](docs/Q-online-classroom.md)). Live state
+   propagates to the student portal and the manager dashboard.
+2. **Attendance** — default-present roster, auto-suggested from the meeting for online
+   students, submit with an undo toast.
+3. **Submit an assignment** — writing (word count, draft autosave) and **speaking**
+   (in-browser recording with a timer and waveform).
+4. **Grade** — SpeedGrader-style: one student per screen, click-to-score rubric, saved
+   phrases, `Ctrl+Enter` to save and advance.
+
+Other sections render an honest "not built in this prototype" state rather than a dead link.
+
+```bash
+python3 app/build-standalone.py    # → build/lingotalk-app-preview.html
+```
+
+---
+
 ## Status
 
 | Phase | State |
 |---|---|
 | Product definition (A–O) | ✅ Complete |
 | Iran market spec (P) | ✅ Complete |
+| Online classroom spec (Q) | ✅ Complete |
+| Assignments & grading spec (R) | ✅ Complete |
 | Marketing site | ✅ Draft built — needs real content |
-| App design system + screens | ⏳ Next |
+| Dashboard prototype | ✅ Four core flows built |
+| Backend | ❌ Not started — the prototype has no server |
 | MVP implementation | ⏳ Blocked on design sign-off |
 
 Next action: see [O. Final recommendation](docs/O-final-recommendation.md#o4-the-first-90-days).
