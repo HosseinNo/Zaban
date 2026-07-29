@@ -40,6 +40,10 @@ def main() -> int:
         b64 = base64.b64encode(path.read_bytes()).decode("ascii")
         html = html.replace(f'url("{ref}")', f'url("data:font/woff2;base64,{b64}")')
 
+    # فونت‌ها داخل خود فایل جاسازی شده‌اند، پس preload به فایل بیرونی
+    # فقط یک درخواست ۴۰۴ می‌سازد — حذفش می‌کنیم
+    html = re.sub(r'\n?<link rel="preload"[^>]*\.woff2[^>]*>', "", html)
+
     if "site/fonts/dana-" in html:
         print("هشدار: بعضی ارجاع‌های فونت جایگزین نشدند", file=sys.stderr)
 

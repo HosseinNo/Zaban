@@ -7,10 +7,10 @@ workspace to run its entire operation: admissions, academics, scheduling, attend
 exams, tuition, communication, and reporting — in one system instead of a spreadsheet,
 a WhatsApp group, a paper ledger, and someone's memory.
 
-This repository contains the **product blueprint** (A–R), a built **Persian marketing site**,
-and an interactive **prototype of the three dashboards**. There is no backend yet — by design.
-The order was: define the product → define its structure → define its workflows → prove the
-critical screens → then build the real thing.
+This repository contains the **product blueprint** (A–T), a built **Persian marketing site**,
+an interactive **prototype of the three dashboards**, and a **working phone-OTP backend** that
+runs on ordinary Plesk shared hosting. The order was: define the product → define its structure
+→ define its workflows → prove the critical screens → then build the real thing.
 
 ---
 
@@ -40,7 +40,7 @@ sharpened. Read in order for the full picture; jump directly for a specific work
 | Q | [کلاس آنلاین](docs/Q-online-classroom.md) | Virtual classroom: provider adapter, BBB vs Meet trade-off, auto-attendance, recordings |
 | R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
 | S | [استقرار روی زیرساخت ایران](docs/S-deployment.md) | Iranian hosting, OTP, BBB/Meet wiring, automatic recording upload |
-| T | [بالا آوردن سایت](docs/T-going-live.md) | Step-by-step for the actual Plesk host and talkora.ir |
+| T | [بالا آوردن سایت و پنل](docs/T-going-live.md) | Step-by-step for the real Plesk host: `talkora.ir` and the `panel.talkora.ir` subdomain with OTP over sms.ir |
 | — | [CUSTOMIZE.md](CUSTOMIZE.md) | What to change before the site goes public: phone, prices, form endpoint |
 
 ---
@@ -118,14 +118,26 @@ banner at the top of the page. Fill them in before this goes public.
 
 ---
 
-## پنل‌ها — `app/`
+## پنل‌ها — `app/` و `panel/api/`
 
-Interactive prototype of all three dashboards, in Persian.
+Interactive prototype of all three dashboards, in Persian, **with real phone-OTP login**.
 
 | File | What it is |
 |---|---|
-| `app/index.html` | The prototype. Hash-routed, mock data, fonts from `site/fonts/` |
+| `app/index.html` | The panel. Hash-routed, fonts from `site/fonts/` |
 | `app/build-standalone.py` | Inlines fonts → `build/talkora-app-preview.html` |
+| `panel/api/` | PHP 8 + MySQL auth backend: OTP over sms.ir, sessions, rate limits, audit log |
+
+### Two modes, decided by a request — not a guess
+
+On boot the panel calls `api/health.php`:
+
+- **healthy + `database: true`** → **live mode.** Real SMS login, real session cookie, role
+  comes from the server, route guard keeps a student out of `#/m`, no demo bar.
+- **no answer, error, or DB down** → **demo mode.** Mock data and the role switcher, so the
+  offline preview still works.
+
+So a demo bar on the deployed panel is a precise diagnosis: `api/health.php` didn't answer.
 
 **Four flows are built end to end** — the ones with the highest daily use:
 
@@ -144,6 +156,35 @@ Other sections render an honest "not built in this prototype" state rather than 
 ```bash
 python3 app/build-standalone.py    # → build/talkora-app-preview.html
 ```
+
+### The auth backend, and what was verified
+
+`panel/api/` is deliberately framework-free and composer-free so it runs on the shared host the
+domain already has — no VPS needed for login to work on day one.
+
+| File | What it does |
+|---|---|
+| `_bootstrap.php` | Config loading, PDO (MySQL + SQLite), phone normalisation incl. Persian digits, rate limiting, session issue/verify/revoke, audit |
+| `_sms.php` | sms.ir **Verify** endpoint — a service line, so it reaches users who blocked advertising SMS (P.4) |
+| `otp-request.php` | 5-digit code, 2-minute TTL, HMAC-only storage, 60s resend gap, 5/hour per phone, 20/hour per IP |
+| `otp-verify.php` | Constant-time compare, 5 attempts then the code dies, signup-on-first-login |
+| `me.php` / `logout.php` / `health.php` | Session read, revoke, and the mode probe |
+
+Verified over real HTTP against a live database, not reasoned about:
+
+- Full signup → login → refresh → logout cycle, including the new-user path where the server
+  asks for a name and **deliberately does not burn the code yet** (burning it early made signup
+  impossible — that bug was found and fixed here).
+- Brute force capped at 5 attempts; 6th is refused and the code is invalidated.
+- Rate limits enforced per phone and per IP.
+- Forged and short session cookies rejected; `httpOnly` confirmed; logout actually revokes.
+- SQL injection in the phone field rejected by normalisation; `GET` on POST-only routes refused.
+- Every internal file (`_bootstrap.php`, `_sms.php`, `config.php`, `config.sample.php`) returns
+  **404 on direct request** — enforced in PHP itself, not only in `.htaccess`, because Plesk in
+  "nginx only" mode ignores `.htaccess` entirely.
+
+`config.php` holds the DB password and the sms.ir key. It is gitignored, and the build refuses
+to run if it exists, so it can never end up inside a distributed package.
 
 ---
 
@@ -169,17 +210,55 @@ tenant set, and a cross-tenant INSERT is refused.
 
 ---
 
+## استقرار — `build-dist.py`
+
+One command produces **two upload-ready packages**, because the site and the panel live on
+separate domains:
+
+```bash
+python3 build-dist.py
+```
+
+| Output | Goes to | Needs |
+|---|---|---|
+| `dist/site/` → `talkora-site.zip` | `httpdocs` of `talkora.ir` | Static files only |
+| `dist/panel/` → `talkora-panel.zip` | `httpdocs` of `panel.talkora.ir` | PHP 8, MySQL, `curl` |
+
+Splitting them is not tidiness — it buys three concrete things:
+
+1. The session cookie is scoped to `panel.talkora.ir`. The public sales page, which everyone
+   loads, never carries an auth cookie.
+2. The marketing site never touches the database. If the panel 500s or the DB fills up, the
+   page that sells the product is still up.
+3. Their security posture differs honestly: the panel gets `X-Frame-Options: DENY`, `noindex`,
+   and `no-store`; the site does not.
+
+Each zip carries its own Persian, step-by-step upload guide written against this specific
+Plesk host — nameservers, `httpdocs` (not `public_html`), the subdomain, the MySQL database,
+the phpMyAdmin schema import, the sms.ir Verify template, Let's Encrypt, and an ordered
+test sequence. The database schema ships in a `_نصب-آپلود-نکنید` folder that is explicitly
+**not** for upload, so the table structure isn't readable over the web if `.htaccess` is ignored.
+
+**The build fails rather than shipping something broken.** It refuses to run if a real
+`config.php` exists, and it aborts on any external reference, on a schema left inside `api/`,
+on a panel that isn't wired to `api/health.php`, or on a panel still loading fonts from the
+parent domain.
+
+---
+
 ## Status
 
 | Phase | State |
 |---|---|
 | Product definition (A–O) | ✅ Complete |
 | Iran market spec (P) | ✅ Complete |
+| Deployment specs (S, T) | ✅ Complete, written against the real host |
 | Online classroom spec (Q) | ✅ Complete |
 | Assignments & grading spec (R) | ✅ Complete |
-| Marketing site | ✅ Draft built — needs real content |
-| Dashboard prototype | ✅ Four core flows built |
-| Backend | ◐ Schema, auth, meeting adapters and recording worker written and verified; API routes and payment gateway not yet |
+| Marketing site | ✅ Built — needs real content (see CUSTOMIZE.md) |
+| Dashboard prototype | ✅ Four core flows built, real login in front of it |
+| Phone-OTP auth (shared host) | ✅ Built, wired to sms.ir, verified end to end over HTTP |
+| Backend (rest) | ◐ Schema, meeting adapters and recording worker written and verified; business API routes and payment gateway not yet |
 | MVP implementation | ⏳ Blocked on design sign-off |
 
 Next action: see [O. Final recommendation](docs/O-final-recommendation.md#o4-the-first-90-days).

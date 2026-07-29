@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-</head>
-<body>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#070C14" media="(prefers-color-scheme: dark)">
 <title>تاکورا | پنل آموزشگاه، مدرس و زبان‌آموز</title>
+<meta name="description" content="ورود به پنل تاکورا برای مدیر آموزشگاه، مدرس و زبان‌آموز.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="same-origin">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563C7'/%3E%3Ctext x='32' y='45' font-size='38' font-family='Tahoma,sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E%D8%AA%3C/text%3E%3C/svg%3E">
+<link rel="preload" href="../site/fonts/dana-regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../site/fonts/dana-bold.woff2" as="font" type="font/woff2" crossorigin>
 
 <style>
 /* ═══════════════════════════════════════════════════════════
@@ -425,6 +432,8 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
   font-variant-numeric:tabular-nums}
 .otp input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
 .otp input.filled{border-color:var(--brand);background:var(--brand-soft)}
+.au-err{margin-block:2px 14px;padding:10px 12px;border-radius:var(--r1);font-size:13.5px;
+        background:var(--bad-soft);color:var(--bad);border:1px solid currentColor}
 .steps-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
 .steps-dots i{inline-size:26px;block-size:4px;border-radius:100px;background:var(--line-2)}
 .steps-dots i.on{background:var(--brand)}
@@ -498,11 +507,37 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
 .poll-bar .b i{display:block;block-size:100%;background:var(--brand);border-radius:var(--r1);transition:inline-size .3s}
 .poll-bar .v{inline-size:34px;flex:none;text-align:end;font-weight:700}
 
+/* ───── صفحهٔ آماده‌سازی ─────
+   تا وقتی نفهمیده‌ایم بک‌اند بالاست یا نه، هیچ داشبوردی نشان نمی‌دهیم.
+   وگرنه کاربرِ واقعی یک لحظه دادهٔ نمایشی می‌بیند و بعد به صفحهٔ ورود پرت می‌شود. */
+.boot{position:fixed;inset:0;z-index:200;display:grid;place-content:center;justify-items:center;
+      gap:14px;background:var(--paper);transition:opacity .22s}
+.boot.off{opacity:0;pointer-events:none}
+.boot .bm{inline-size:52px;block-size:52px;border-radius:15px;background:var(--brand);color:#fff;
+          display:grid;place-content:center;font-size:25px;font-weight:800}
+:root[data-theme="dark"] .boot .bm{color:#07111F}
+.boot .bt{font-size:14px;color:var(--ink-3)}
+.boot .bs{inline-size:120px;block-size:3px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.boot .bs i{display:block;block-size:100%;inline-size:40%;border-radius:3px;background:var(--brand);
+            animation:bootslide 1.1s ease-in-out infinite}
+@keyframes bootslide{0%{transform:translateX(150%)}100%{transform:translateX(-250%)}}
+
+/* در حالت واقعی، نوار نمایشی و کلید تعویض نقش معنایی ندارند */
+#root.is-live .demo-bar{display:none}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
+</head>
+<body>
 
 
 <div class="lt" id="root" dir="rtl" lang="fa">
+
+<div class="boot" id="boot">
+  <div class="bm">ت</div>
+  <div class="bt">تاکورا در حال آماده‌سازی…</div>
+  <div class="bs"><i></i></div>
+</div>
 
 <div class="demo-bar">
   <span><b>نسخهٔ نمایشی:</b> داده‌ها واقعی نیستند و ذخیره نمی‌شوند. نقش را عوض کنید:</span>
@@ -723,7 +758,7 @@ DB.payroll=[
 var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        rec:{on:false,sec:0,done:false,timer:null},
        grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null,
-       auth:{step:1,phone:"",inst:"",otp:["","","","",""],newInst:true},
+       auth:{step:1,phone:"",inst:"",name:"",code:"",err:"",busy:false,cool:0,tick:null,newInst:true},
        onboard:{profile:true,levels:true,students:false,term:false,team:false,money:false},
        term:{step:1,rows:null,name:"زمستان ۱۴۰۵",from:"۱۵ دی",to:"۱۰ فروردین"},
        enrol:{step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false},
@@ -731,6 +766,53 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        tools:{timer:0,run:false,tk:null,picked:"",poll:null}};
 
 DB.students.forEach(function(s){S.att[s.id]="present";});
+
+/* ══════════ اتصال به بک‌اند ══════════ */
+/*
+ * پنل دو حالت دارد و حالتش را حدس نمی‌زند:
+ *   واقعی  — پوشهٔ api/ کنار همین فایل بالاست؛ ورود با پیامک sms.ir و نشست واقعی
+ *   نمایشی — api/ نیست (پیش‌نمایش آفلاین)؛ داده ساختگی و نقش دستی عوض می‌شود
+ * تصمیم با یک درخواست به api/health.php گرفته می‌شود. اگر پاسخ نداد یا
+ * پایگاه داده بالا نبود، به حالت نمایشی برمی‌گردیم تا پنل هیچ‌وقت سفید نماند.
+ */
+var API={base:"api/",live:false,user:null};
+
+function apiCall(path,body){
+  var opt={credentials:"same-origin",headers:{Accept:"application/json"}};
+  if(body){
+    opt.method="POST";
+    opt.headers["Content-Type"]="application/json";
+    opt.body=JSON.stringify(body);
+  }
+  return fetch(API.base+path,opt).then(function(r){
+    return r.json().then(function(j){return j;},function(){
+      return {ok:false,error:"bad_response",message:"پاسخ سرور قابل خواندن نبود."};
+    });
+  },function(){
+    return {ok:false,error:"offline",message:"ارتباط با سرور برقرار نشد."};
+  });
+}
+
+/* درخواست با مهلت: روی هاست کند کاربر نباید پشت صفحهٔ آماده‌سازی بماند */
+function withTimeout(p,ms){
+  return new Promise(function(res){
+    var done=false;
+    var t=setTimeout(function(){if(!done){done=true;res(null);}},ms);
+    function settle(v){if(!done){done=true;clearTimeout(t);res(v);}}
+    p.then(settle,function(){settle(null);});
+  });
+}
+
+var ROLE_FA={manager:"مدیر آموزشگاه",teacher:"مدرس",student:"زبان‌آموز"};
+function roleRoute(role){return role==="manager"?"m":role==="student"?"s":"t";}
+
+function applyUser(u){
+  API.user=u;
+  var r=roleRoute(u.role);
+  S.role=r==="m"?"manager":r==="s"?"student":"teacher";
+  DB.me[S.role]={name:u.name||"کاربر",role:ROLE_FA[u.role]||"کاربر"};
+  if(u.institute)DB.institute.name=u.institute;
+}
 
 /* ══════════ منو ══════════ */
 var NAV={
@@ -1457,6 +1539,55 @@ V["m/classes"]=V["m/reports"]=V["m/settings"]=function(){
 };
 
 /* ══════════ ورود و ثبت‌نام ══════════ */
+
+function authErr(msg){S.auth.err=msg;S.auth.busy=false;render();}
+
+function stopCooldown(){
+  if(S.auth.tick){clearInterval(S.auth.tick);S.auth.tick=null;}
+  S.auth.cool=0;
+}
+function startCooldown(sec){
+  stopCooldown();
+  S.auth.cool=sec|0;
+  S.auth.tick=setInterval(function(){
+    S.auth.cool--;
+    if(S.auth.cool<=0){stopCooldown();if(S.route==="auth")render();return;}
+    /* فقط عدد را عوض می‌کنیم؛ render کامل تمرکز را از خانه‌های کد می‌گیرد */
+    var n=el("auCool");
+    if(n)n.textContent=fa(S.auth.cool)+" ثانیه تا ارسال دوباره";
+  },1000);
+}
+
+/*
+ * تأیید کد. اگر سرور بگوید کاربر تازه است و نامش را ندارد، همان کد را
+ * نگه می‌داریم و در گام سه دوباره با نام می‌فرستیم — سرور کد را تا آن
+ * لحظه نمی‌سوزاند، پس ثبت‌نام نیمه‌کاره نمی‌ماند.
+ */
+function verifyOtp(){
+  apiCall("otp-verify.php",{
+    phone:S.auth.phone, code:S.auth.code,
+    fullName:S.auth.name, instituteName:S.auth.inst
+  }).then(function(r){
+    S.auth.busy=false;
+    if(r.ok&&r.needsProfile){S.auth.step=3;S.auth.err="";render();return;}
+    if(!r.ok){
+      if(r.error==="expired"||r.error==="too_many_attempts"){
+        S.auth.step=1; stopCooldown();
+      }
+      authErr(r.attemptsLeft!=null&&r.attemptsLeft>0
+        ? (r.message||"کد اشتباه است.")+" "+fa(r.attemptsLeft)+" تلاش دیگر دارید."
+        : (r.message||"کد پذیرفته نشد."));
+      return;
+    }
+    stopCooldown();
+    applyUser(r.user);
+    S.auth.code=""; S.auth.err="";
+    go(roleRoute(r.user.role));
+    render();
+    toast(r.isNew?"خوش آمدید، حساب شما ساخته شد":"خوش آمدید، "+r.user.name);
+  });
+}
+
 V["auth"]=function(){
   var a=S.auth;
   return h`
@@ -1482,14 +1613,20 @@ V["auth"]=function(){
         <div class="fld" style="margin-top:22px">
           <label for="auPhone">شمارهٔ موبایل <span class="rq">*</span></label>
           <input id="auPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
-                 placeholder="09121234567" value="${esc(a.phone)}">
+                 placeholder="09121234567" autocomplete="tel" value="${esc(a.phone)}">
           <span class="hint">با همین شماره وارد می‌شوید؛ رمز عبور لازم نیست.</span>
         </div>
         ${a.newInst?h`<div class="fld">
+          <label for="auName">نام و نام خانوادگی <span class="rq">*</span></label>
+          <input id="auName" type="text" placeholder="مثلاً رضا کیانی" autocomplete="name" value="${esc(a.name)}">
+        </div>
+        <div class="fld">
           <label for="auInst">نام آموزشگاه <span class="rq">*</span></label>
           <input id="auInst" type="text" placeholder="مثلاً آموزشگاه زبان پردیس" value="${esc(a.inst)}">
         </div>`:""}
-        <button class="btn btn--p btn--b btn--lg" data-act="au-send">ارسال کد</button>
+        ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-send" ${a.busy?"disabled":""}>
+          ${a.busy?"در حال ارسال…":"ارسال کد"}</button>
         <p class="auth-p" style="margin-top:16px">
           ${a.newInst?"قبلاً ثبت‌نام کرده‌اید؟":"آموزشگاه جدید دارید؟"}
           <button class="btn btn--q btn--sm" data-act="au-toggle">${a.newInst?"ورود":"ثبت‌نام"}</button></p>
@@ -1498,13 +1635,33 @@ V["auth"]=function(){
         <p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>
         <div class="otp" id="otpBox">
           ${[0,1,2,3,4].map(function(i){
-            return '<input type="text" inputmode="numeric" maxlength="1" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'">';}).join("")}
+            return '<input type="text" inputmode="numeric" maxlength="1" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'"'+
+                   (i===0?' autocomplete="one-time-code"':'')+'>';}).join("")}
         </div>
-        <button class="btn btn--p btn--b btn--lg" data-act="au-verify" id="auVerify" disabled>تأیید و ورود</button>
+        ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-verify" id="auVerify" disabled>
+          ${a.busy?"در حال بررسی…":"تأیید و ورود"}</button>
         <p class="auth-p" style="margin-top:14px">
-          کد نرسید؟ <button class="btn btn--q btn--sm" data-act="au-resend">ارسال دوباره</button>
-          <br><span class="muted" style="font-size:12.5px">در این نمونه هر کد پنج‌رقمی پذیرفته می‌شود.</span></p>
+          کد نرسید؟ ${a.cool>0
+            ? h`<span class="muted num" id="auCool">${fa(a.cool)} ثانیه تا ارسال دوباره</span>`
+            : h`<button class="btn btn--q btn--sm" data-act="au-resend">ارسال دوباره</button>`}
+          ${API.live?"":h`<br><span class="muted" style="font-size:12.5px">در این نمونه هر کد پنج‌رقمی پذیرفته می‌شود.</span>`}</p>
         <button class="btn btn--q btn--b" style="margin-top:8px" data-act="au-back">بازگشت</button>
+      `:API.live?h`
+        <h1 class="auth-h">فقط نام‌تان مانده</h1>
+        <p class="auth-p">شماره تأیید شد. برای ساخت حساب، نام‌تان را وارد کنید.</p>
+        <div class="fld" style="margin-top:20px">
+          <label for="auName2">نام و نام خانوادگی <span class="rq">*</span></label>
+          <input id="auName2" type="text" placeholder="مثلاً رضا کیانی" autocomplete="name" value="${esc(a.name)}">
+        </div>
+        <div class="fld">
+          <label for="auInst2">نام آموزشگاه</label>
+          <input id="auInst2" type="text" placeholder="اگر مدیر آموزشگاه هستید" value="${esc(a.inst)}">
+          <span class="hint">اگر زبان‌آموز یا مدرس هستید خالی بگذارید؛ آموزشگاه شما را اضافه می‌کند.</span>
+        </div>
+        ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-profile" ${a.busy?"disabled":""}>
+          ${a.busy?"در حال ساخت…":"ساخت حساب"}</button>
       `:h`
         <h1 class="auth-h">چند سوال کوتاه</h1>
         <p class="auth-p">با این جواب‌ها، فضای کاری‌تان از قبل تنظیم می‌شود.</p>
@@ -2267,6 +2424,18 @@ function render(){
   var r=(location.hash||"#/t").replace(/^#\/?/,"")||"t";
   if(!V[r]){r=S.role==="student"?"s":S.role==="manager"?"m":"t";}
 
+  /*
+   * نگهبان مسیر در حالت واقعی: نقش از سرور می‌آید، نه از آدرس.
+   * وگرنه یک زبان‌آموز با تایپ #/m داشبورد مدیر را باز می‌کرد.
+   * این جایگزین بررسی سمت سرور نیست؛ فقط جلوی رفتن به جای اشتباه را می‌گیرد.
+   */
+  if(API.live){
+    if(!API.user){ r="auth"; }
+    else if(r==="auth"){ r=roleRoute(API.user.role); }
+    else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
+    if("#/"+r!==location.hash){ location.replace("#/"+r); }
+  }
+
   if(FULL[r]){
     document.body.classList.add("full-mode");
     el("full").classList.add("on");
@@ -2398,28 +2567,71 @@ document.addEventListener("click",function(e){
   var a=act.dataset.act;
 
   /* ── ورود و ثبت‌نام ── */
-  if(a==="au-toggle"){S.auth.newInst=!S.auth.newInst;render();}
-  else if(a==="au-send"){
-    var ph=enDigits((el("auPhone")||{}).value||"").replace(/\s/g,"");
-    if(!/^09\d{9}$/.test(ph)){toast("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود");return;}
-    if(S.auth.newInst){var iv=(el("auInst")||{}).value||"";
-      if(!iv.trim()){toast("نام آموزشگاه را وارد کنید");return;}
-      S.auth.inst=iv;}
-    S.auth.phone=ph; S.auth.step=2; render();
-    toast("کد به "+fa(ph)+" پیامک شد");
+  if(a==="au-toggle"){S.auth.newInst=!S.auth.newInst;S.auth.err="";render();}
+  else if(a==="au-send"||a==="au-resend"){
+    if(S.auth.busy)return;
+    var ph=a==="au-resend"?S.auth.phone
+                          :enDigits((el("auPhone")||{}).value||"").replace(/\s/g,"");
+    if(!/^09\d{9}$/.test(ph)){authErr("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.");return;}
+    if(a==="au-send"&&S.auth.newInst){
+      var nv=((el("auName")||{}).value||"").trim(), iv=((el("auInst")||{}).value||"").trim();
+      if(!nv){authErr("نام و نام خانوادگی را وارد کنید.");return;}
+      if(!iv){authErr("نام آموزشگاه را وارد کنید.");return;}
+      S.auth.name=nv; S.auth.inst=iv;
+    }
+    S.auth.phone=ph; S.auth.err="";
+    if(!API.live){
+      /* حالت نمایشی: پیامکی در کار نیست */
+      S.auth.step=2; startCooldown(60); render();
+      toast(a==="au-resend"?"کد دوباره ارسال شد":"کد به "+fa(ph)+" پیامک شد");
+      return;
+    }
+    S.auth.busy=true; render();
+    apiCall("otp-request.php",{phone:ph}).then(function(r){
+      S.auth.busy=false;
+      if(!r.ok){
+        /* «کمی صبر کنید» خطا نیست، فقط فاصلهٔ ارسال است — کاربر را به عقب برنگردانیم */
+        if(r.error==="cooldown"){S.auth.step=2;startCooldown(r.retryAfter||60);render();return;}
+        authErr(r.message||"ارسال کد ممکن نشد."); return;
+      }
+      S.auth.step=2; startCooldown(r.resendAfter||60); render();
+      toast("کد به "+fa(ph)+" پیامک شد");
+    });
   }
-  else if(a==="au-back"){S.auth.step=1;render();}
-  else if(a==="au-resend"){toast("کد دوباره ارسال شد");}
+  else if(a==="au-back"){S.auth.step=1;S.auth.err="";stopCooldown();render();}
   else if(a==="au-verify"){
-    if(S.auth.newInst){S.auth.step=3;render();}
-    else{go("m");toast("خوش آمدید");}
+    if(S.auth.busy)return;
+    var box=el("otpBox"), code="";
+    if(box)Array.prototype.forEach.call(box.querySelectorAll("input"),function(x){code+=x.value;});
+    code=enDigits(code).replace(/\D/g,"");
+    if(code.length!==5){authErr("هر پنج رقم کد را وارد کنید.");return;}
+    if(!API.live){
+      if(S.auth.newInst){S.auth.step=3;S.auth.err="";render();}
+      else{stopCooldown();go("m");toast("خوش آمدید");}
+      return;
+    }
+    S.auth.code=code; S.auth.err=""; S.auth.busy=true; render();
+    verifyOtp();
+  }
+  else if(a==="au-profile"){
+    if(S.auth.busy)return;
+    var pn=((el("auName2")||{}).value||"").trim();
+    if(!pn){authErr("نام‌تان را وارد کنید.");return;}
+    S.auth.name=pn; S.auth.inst=((el("auInst2")||{}).value||"").trim();
+    S.auth.err=""; S.auth.busy=true; render();
+    verifyOtp();
   }
   else if(a==="au-finish"){
     if(S.auth.inst)DB.institute.name=S.auth.inst;
     S.onboard.profile=true; S.onboard.levels=true;
     go("m"); toast("فضای کاری «"+DB.institute.name+"» ساخته شد");
   }
-  else if(a==="logout"){S.auth={step:1,phone:"",inst:"",otp:["","","","",""],newInst:false};go("auth");}
+  else if(a==="logout"){
+    stopCooldown();
+    S.auth={step:1,phone:"",inst:"",name:"",code:"",err:"",busy:false,cool:0,tick:null,newInst:false};
+    if(API.live){apiCall("logout.php",{}).then(function(){API.user=null;go("auth");render();});}
+    else go("auth");
+  }
 
   /* ── ترم‌ساز ── */
   else if(a==="tm-step"){S.term.step=+act.dataset.n;render();}
@@ -2649,7 +2861,37 @@ el("themeBtn").addEventListener("click",function(){
   root.setAttribute("data-theme",cur==="dark"?"light":"dark");
 });
 
-render();
+/* ══════════ بالا آمدن ══════════ */
+function finishBoot(){
+  el("root").classList.toggle("is-live",API.live);
+  render();
+  var b=el("boot");
+  if(b){b.classList.add("off");setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);},400);}
+}
+function startDemo(){API.live=false;finishBoot();}
+
+function boot(){
+  if(!window.fetch||!window.Promise){startDemo();return;}
+  withTimeout(apiCall("health.php"),4000).then(function(hl){
+    if(!hl||!hl.ok||!hl.database){startDemo();return;}
+    API.live=true;
+    return withTimeout(apiCall("me.php"),4000).then(function(m){
+      if(m&&m.ok&&m.authenticated){
+        applyUser(m.user);
+        var r=location.hash.replace(/^#\/?/,"");
+        /* مسیر ذخیره‌شده فقط اگر به نقش همین کاربر بخورد نگه داشته می‌شود */
+        if(!r||r==="auth"||r.split("/")[0]!==roleRoute(m.user.role)){
+          location.hash="#/"+roleRoute(m.user.role);
+        }
+      }else{
+        API.user=null;
+        location.hash="#/auth";
+      }
+      finishBoot();
+    });
+  },startDemo);
+}
+boot();
 })();
 </script>
 

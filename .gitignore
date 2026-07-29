@@ -5,3 +5,9 @@ server/node_modules/
 server/package-lock.json
 infra/.env
 infra/backups/
+
+# پیکربندی واقعی سرور — رمز پایگاه داده و کلید sms.ir دارد، هرگز کامیت نشود
+panel/api/config.php
+private/talkora-config.php
+dist/
+*.zip
