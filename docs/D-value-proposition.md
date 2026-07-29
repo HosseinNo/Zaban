@@ -8,7 +8,7 @@
 
 Supporting line for the hero:
 
-> Lingo Talk gives your institute a private workspace where every student, class, payment,
+> Talkora gives your institute a private workspace where every student, class, payment,
 > and message lives in one place — so your staff stop doing data entry and start doing work
 > that grows the business.
 
@@ -117,7 +117,7 @@ Emotional driver: **suspicion that this is more work.** Defuse it immediately an
 
 Emotional driver: **not being left in the dark.**
 
-## D.4 Why Lingo Talk instead of the alternatives
+## D.4 Why Talkora instead of the alternatives
 
 | Alternative | Their position | Our counter |
 |---|---|---|
@@ -151,7 +151,7 @@ That number is verifiable within their own records during the demo, which makes 
 | Objection | Response |
 |---|---|
 | "My staff won't use it." | Correct concern — that's why teacher attendance takes 10 seconds on a phone and front desk tasks are single-screen. We onboard your staff, not just your data. Also: measure it. Adoption is visible in the admin dashboard, so you'll know in week two, not month six. |
-| "We already have a system." | Keep it. Start with one branch and one term. If enrolments in Lingo Talk aren't above 90% by term end, don't renew. |
+| "We already have a system." | Keep it. Start with one branch and one term. If enrolments in Talkora aren't above 90% by term end, don't renew. |
 | "It's too expensive." | Compare against the tuition you didn't collect last term. We'll pull that number together during the demo from your own records. |
 | "Our data is sensitive." | Isolated tenant, encrypted at rest, role-scoped access, full audit log, and your data exportable in full at any time — including on the day you leave. |
 | "We're too small." | Then you're on the Starter plan and setup takes an afternoon. The complexity scales with you. |
@@ -160,7 +160,7 @@ That number is verifiable within their own records during the demo, which makes 
 
 ## D.7 The positioning sentence to protect
 
-> **Lingo Talk is the operating system for language institutes.**
+> **Talkora is the operating system for language institutes.**
 
 Not "school management software" (K-12 association, commoditised, price-shopped).
 Not "an LMS" (wrong category, wrong competitors, wrong buyer).

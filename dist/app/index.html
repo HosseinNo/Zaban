@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 </head>
 <body>
-<title>لینگوتاک؛ پنل آموزشگاه، مدرس و زبان‌آموز</title>
+<title>تاکورا | پنل آموزشگاه، مدرس و زبان‌آموز</title>
 
 <style>
 /* ═══════════════════════════════════════════════════════════
-   LINGO TALK — نمونهٔ تعاملی پنل‌ها
+   TALKORA — نمونهٔ تعاملی پنل‌ها
    سیستم طراحی: docs/M-ui-ux-direction.md
    بازار: docs/P-iran-market.md | کلاس آنلاین: docs/Q | تکالیف: docs/R
    ═══════════════════════════════════════════════════════════ */
@@ -505,7 +505,7 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
 <div class="lt" id="root" dir="rtl" lang="fa">
 
 <div class="demo-bar">
-  <span><b>نمونهٔ تعاملی:</b> دادهٔ نمایشی. برای دیدن هر سه پنل، نقش را عوض کنید:</span>
+  <span><b>نسخهٔ نمایشی:</b> داده‌ها واقعی نیستند و ذخیره نمی‌شوند. نقش را عوض کنید:</span>
   <button class="btn btn--q btn--sm" data-nav="auth">دیدن صفحهٔ ثبت‌نام</button>
   <div class="role-sw" id="roleSw" role="group" aria-label="تغییر نقش">
     <button data-role="teacher">مدرس</button>
@@ -516,7 +516,7 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
 
 <div class="shell">
   <aside class="side" id="side">
-    <div class="brand"><span class="brand-mark">ل</span><span>لینگوتاک</span></div>
+    <div class="brand"><span class="brand-mark">ت</span><span>تاکورا</span></div>
     <div class="side-scroll"><nav id="nav" aria-label="منوی اصلی"></nav></div>
     <div class="side-foot">
       <button class="me" id="meBtn"></button>
@@ -1462,7 +1462,7 @@ V["auth"]=function(){
   return h`
   <div class="auth-wrap">
     <aside class="auth-aside">
-      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ل</span><span>لینگوتاک</span></div>
+      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ت</span><span>تاکورا</span></div>
       <h2>آموزشگاه‌تان را از یک صفحه اداره کنید</h2>
       <ul>
         <li><i class="ck"></i><span>ترم بعد را با کپی ترم قبل، در یک بعدازظهر بسازید</span></li>
@@ -2281,7 +2281,7 @@ function render(){
   var first=r.split("/")[0];
   S.role=first==="s"?"student":first==="m"?"manager":"teacher";
   S.route=r;
-  el("pageTitle").textContent=TITLES[r]||"لینگوتاک";
+  el("pageTitle").textContent=TITLES[r]||"تاکورا";
   el("page").innerHTML=V[r]();
   renderNav();
   el("side").classList.remove("open"); el("scrim").classList.remove("on");

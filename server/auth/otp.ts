@@ -91,7 +91,7 @@ export async function requestOtp(
 
   await d.sms.sendService(
     phone,
-    `کد ورود شما به لینگوتاک: ${code}\nاین کد ۲ دقیقه اعتبار دارد.\nلغو۱۱`,
+    `کد ورود شما به تاکورا: ${code}\nاین کد ۲ دقیقه اعتبار دارد.\nلغو۱۱`,
   );
 
   return { ok: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };

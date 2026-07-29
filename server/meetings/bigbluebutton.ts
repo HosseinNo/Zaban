@@ -16,7 +16,7 @@ import type {
 } from './provider.js';
 
 interface BbbConfig {
-  /** مثال: https://bbb.lingotalk.ir/bigbluebutton/api/ */
+  /** مثال: https://bbb.talkora.ir/bigbluebutton/api/ */
   endpoint: string;
   sharedSecret: string;
   /** وب‌هوکی که BBB رویداد پایان جلسه را به آن می‌فرستد */
@@ -82,7 +82,7 @@ export class BigBlueButtonProvider implements MeetingProvider {
       duration: String(input.durationMinutes + 15), // حاشیه برای تأخیر
       muteOnStart: input.muteOnStart ? 'true' : 'false',
       guestPolicy: input.lobby ? 'ASK_MODERATOR' : 'ALWAYS_ACCEPT',
-      logoutURL: `https://app.lingotalk.ir/${input.instituteId}/teach`,
+      logoutURL: `https://app.talkora.ir/${input.instituteId}/teach`,
       // متادیتا برای تطبیق در وب‌هوک و کارگر ضبط
       'meta-lt-session': input.onlineSessionId,
       'meta-lt-institute': input.instituteId,

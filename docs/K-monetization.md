@@ -5,7 +5,7 @@
 **Price on the value metric the customer already thinks in: active students.**
 
 An institute measures its own size in students. It sets its own prices per student. Pricing
-Lingo Talk per student means the bill grows exactly when the customer's ability to pay grows,
+Talkora per student means the bill grows exactly when the customer's ability to pay grows,
 and it never punishes them for adding staff — which is what makes per-seat pricing so
 destructive in this market. A 400-student institute with 30 part-time teachers cannot pay
 per user, and per-user pricing would push them to share logins, which destroys the audit
@@ -103,7 +103,7 @@ logic* should hold:
 **Conversion mechanic:** the trial-to-paid decision is not driven by the countdown. It's driven
 by whether the institute has entered real data. The in-product conversion prompt should
 therefore reference their own data: *"You've enrolled 43 students and collected 128,000,000
-IRR this month in Lingo Talk. Keep going →"* That reframes the price against value they've
+IRR this month in Talkora. Keep going →"* That reframes the price against value they've
 already realised.
 
 ---
@@ -233,6 +233,6 @@ without human involvement.
 | **Annual prepay discount** | 20% — improves cash flow and locks in retention through at least two term cycles, which is when the product proves itself |
 | **Term-timing campaigns** | Buying intent spikes 6–8 weeks before term start. Concentrate spend there; it is the only moment an institute has the bandwidth to consider changing systems |
 | **Migration offer** | "Bring your Excel file, we'll import it free" — removes the single biggest adoption barrier and is cheap to deliver |
-| **Public certificate verification** | Every certificate carries a verification link to a Lingo Talk page. Free branded distribution to students and employers |
+| **Public certificate verification** | Every certificate carries a verification link to a Talkora page. Free branded distribution to students and employers |
 | **Institute directory (Phase 3)** | An opt-in public directory of institutes on the platform. Genuine value to them, genuine SEO to us — but only opt-in, and never a marketplace that puts us between them and their students |
 | **Coupon codes** | Platform-level coupons for campaigns, events, and partnerships, with redemption tracking that feeds the funnel report |

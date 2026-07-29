@@ -1,8 +1,8 @@
-# Lingo Talk — Product Blueprint
+# Talkora — Product Blueprint
 
 **The operating system for language institutes.**
 
-Lingo Talk is a multi-tenant SaaS platform that gives every language institute a private
+Talkora is a multi-tenant SaaS platform that gives every language institute a private
 workspace to run its entire operation: admissions, academics, scheduling, attendance,
 exams, tuition, communication, and reporting — in one system instead of a spreadsheet,
 a WhatsApp group, a paper ledger, and someone's memory.
@@ -40,6 +40,8 @@ sharpened. Read in order for the full picture; jump directly for a specific work
 | Q | [کلاس آنلاین](docs/Q-online-classroom.md) | Virtual classroom: provider adapter, BBB vs Meet trade-off, auto-attendance, recordings |
 | R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
 | S | [استقرار روی زیرساخت ایران](docs/S-deployment.md) | Iranian hosting, OTP, BBB/Meet wiring, automatic recording upload |
+| T | [بالا آوردن سایت](docs/T-going-live.md) | Step-by-step for the actual Plesk host and talkora.ir |
+| — | [CUSTOMIZE.md](CUSTOMIZE.md) | What to change before the site goes public: phone, prices, form endpoint |
 
 ---
 
@@ -97,7 +99,7 @@ The Persian marketing site is built and reviewable.
 |---|---|
 | `site/index.html` | The site. Persian, RTL, light + dark. Fonts loaded from `site/fonts/` — this is the version to deploy |
 | `site/fonts/dana-*.woff2` | Dana FaNum, converted to woff2 (~27 KB each) and self-hosted |
-| `site/build-standalone.py` | Inlines the fonts as data-URIs → `build/lingotalk-preview.html`, a single shareable file |
+| `site/build-standalone.py` | Inlines the fonts as data-URIs → `build/talkora-preview.html`, a single shareable file |
 
 Built to the rules in [M](docs/M-ui-ux-direction.md) and [P](docs/P-iran-market.md):
 zero external requests, Persian numerals, `tabular-nums`, RTL logical properties,
@@ -108,7 +110,7 @@ Interactive: the hero is a working attendance widget (tap a student, submit, it 
 plus role tabs, a pricing calculator, and a validating demo form that accepts Persian digits.
 
 ```bash
-python3 site/build-standalone.py    # → build/lingotalk-preview.html
+python3 site/build-standalone.py    # → build/talkora-preview.html
 ```
 
 **Not real yet:** customer counts, testimonials, and prices are placeholders, flagged by a
@@ -123,7 +125,7 @@ Interactive prototype of all three dashboards, in Persian.
 | File | What it is |
 |---|---|
 | `app/index.html` | The prototype. Hash-routed, mock data, fonts from `site/fonts/` |
-| `app/build-standalone.py` | Inlines fonts → `build/lingotalk-app-preview.html` |
+| `app/build-standalone.py` | Inlines fonts → `build/talkora-app-preview.html` |
 
 **Four flows are built end to end** — the ones with the highest daily use:
 
@@ -140,7 +142,7 @@ Interactive prototype of all three dashboards, in Persian.
 Other sections render an honest "not built in this prototype" state rather than a dead link.
 
 ```bash
-python3 app/build-standalone.py    # → build/lingotalk-app-preview.html
+python3 app/build-standalone.py    # → build/talkora-app-preview.html
 ```
 
 ---

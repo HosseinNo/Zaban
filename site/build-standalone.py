@@ -2,7 +2,7 @@
 """
 از site/index.html یک فایل تک‌تکه می‌سازد که فونت‌ها به‌صورت data-URI داخلش‌اند.
 
-خروجی: build/lingotalk-preview.html
+خروجی: build/talkora-preview.html
 کاربرد: پیش‌نمایش، ارسال برای بازبینی، یا هر جایی که فقط یک فایل می‌شود گذاشت.
 
 نسخهٔ اصلی (site/index.html) فونت‌ها را از fonts/ می‌خواند و همان نسخه‌ای است
@@ -18,7 +18,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "index.html"
 OUT_DIR = ROOT.parent / "build"
-OUT = OUT_DIR / "lingotalk-preview.html"
+OUT = OUT_DIR / "talkora-preview.html"
 
 FONTS = {
     "fonts/dana-light.woff2": ROOT / "fonts" / "dana-light.woff2",

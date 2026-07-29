@@ -79,10 +79,10 @@ docker compose exec app npm run migrate
 docker compose exec app npm run seed:levels   # سری‌های کتاب آماده
 
 # ۵) گواهی TLS
-docker compose exec nginx certbot --nginx -d lingotalk.ir -d app.lingotalk.ir
+docker compose exec nginx certbot --nginx -d talkora.ir -d app.talkora.ir
 
 # ۶) سلامت
-curl -s https://app.lingotalk.ir/healthz | jq
+curl -s https://app.talkora.ir/healthz | jq
 ```
 
 فایل‌ها: `infra/docker-compose.yml`، `infra/nginx.conf`، `infra/bootstrap.sh`،
@@ -124,7 +124,7 @@ curl -s https://app.lingotalk.ir/healthz | jq
 نصب روی VPS جدا:
 ```bash
 wget -qO- https://ubuntu.bigbluebutton.org/bbb-install-3.0.sh | bash -s -- \
-  -v jammy-300 -s bbb.lingotalk.ir -e admin@lingotalk.ir -g
+  -v jammy-300 -s bbb.talkora.ir -e admin@talkora.ir -g
 bbb-conf --secret     # این کلید در .env می‌رود
 ```
 

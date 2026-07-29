@@ -2,7 +2,7 @@
 
 ## A.1 One-sentence definition
 
-**Lingo Talk is a multi-tenant SaaS platform that runs the complete operation of a language
+**Talkora is a multi-tenant SaaS platform that runs the complete operation of a language
 institute — admissions, academics, scheduling, attendance, assessment, tuition, and
 communication — in one private workspace per institute.**
 
@@ -10,7 +10,7 @@ communication — in one private workspace per institute.**
 
 Not a website builder. Not an LMS. Not an accounting package. Not a video-conferencing tool.
 
-Lingo Talk is an **operational system of record**. The defining question for any feature is:
+Talkora is an **operational system of record**. The defining question for any feature is:
 *"Does the institute's front desk, academic manager, or owner make a decision or perform a
 task with this every week?"* If no, it does not belong in the core product.
 
@@ -29,7 +29,7 @@ Layers two and three are where institutes actually feel the value and where the 
 
 1. **One workspace, one truth.**
    Every student, payment, class, and message lives in a single tenant. No parallel
-   spreadsheets. If it isn't in Lingo Talk, it didn't happen.
+   spreadsheets. If it isn't in Talkora, it didn't happen.
 
 2. **Term-shaped, not calendar-shaped.**
    Language institutes operate in terms. The entire product — enrolment, finance, reporting,
@@ -54,7 +54,7 @@ Layers two and three are where institutes actually feel the value and where the 
    Cross-tenant data leakage is the single existential failure mode for this business. Tenant
    scoping is enforced at the data layer, not in application code paths.
 
-## A.4 What Lingo Talk is deliberately *not* (v1 non-goals)
+## A.4 What Talkora is deliberately *not* (v1 non-goals)
 
 | Not this | Why | What we do instead |
 |---|---|---|
@@ -73,12 +73,12 @@ scope creep into LMS and video, not from missing features.
 ```
                     ┌──────────────────────────────────────────┐
                     │        PUBLIC MARKETING SITE             │
-                    │   lingotalk.com — sells the platform     │
+                    │   talkora.com — sells the platform     │
                     └──────────────┬───────────────────────────┘
                                    │ demo request / trial signup
                                    ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                     LINGO TALK PLATFORM (multi-tenant)                    │
+│                     TALKORA PLATFORM (multi-tenant)                    │
 │                                                                           │
 │  ┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐    │
 │  │  TENANT: Institute│   │  TENANT: Institute│   │  TENANT: Tutor    │    │
@@ -129,7 +129,7 @@ Re-enrolment        Attendance          Debt tracking      Delivery logs      Cl
 |---|---|
 | Weekly active institutes / paying institutes | > 90% |
 | Attendance marked within 24h of class | > 85% |
-| Payments recorded in Lingo Talk vs. reported total | > 95% |
+| Payments recorded in Talkora vs. reported total | > 95% |
 | Institutes using the re-enrolment flow at term rollover | > 60% |
 | Median time from lead capture → enrolled | < 5 days |
 
@@ -144,16 +144,16 @@ Re-enrolment        Attendance          Debt tracking      Delivery logs      Cl
 | Payback period on CAC | < 6 months |
 
 **The one metric that matters:** *percentage of an institute's enrolments that were created
-in Lingo Talk in the last 30 days.* If that number is above 90%, the institute cannot leave.
+in Talkora in the last 30 days.* If that number is above 90%, the institute cannot leave.
 If it is below 50%, they are running a parallel system and will churn. Every product decision
 should be evaluated against its effect on this number.
 
 ## A.8 Positioning statement
 
 > For language institutes that have outgrown spreadsheets but can't afford enterprise school
-> software, **Lingo Talk** is the operating platform that runs registration, classes, tuition,
+> software, **Talkora** is the operating platform that runs registration, classes, tuition,
 > and communication in one place. Unlike generic school-management systems built for K-12
-> curricula, Lingo Talk is built around the way language institutes actually work — terms,
+> curricula, Talkora is built around the way language institutes actually work — terms,
 > levels, placement tests, instalments, and small classes that fill or don't.
 
 ## A.9 Brand character

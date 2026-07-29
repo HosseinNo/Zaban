@@ -2,7 +2,7 @@
 
 ## M.1 The design thesis
 
-**Lingo Talk should look like a well-made instrument, not a marketing campaign.**
+**Talkora should look like a well-made instrument, not a marketing campaign.**
 
 The person using this is at a front desk with a queue of parents, or a teacher in a corridor
 with four minutes between classes. They are not browsing. They are working. Every design

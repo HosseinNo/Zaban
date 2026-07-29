@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# آماده‌سازی یک سرور تازهٔ اوبونتو ۲۴.۰۴ برای لینگوتاک (سند S.3)
+# آماده‌سازی یک سرور تازهٔ اوبونتو ۲۴.۰۴ برای تاکورا (سند S.3)
 set -euo pipefail
 
-APP_USER="${APP_USER:-lingotalk}"
+APP_USER="${APP_USER:-talkora}"
 SSH_PORT="${SSH_PORT:-22}"
 
 echo "── به‌روزرسانی سیستم"

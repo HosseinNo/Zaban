@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<title>لینگوتاک؛ سامانهٔ مدیریت آموزشگاه زبان</title>
+<title>تاکورا | سامانهٔ مدیریت آموزشگاه زبان</title>
 
 <style>
 /* ============================================================
-   LINGO TALK — سایت معرفی
+   TALKORA — سایت معرفی
    سیستم طراحی: مطابق docs/M-ui-ux-direction.md و docs/P-iran-market.md
    ============================================================ */
 
@@ -129,18 +129,6 @@ body.lt{
 .btn--lg{min-block-size:54px; padding-inline:28px; font-size:16.5px}
 .btn--block{inline-size:100%}
 
-/* ---------- نوار پیش‌نمایش ---------- */
-.preview-bar{
-  background:var(--accent-soft); color:var(--ink); border-block-end:1px solid var(--line);
-  font-size:13.5px; position:relative; z-index:60;
-}
-.preview-bar .wrap{display:flex; align-items:center; gap:12px; padding-block:9px}
-.preview-bar b{color:var(--accent)}
-.preview-bar .x{
-  margin-inline-start:auto; background:none; border:none; color:var(--ink-3);
-  font-size:20px; line-height:1; padding:4px 8px; border-radius:var(--r-sm);
-}
-.preview-bar .x:hover{background:rgba(0,0,0,.06); color:var(--ink)}
 
 /* ---------- هدر ---------- */
 .hdr{position:sticky; top:0; z-index:50; background:color-mix(in srgb, var(--paper) 88%, transparent);
@@ -635,18 +623,11 @@ body.lt{
 
 <div class="lt" id="lt-root" dir="rtl" lang="fa">
 
-<!-- ═══ نوار پیش‌نمایش ═══ -->
-<div class="preview-bar" id="pv">
-  <div class="wrap">
-    <span><b>پیش‌نمایش طراحی:</b> متن‌ها و قیمت‌ها نمونه است. آمار مشتری و نقل‌قول واقعی هنوز وارد نشده.</span>
-    <button class="x" id="pvx" aria-label="بستن نوار پیش‌نمایش">×</button>
-  </div>
-</div>
 
 <!-- ═══ هدر ═══ -->
 <header class="hdr">
   <div class="wrap">
-    <a href="#" class="logo"><span class="logo-mark">ل</span> لینگوتاک</a>
+    <a href="#" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
     <nav class="nav">
       <a href="#modules">امکانات</a>
       <a href="#roles">برای چه کسانی</a>
@@ -684,7 +665,7 @@ body.lt{
       <div>
         <h1>ثبت‌نام، کلاس‌بندی، شهریه و حضور و غیاب<br><span class="hl">همه در یک سامانه</span></h1>
         <p class="hero-sub">
-          لینگوتاک جای فایل اکسل، دفتر حضور و غیاب و گروه واتساپ را می‌گیرد.
+          تاکورا جای فایل اکسل، دفتر حضور و غیاب و گروه واتساپ را می‌گیرد.
           ساخته‌شده برای آموزشگاه‌های زبان ایران: تقویم شمسی، شهریهٔ قسطی،
           کارت به کارت، پیامک خدماتی و روزهای زوج و فرد.
         </p>
@@ -779,7 +760,7 @@ body.lt{
 <section class="sec spine">
   <div class="wrap">
     <div class="eyebrow">چطور کار می‌کند</div>
-    <h2 class="h-sec">لینگوتاک دور ترم می‌چرخد، نه دور تقویم میلادی</h2>
+    <h2 class="h-sec">تاکورا دور ترم می‌چرخد، نه دور تقویم میلادی</h2>
     <p class="lead">
       آموزشگاه زبان با ترم زندگی می‌کند. هر امکان محصول دقیقاً به همان هفته‌ای وصل است
       که واقعاً به آن نیاز دارید: از شش هفته قبل از شروع تا بستن دفتر ترم.
@@ -876,10 +857,10 @@ body.lt{
 
           <div class="frame on" data-f="0">
             <div style="font-size:13px;font-weight:700;margin-bottom:9px">کلاس‌های ترم زمستان ۱۴۰۵</div>
-            <div class="mini-row"><span class="mini-av">۱</span><span>AEF 2A · فرد ۱۸:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
-            <div class="mini-row"><span class="mini-av">۲</span><span>AEF 2B · زوج ۱۶:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
-            <div class="mini-row" style="background:var(--bad-soft)"><span class="mini-av">۳</span><span>Top Notch 1B · فرد ۱۸:۰۰</span><span class="mini-tag t-bad">تداخل مدرس</span></div>
-            <div class="mini-row"><span class="mini-av">۴</span><span>IELTS · پنجشنبه ۰۹:۰۰</span><span class="mini-tag t-ok">علی مرادی</span></div>
+            <div class="mini-row"><span class="mini-av">۱</span><span>AEF 2A، فرد ۱۸:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
+            <div class="mini-row"><span class="mini-av">۲</span><span>AEF 2B، زوج ۱۶:۰۰</span><span class="mini-tag t-ok">سارا نوری</span></div>
+            <div class="mini-row" style="background:var(--bad-soft)"><span class="mini-av">۳</span><span>Top Notch 1B، فرد ۱۸:۰۰</span><span class="mini-tag t-bad">تداخل مدرس</span></div>
+            <div class="mini-row"><span class="mini-av">۴</span><span>IELTS، پنجشنبه ۰۹:۰۰</span><span class="mini-tag t-ok">علی مرادی</span></div>
             <div class="mini-cal">
               <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span>
               <span class="cl">۱</span><span>۲</span><span class="cl">۳</span><span>۴</span><span class="cl">۵</span><span>۶</span><span class="hol">۷</span>
@@ -890,17 +871,17 @@ body.lt{
           <div class="frame" data-f="1">
             <div style="font-size:13px;font-weight:700;margin-bottom:9px">ثبت‌نام هستی کریمی</div>
             <div class="mini-row"><span>سطح از آزمون تعیین سطح</span><span class="mini-tag t-info">AEF 2A</span></div>
-            <div class="mini-row"><span>کلاس · روزهای فرد ۱۸:۰۰</span><span class="mini-tag t-warn">۳ صندلی مانده</span></div>
+            <div class="mini-row"><span>کلاس، روزهای فرد ۱۸:۰۰</span><span class="mini-tag t-warn">۳ صندلی مانده</span></div>
             <div class="mini-row"><span>شهریه پس از تخفیف</span><span class="mini-tag t-ok">۱۱٬۶۵۰٬۰۰۰</span></div>
             <div style="margin-top:10px;font-size:11.5px;color:var(--ink-3)">قسط‌بندی</div>
-            <div class="mini-row"><span>پیش‌پرداخت · امروز</span><span class="mini-tag t-ok">۴٬۶۶۰٬۰۰۰</span></div>
-            <div class="mini-row"><span>قسط دوم · ۲۰ بهمن</span><span class="mini-tag t-info">۳٬۵۰۰٬۰۰۰</span></div>
-            <div class="mini-row"><span>قسط سوم · ۲۰ اسفند</span><span class="mini-tag t-info">۳٬۴۹۰٬۰۰۰</span></div>
+            <div class="mini-row"><span>پیش‌پرداخت، امروز</span><span class="mini-tag t-ok">۴٬۶۶۰٬۰۰۰</span></div>
+            <div class="mini-row"><span>قسط دوم، ۲۰ بهمن</span><span class="mini-tag t-info">۳٬۵۰۰٬۰۰۰</span></div>
+            <div class="mini-row"><span>قسط سوم، ۲۰ اسفند</span><span class="mini-tag t-info">۳٬۴۹۰٬۰۰۰</span></div>
           </div>
 
           <div class="frame" data-f="2">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-              <span style="font-size:13px;font-weight:700">AEF 2A · جلسهٔ ۷</span>
+              <span style="font-size:13px;font-weight:700">AEF 2A، جلسهٔ ۷</span>
               <span class="mini-tag t-info" style="margin:0">BigBlueButton</span>
               <span class="mini-tag t-bad" style="margin-inline-start:auto">در حال ضبط</span>
             </div>
@@ -1429,7 +1410,7 @@ body.lt{
         <div class="form-ok" id="formOk">
           <div class="ic"><i class="ck"></i></div>
           <h3>درخواست‌تان ثبت شد</h3>
-          <p>تا <b>پایان روز کاری بعد</b> با شمارهٔ <span class="num" id="okPhone" dir="ltr"></span> تماس می‌گیریم.<br>اگر عجله دارید: <span class="num" dir="ltr">۰۲۱-۱۲۳۴۵۶۷۸</span></p>
+          <p>تا <b>پایان روز کاری بعد</b> با شمارهٔ <span class="num" id="okPhone" dir="ltr"></span> تماس می‌گیریم.<br>یا همین حالا برایمان بنویسید: <span dir="ltr">info@talkora.ir</span></p>
         </div>
       </div>
     </div>
@@ -1441,7 +1422,7 @@ body.lt{
   <div class="wrap">
     <div class="ftr-grid">
       <div>
-        <a href="#" class="logo"><span class="logo-mark">ل</span> لینگوتاک</a>
+        <a href="#" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
         <p class="ftr-about">سامانهٔ یکپارچهٔ مدیریت آموزشگاه‌های زبان: ثبت‌نام، کلاس، شهریه، حضور و غیاب و گزارش، در یک جا.</p>
         <div class="badges">
           <div class="badge">نماد اعتماد<br>الکترونیکی</div>
@@ -1470,7 +1451,7 @@ body.lt{
       <div>
         <h5>تماس</h5>
         <ul>
-          <li><a href="tel:+982112345678" class="num" dir="ltr">۰۲۱-۱۲۳۴۵۶۷۸</a></li>
+          <li><a href="mailto:info@talkora.ir">info@talkora.ir</a></li>
           <li><a href="mailto:info@talkora.ir">info@talkora.ir</a></li>
           <li><a href="#">راهنما و پشتیبانی</a></li>
           <li><a href="#">وبلاگ</a></li>
@@ -1478,7 +1459,7 @@ body.lt{
       </div>
     </div>
     <div class="ftr-btm">
-      <span>© <span class="num">۱۴۰۵</span> لینگوتاک، همهٔ حقوق محفوظ است.</span>
+      <span>© <span class="num">۱۴۰۵</span> تاکورا، همهٔ حقوق محفوظ است.</span>
       <span class="sp">
         <a href="#">قوانین</a>
         <a href="#">حریم خصوصی</a>
@@ -1514,9 +1495,6 @@ body.lt{
   }
 
   /* ---------- نوار پیش‌نمایش ---------- */
-  var pv = document.getElementById("pv"), pvx = document.getElementById("pvx");
-  if(pvx) pvx.addEventListener("click", function(){ pv.remove(); });
-
   /* ---------- حالت روشن / تاریک ---------- */
   var themeBtn = document.getElementById("theme");
   if(themeBtn){

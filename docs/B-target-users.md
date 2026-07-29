@@ -98,7 +98,7 @@ financial and attendance notifications and can log in with their own credentials
 to their children. Not a separate role in v1 — a relationship on the student record.
 
 ### 5. Super admin (platform team)
-**Who:** Lingo Talk founders, ops, and support staff.
+**Who:** Talkora founders, ops, and support staff.
 **Goal:** Keep tenants healthy, paying, and supported; keep the platform safe.
 **Daily:** Trials expiring, failed payments, support queue, error rates.
 **Success:** Sees a tenant sliding toward churn before the tenant does.
@@ -107,7 +107,7 @@ data. Impersonation ("view as") requires a reason, is time-boxed, is announced t
 owner, and is fully audit-logged. This is a trust requirement, not a compliance checkbox.
 
 ### 6. Support / staff member (platform-side, restricted)
-**Who:** Support agent or onboarding specialist at Lingo Talk.
+**Who:** Support agent or onboarding specialist at Talkora.
 **Goal:** Resolve tickets fast.
 **Sees:** Ticket queue, tenant metadata, subscription state, configuration — not student
 personal data or financial records unless granted scoped, expiring access by the tenant.

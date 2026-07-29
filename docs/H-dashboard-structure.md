@@ -5,7 +5,7 @@
 **A dashboard is a launcher, not a report.**
 
 The most common failure in operational SaaS is a dashboard full of charts that nobody acts on.
-Every widget in Lingo Talk must pass one test:
+Every widget in Talkora must pass one test:
 
 > *Does this either (a) tell the user something they must act on today, or (b) let them start
 > a task they perform frequently?*

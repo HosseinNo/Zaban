@@ -16,7 +16,7 @@ LMSs model content and ignore money. CRMs model the sale and ignore the delivery
 institute ends up with three tools that don't talk to each other and a fourth spreadsheet to
 reconcile them.
 
-**Lingo Talk is the operating system for these institutes.** One private workspace per
+**Talkora is the operating system for these institutes.** One private workspace per
 institute holding students, classes, terms, tuition, attendance, grades, and communication in
 one connected data model — so that any question spanning two of them is answerable instantly,
 and the work between them stops being manual.
@@ -139,7 +139,7 @@ three days from signup to first real enrolment, measured as a product metric.
   phase 2.
 
 ### Weeks 19–30 — The design-partner term
-- All three partners run a **complete real term** in Lingo Talk. Enrolment through term close.
+- All three partners run a **complete real term** in Talkora. Enrolment through term close.
 - The success criterion is unambiguous: **can they run the term without opening Excel?** Every
   time they fall back to a spreadsheet, that's a specific product gap — log it, fix it.
 - Measure: onboarding time, attendance marking rate, payments recorded in-product vs. actual,

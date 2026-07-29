@@ -171,7 +171,7 @@ ssh root@YOUR_SERVER_IP
 
 # ۲) پروژه را بیاورید
 apt-get update && apt-get install -y git
-git clone YOUR_REPO_URL /opt/lingotalk && cd /opt/lingotalk
+git clone YOUR_REPO_URL /opt/talkora && cd /opt/talkora
 
 # ۳) سرور را آماده کنید — فایروال، SSH فقط با کلید، داکر، ساعت UTC
 bash infra/bootstrap.sh
@@ -184,7 +184,7 @@ nano infra/.env          # رمز پایگاه داده، کلید پیامک، 
 cd infra && docker compose up -d
 
 # ۶) پایگاه داده
-docker compose exec -T db psql -U lingotalk -d lingotalk < ../server/db/001_init.sql
+docker compose exec -T db psql -U talkora -d talkora < ../server/db/001_init.sql
 
 # ۷) گواهی TLS
 docker compose exec nginx certbot --nginx -d YOUR-DOMAIN
@@ -242,7 +242,7 @@ Object Storage برای میزبانی استاتیک استفاده کنید.
 ## T.5 بعد از بالا آمدن
 
 - [ ] `robots.txt` را باز کنید و `REPLACE-WITH-YOUR-DOMAIN` را با دامنهٔ خودتان عوض کنید
-- [ ] در سایت، شمارهٔ تماس و ایمیل ساختگی (`۰۲۱-۱۲۳۴۵۶۷۸` و `hello@lingotalk.ir`) را عوض کنید
+- [ ] در سایت، شمارهٔ تماس و ایمیل ساختگی (`۰۲۱-۱۲۳۴۵۶۷۸` و `hello@talkora.ir`) را عوض کنید
 - [ ] نوار زرد «پیش‌نمایش طراحی» را حذف کنید (در `site/index.html`، بخش `preview-bar`)
 - [ ] قیمت‌های نمونه را با قیمت واقعی جایگزین کنید
 - [ ] نماد اعتماد الکترونیکی را بگیرید و لوگویش را در فوتر بگذارید — برای درگاه پرداخت لازم است

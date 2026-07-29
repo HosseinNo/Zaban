@@ -11,7 +11,7 @@ using it for everything, and churn. There is no partial adoption of an operation
 either becomes the source of truth or it becomes shelfware.
 
 **The MVP scoping test:** *Can an institute of 150 students run their entire Autumn term in
-Lingo Talk, from enrolment through term close, without opening Excel once?* If a feature's
+Talkora, from enrolment through term close, without opening Excel once?* If a feature's
 absence breaks that sentence, it's in the MVP. If not, it isn't.
 
 ---

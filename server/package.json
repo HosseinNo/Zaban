@@ -1,5 +1,5 @@
 {
-  "name": "lingotalk-server",
+  "name": "talkora-server",
   "private": true,
   "type": "module",
   "scripts": {

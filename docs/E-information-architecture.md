@@ -2,16 +2,16 @@
 
 ## E.1 Top-level surfaces
 
-Lingo Talk has five distinct surfaces, each with its own navigation model and URL space.
+Talkora has five distinct surfaces, each with its own navigation model and URL space.
 
 | Surface | Audience | Host pattern | Nav model |
 |---|---|---|---|
-| **Marketing site** | Prospective institutes | `lingotalk.com` | Horizontal top nav |
-| **Institute app** | Managers, front desk, finance | `app.lingotalk.com/{tenant}` | Persistent sidebar + top bar |
-| **Teacher panel** | Teachers | `app.lingotalk.com/{tenant}/teach` | Mobile bottom nav / desktop sidebar |
-| **Student portal** | Students, guardians | `app.lingotalk.com/{tenant}/me` | Mobile bottom nav / desktop sidebar |
-| **Super admin console** | Platform team | `admin.lingotalk.com` | Sidebar, visually distinct |
-| *(Institute public page)* | Prospective students | `{tenant}.lingotalk.com` or custom domain | Simple, institute-branded |
+| **Marketing site** | Prospective institutes | `talkora.com` | Horizontal top nav |
+| **Institute app** | Managers, front desk, finance | `app.talkora.com/{tenant}` | Persistent sidebar + top bar |
+| **Teacher panel** | Teachers | `app.talkora.com/{tenant}/teach` | Mobile bottom nav / desktop sidebar |
+| **Student portal** | Students, guardians | `app.talkora.com/{tenant}/me` | Mobile bottom nav / desktop sidebar |
+| **Super admin console** | Platform team | `admin.talkora.com` | Sidebar, visually distinct |
+| *(Institute public page)* | Prospective students | `{tenant}.talkora.com` or custom domain | Simple, institute-branded |
 
 **Routing principle:** the tenant is always resolved from the URL, never from session state.
 A user with access to two institutes has two distinct URLs, not a hidden toggle. This prevents
@@ -27,7 +27,7 @@ knows which surface they're in, reinforced by a distinct top-bar treatment per s
 ## E.2 Public marketing site
 
 ```
-lingotalk.com
+talkora.com
 │
 ├── Home                                    /
 │   ├── Hero + primary CTA
@@ -117,7 +117,7 @@ lingotalk.com
 ### Institute public page (tenant-owned, template-based)
 
 ```
-{tenant}.lingotalk.com
+{tenant}.talkora.com
 ├── Home (institute landing)                /
 ├── Courses                                 /courses
 │   └── Course detail                       /courses/{slug}
@@ -139,7 +139,7 @@ online in ten minutes — not to compete with website builders.
 The primary surface. Sidebar sections, ordered by daily frequency of use.
 
 ```
-app.lingotalk.com/{tenant}
+app.talkora.com/{tenant}
 │
 ├── ⌂ Overview                                      /
 │   ├── Today
@@ -342,7 +342,7 @@ Mitigations for the length:
 Optimised for a phone in a corridor between classes. Five destinations maximum.
 
 ```
-app.lingotalk.com/{tenant}/teach
+app.talkora.com/{tenant}/teach
 │
 ├── ▸ Today                              /teach                    [bottom nav 1]
 │   ├── Next class card (prominent)
@@ -393,7 +393,7 @@ boundary and a cognitive-load decision.
 Answers four questions: *when, what, how much, how am I doing.*
 
 ```
-app.lingotalk.com/{tenant}/me
+app.talkora.com/{tenant}/me
 │
 ├── ⌂ Home                               /me                       [bottom nav 1]
 │   ├── Next class card
@@ -452,7 +452,7 @@ Visually distinct from the tenant app (different accent, permanent environment b
 platform staff can never confuse the two.
 
 ```
-admin.lingotalk.com
+admin.talkora.com
 │
 ├── ⌂ Platform overview                          /
 │   ├── MRR / ARR, growth, churn

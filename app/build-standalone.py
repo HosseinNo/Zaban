@@ -2,7 +2,7 @@
 """
 از app/index.html یک فایل تک‌تکه با فونت‌های جاسازی‌شده می‌سازد.
 
-خروجی: build/lingotalk-app-preview.html
+خروجی: build/talkora-app-preview.html
 
 نسخهٔ اصلی (app/index.html) فونت را از site/fonts/ می‌خواند و همان است
 که باید روی هاست برود؛ این خروجی فقط برای پیش‌نمایش و بازبینی است.
@@ -17,7 +17,7 @@ import sys
 APP = pathlib.Path(__file__).resolve().parent
 ROOT = APP.parent
 SRC = APP / "index.html"
-OUT = ROOT / "build" / "lingotalk-app-preview.html"
+OUT = ROOT / "build" / "talkora-app-preview.html"
 
 FONTS = {
     "../site/fonts/dana-light.woff2": ROOT / "site" / "fonts" / "dana-light.woff2",

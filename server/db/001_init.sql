@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- لینگوتاک — مهاجرت اولیه
+-- تاکورا — مهاجرت اولیه
 -- مطابق سند I (مدل داده) و Q (کلاس آنلاین)
 --
 -- راهبرد چندمستأجری: یک اسکیما، جداسازی سطر-به-سطر با RLS.
@@ -11,8 +11,8 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- نقشی که اپ با آن وصل می‌شود؛ عمداً BYPASSRLS ندارد.
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'lingotalk_app') THEN
-    CREATE ROLE lingotalk_app LOGIN;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'talkora_app') THEN
+    CREATE ROLE talkora_app LOGIN;
   END IF;
 END $$;
 
@@ -358,7 +358,7 @@ BEGIN
       USING (institute_id = nullif(current_setting('app.institute_id', true), '')::uuid)
       WITH CHECK (institute_id = nullif(current_setting('app.institute_id', true), '')::uuid)
     $f$, t);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO lingotalk_app', t);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO talkora_app', t);
   END LOOP;
 END $$;
 
@@ -366,11 +366,11 @@ ALTER TABLE institute ENABLE ROW LEVEL SECURITY;
 ALTER TABLE institute FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_self ON institute
   USING (id = nullif(current_setting('app.institute_id', true), '')::uuid);
-GRANT SELECT, UPDATE ON institute TO lingotalk_app;
+GRANT SELECT, UPDATE ON institute TO talkora_app;
 
-GRANT SELECT, INSERT, UPDATE ON app_user TO lingotalk_app;
-GRANT INSERT, SELECT ON audit_log TO lingotalk_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO lingotalk_app;
+GRANT SELECT, INSERT, UPDATE ON app_user TO talkora_app;
+GRANT INSERT, SELECT ON audit_log TO talkora_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO talkora_app;
 
 -- ── سنجه‌های یکپارچگی (بند I.11) ────────────────────────────────────
 -- ظرفیت کلاس به‌صورت تراکنشی چک می‌شود، وگرنه دو ثبت‌نام هم‌زمان
