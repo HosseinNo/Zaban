@@ -6,6 +6,7 @@
  */
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
+require __DIR__ . '/_ctx.php';
 
 require_post();
 
@@ -96,14 +97,80 @@ if (!$user) {
        ->execute([now_utc(), now_utc(), $user['id']]);
 }
 
-issue_session((string)$user['id']);
-audit('auth.login', (string)$user['id'], ['new' => $isNew]);
+$uid = (string)$user['id'];
+
+/*
+ * ساخت آموزشگاه برای مدیر تازه.
+ *
+ * فقط وقتی نام آموزشگاه داده شده *و* کاربر هنوز هیچ عضویتی ندارد.
+ * شرط دوم مهم است: وگرنه کسی که از قبل زبان‌آموز یک آموزشگاه است
+ * می‌توانست با فرستادن instituteName در درخواست ورود، برای خودش
+ * آموزشگاه بسازد و مدیر شود.
+ */
+if ($instName !== '' && !has_any_membership($db, $uid)) {
+    $iid = bin2hex(random_bytes(16));
+    $db->prepare('INSERT INTO institute (id, name, owner_user_id, created_at) VALUES (?,?,?,?)')
+       ->execute([$iid, $instName, $uid, now_utc()]);
+    $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
+       ->execute([bin2hex(random_bytes(16)), $iid, $uid, 'manager', 'active', now_utc()]);
+    audit('institute.created', $uid, ['institute' => $iid, 'name' => $instName]);
+}
+
+/*
+ * پذیرش دعوت‌ها.
+ *
+ * مدیر با شماره دعوت می‌کند و حسابی ساخته نمی‌شود. عضویت دقیقاً همین
+ * لحظه ساخته می‌شود — بعد از اینکه صاحب شماره با کد پیامکی ثابت کرد
+ * خودش است. یعنی هیچ‌کس با شمارهٔ دیگری عضو آموزشگاه نمی‌شود.
+ */
+$invites = $db->prepare('SELECT * FROM invite WHERE phone = ? AND accepted_at IS NULL');
+$invites->execute([$phone]);
+$accepted = 0;
+foreach ($invites->fetchAll() as $inv) {
+    try {
+        $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
+           ->execute([bin2hex(random_bytes(16)), $inv['institute_id'], $uid, $inv['role'], 'active', now_utc()]);
+    } catch (PDOException $e) {
+        // از قبل عضو بوده — دعوت باز هم باید بسته شود
+    }
+    if (!empty($inv['class_id'])) {
+        try {
+            $db->prepare('INSERT INTO enrolment (id, institute_id, class_id, student_user_id, status, created_at) VALUES (?,?,?,?,?,?)')
+               ->execute([bin2hex(random_bytes(16)), $inv['institute_id'], $inv['class_id'], $uid, 'active', now_utc()]);
+        } catch (PDOException $e) {
+            // از قبل ثبت‌نام بوده
+        }
+    }
+    $db->prepare('UPDATE invite SET accepted_at = ? WHERE id = ?')->execute([now_utc(), $inv['id']]);
+    $accepted++;
+}
+if ($accepted > 0) audit('invite.accepted', $uid, ['count' => $accepted]);
+
+// نقشِ واقعی از عضویت می‌آید، نه از ستون app_user.role که فقط یادگاری ثبت‌نام است
+$st = $db->prepare(
+    'SELECT m.role, i.name FROM membership m JOIN institute i ON i.id = m.institute_id
+      WHERE m.user_id = ? AND m.status = ? ORDER BY m.created_at ASC LIMIT 1'
+);
+$st->execute([$uid, 'active']);
+$mem = $st->fetch();
+
+issue_session($uid);
+audit('auth.login', $uid, ['new' => $isNew]);
 
 ok([
     'isNew' => $isNew,
     'user'  => [
         'name'      => $user['full_name'],
-        'role'      => $user['role'],
-        'institute' => $user['institute_name'],
+        'role'      => $mem ? (string)$mem['role'] : (string)$user['role'],
+        'institute' => $mem ? (string)$mem['name'] : $user['institute_name'],
+        // پنل با این می‌فهمد کاربر هنوز به هیچ آموزشگاهی وصل نیست
+        'hasWorkspace' => (bool)$mem,
     ],
 ]);
+
+function has_any_membership(PDO $db, string $uid): bool
+{
+    $st = $db->prepare('SELECT 1 FROM membership WHERE user_id = ? LIMIT 1');
+    $st->execute([$uid]);
+    return (bool)$st->fetchColumn();
+}

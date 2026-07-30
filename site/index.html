@@ -626,6 +626,10 @@ body.lt{
    هیچ بخشی از صفحه نامرئی نمی‌ماند. */
 .js-rv .rv{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease}
 .js-rv .rv.in{opacity:1; transform:none}
+.notice-bar{background:var(--brand-deep);color:#fff;text-align:center;padding:9px 16px;
+            font-size:13.5px;line-height:1.7}
+:root[data-theme="dark"] .notice-bar{color:#07111F}
+
 @media (prefers-reduced-motion:reduce){
   .js-rv .rv{opacity:1; transform:none; transition:none}
   *{animation-duration:.001ms !important; transition-duration:.001ms !important}
@@ -677,7 +681,7 @@ body.lt{
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <h1>ثبت‌نام، کلاس‌بندی، شهریه و حضور و غیاب<br><span class="hl">همه در یک سامانه</span></h1>
+        <h1 id="heroTitle">ثبت‌نام، کلاس‌بندی، شهریه و حضور و غیاب<br><span class="hl">همه در یک سامانه</span></h1>
         <p class="hero-sub">
           تاکورا جای فایل اکسل، دفتر حضور و غیاب و گروه واتساپ را می‌گیرد.
           ساخته‌شده برای آموزشگاه‌های زبان ایران: تقویم شمسی، شهریهٔ قسطی،
@@ -1372,6 +1376,12 @@ body.lt{
 
       <div class="form-card">
         <form id="demoForm" novalidate>
+          <!-- دام ربات: از دید کاربر پنهان است و آدم واقعی پرش نمی‌کند -->
+          <div style="position:absolute;inset-inline-start:-9999px" aria-hidden="true">
+            <label for="f-website">وب‌سایت</label>
+            <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <p class="err" id="formErr" role="alert" hidden style="display:block;margin-block-end:12px"></p>
           <div class="form-row">
             <div class="field">
               <label for="f-name">نام و نام خانوادگی <span class="req">*</span></label>
@@ -1465,8 +1475,8 @@ body.lt{
       <div>
         <h5>تماس</h5>
         <ul>
-          <li><a href="mailto:info@talkora.ir">info@talkora.ir</a></li>
-          <li><a href="mailto:info@talkora.ir">info@talkora.ir</a></li>
+          <li><a href="mailto:info@talkora.ir" data-contact-email dir="ltr">info@talkora.ir</a></li>
+          <li hidden><a href="#" data-contact-phone class="num" dir="ltr"></a></li>
           <li><a href="#">راهنما و پشتیبانی</a></li>
           <li><a href="#">وبلاگ</a></li>
         </ul>
@@ -1602,6 +1612,67 @@ body.lt{
     });
   });
 
+  /* ---------- تنظیمات از پنل ادمین ----------
+     سایت با مقدارهای نوشته‌شده در خودش بالا می‌آید و بعد اگر بک‌اند
+     باشد آن‌ها را با مقدار واقعی جایگزین می‌کند. این ترتیب عمدی است:
+     اگر PHP بمیرد یا هنوز نصب نشده باشد، صفحه سالم می‌ماند و فقط
+     اعدادش قدیمی است — به‌جای اینکه خالی یا شکسته بالا بیاید. */
+  function applySettings(st){
+    function txt(id,v){ var e=document.getElementById(id); if(e&&v)e.textContent=v; }
+
+    // قیمت‌ها: ریال از سرور، تومان در نمایش — بند P.5
+    var disc = Math.max(0, Math.min(90, +st.annual_discount||0));
+    var map  = {price_basic:0, price_growth:1, price_pro:2};
+    var boxes = document.querySelectorAll(".plan .price b");
+    Object.keys(map).forEach(function(k){
+      var rial = +st[k]||0, b = boxes[map[k]];
+      if(!rial || !b) return;
+      var toman = Math.round(rial/10);
+      var yearly = Math.round(toman*(100-disc)/100);
+      b.setAttribute("data-m", faGroup(toman));
+      b.setAttribute("data-y", faGroup(yearly));
+      if(PLANS[map[k]]) PLANS[map[k]].m = rial;
+    });
+
+    txt("heroTitle", st.hero_title);
+    txt("heroSub",   st.hero_sub);
+
+    // تلفن: هرجا در صفحه جای شماره گذاشته‌ایم
+    if(st.contact_phone){
+      var digits = enDigits(st.contact_phone).replace(/[^\d+]/g,"");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-contact-phone]"), function(e){
+        e.textContent = fa(st.contact_phone);
+        if(e.tagName === "A") e.href = "tel:" + digits;
+        var li = e.closest("li"); if(li) li.hidden = false;
+      });
+    }
+    if(st.contact_email){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-contact-email]"), function(e){
+        e.textContent = st.contact_email;
+        if(e.tagName === "A") e.href = "mailto:" + st.contact_email;
+      });
+    }
+
+    // نوار اعلان بالای صفحه
+    if(st.banner_on === "1" && st.banner_text){
+      var bar = document.createElement("div");
+      bar.className = "notice-bar";
+      bar.setAttribute("role","status");
+      bar.textContent = st.banner_text;   // متن، نه HTML — از تزریق جلوگیری می‌کند
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+
+    // بازمحاسبهٔ ماشین‌حساب و برچسب‌ها با اعداد تازه
+    if(typeof setCycle === "function") setCycle(yearly);
+  }
+
+  if(window.fetch){
+    fetch("api/public.php", {credentials:"same-origin"})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(r){ if(r && r.ok && r.settings) applySettings(r.settings); },
+            function(){ /* بک‌اند نیست: همان مقدارهای داخل صفحه می‌ماند */ });
+  }
+
   /* ---------- تعرفه ---------- */
   var bM = document.getElementById("bMonthly"), bY = document.getElementById("bYearly");
   var yearly = false;
@@ -1677,11 +1748,52 @@ body.lt{
       });
       if(firstBad){ firstBad.focus(); return; }
       var phone = enDigits(document.getElementById("f-phone").value).replace(/[\s\-()]/g,"");
-      document.getElementById("okPhone").textContent = fa(phone);
-      form.style.display = "none";
-      formOk.classList.add("show");
-      formOk.setAttribute("tabindex","-1");
-      formOk.focus();
+
+      function showOk(){
+        document.getElementById("okPhone").textContent = fa(phone);
+        form.style.display = "none";
+        formOk.classList.add("show");
+        formOk.setAttribute("tabindex","-1");
+        formOk.focus();
+      }
+
+      /*
+       * اگر بک‌اند نصب باشد، درخواست ثبت و ایمیل می‌شود. اگر نباشد
+       * (سایت ایستای بدون PHP) پیام موفقیت را نشان نمی‌دهیم و صادقانه
+       * می‌گوییم تماس بگیرد — بدترین کار این است که کاربر فکر کند
+       * درخواستش ثبت شده ولی هیچ‌جا نرفته باشد.
+       */
+      var btn = form.querySelector('[type="submit"],button:not([type="button"])');
+      if(btn){ btn.disabled = true; btn.dataset.old = btn.textContent; btn.textContent = "در حال ارسال…"; }
+
+      function done(msg){
+        if(btn){ btn.disabled = false; btn.textContent = btn.dataset.old || "ارسال"; }
+        if(msg){ var e2 = document.getElementById("formErr");
+                 if(e2){ e2.textContent = msg; e2.hidden = false; } }
+      }
+
+      if(!window.fetch){ done("مرورگرتان قدیمی است؛ لطفاً تماس بگیرید."); return; }
+
+      fetch("api/public.php", {
+        method:"POST", credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"demo",
+          name: document.getElementById("f-name").value,
+          phone: phone,
+          institute: (document.getElementById("f-inst")||{}).value || "",
+          students: (document.getElementById("f-count")||{}).value || "",
+          email: (document.getElementById("f-email")||{}).value || "",
+          note: (document.getElementById("f-note")||{}).value || "",
+          website: (document.getElementById("f-website")||{}).value || ""
+        })
+      }).then(function(r){ return r.json(); })
+        .then(function(r){
+          if(r && r.ok){ done(); showOk(); }
+          else { done((r && r.message) || "ثبت نشد. لطفاً دوباره تلاش کنید."); }
+        }, function(){
+          done("ارتباط با سرور برقرار نشد. لطفاً تماس بگیرید یا بعداً دوباره تلاش کنید.");
+        });
     });
   }
 

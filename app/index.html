@@ -613,6 +613,73 @@ function enDigits(s){  /* ارقام فارسی و عربی را به لاتین
 }
 function initials(name){return name.trim().charAt(0);}
 function pad(n){return n<10?"0"+n:""+n;}
+
+/* ══════════ تقویم شمسی ══════════
+   سرور همه‌چیز را میلادی ISO می‌دهد و UTC ذخیره می‌کند؛ تبدیل اینجا
+   انجام می‌شود — بند P.2. تاریخ شمسی شهروند درجه‌یک است، نه فیلتر
+   نمایشی: برنامهٔ ترم، سررسید تکلیف و کارنامه همه با همین ساخته می‌شوند. */
+var J_MONTHS=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
+              "مهر","آبان","آذر","دی","بهمن","اسفند"];
+var J_DAYS=["یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه","شنبه"];
+
+function toJalali(gy,gm,gd){
+  var gdm=[0,31,59,90,120,151,181,212,243,273,304,334];
+  var jy=(gy<=1600)?0:979;
+  gy-=(gy<=1600)?621:1600;
+  var gy2=(gm>2)?(gy+1):gy;
+  var days=(365*gy)+(~~((gy2+3)/4))-(~~((gy2+99)/100))+(~~((gy2+399)/400))-80+gd+gdm[gm-1];
+  jy+=33*(~~(days/12053)); days%=12053;
+  jy+=4*(~~(days/1461));   days%=1461;
+  if(days>365){jy+=~~((days-1)/365); days=(days-1)%365;}
+  var jm=(days<186)?1+~~(days/31):7+~~((days-186)/30);
+  var jd=1+((days<186)?(days%31):((days-186)%30));
+  return [jy,jm,jd];
+}
+
+/** "2026-07-30" → {y,m,d,dow} یا null */
+function parseISO(s){
+  if(!s)return null;
+  var m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m)return null;
+  var j=toJalali(+m[1],+m[2],+m[3]);
+  return {y:j[0],m:j[1],d:j[2],dow:new Date(+m[1],+m[2]-1,+m[3]).getDay(),iso:String(s).slice(0,10)};
+}
+
+/** «۸ مرداد» — شکل کوتاه که همه‌جای پنل استفاده می‌شود */
+function jDate(iso){var j=parseISO(iso); return j?fa(j.d)+" "+J_MONTHS[j.m-1]:"—";}
+/** «۸ مرداد ۱۴۰۵» */
+function jFull(iso){var j=parseISO(iso); return j?fa(j.d)+" "+J_MONTHS[j.m-1]+" "+fa(j.y):"—";}
+/** «شنبه ۸ مرداد» */
+function jDay(iso){var j=parseISO(iso); return j?J_DAYS[j.dow]+" "+fa(j.d)+" "+J_MONTHS[j.m-1]:"—";}
+
+/** "2026-07-30 18:30:00" → «۸ مرداد، ۱۸:۳۰» */
+function jDateTime(s){
+  if(!s)return "—";
+  var t=String(s).match(/(\d{2}):(\d{2})/);
+  return jDate(s)+(t?"، "+fa(t[1]+":"+t[2]):"");
+}
+
+/** امروز به میلادی ISO، برای فرستادن به سرور */
+function todayISO(){var d=new Date();
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+
+/** اختلاف روز تا یک تاریخ؛ مثبت یعنی هنوز نرسیده */
+function daysUntil(iso){
+  if(!iso)return null;
+  var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m)return null;
+  var t=new Date(+m[1],+m[2]-1,+m[3]).setHours(0,0,0,0);
+  return Math.round((t-new Date().setHours(0,0,0,0))/86400000);
+}
+
+/** «۴ روز مانده» / «۳ روز گذشته» */
+function dueLabel(iso){
+  var n=daysUntil(iso);
+  if(n===null)return "بدون مهلت";
+  if(n===0)return "امروز";
+  if(n===1)return "فردا";
+  return n>0?fa(n)+" روز مانده":fa(-n)+" روز گذشته";
+}
 function clock(sec){return fa(pad(Math.floor(sec/60))+":"+pad(sec%60));}
 
 function toast(msg,undo){
@@ -806,6 +873,93 @@ function withTimeout(p,ms){
 var ROLE_FA={manager:"مدیر آموزشگاه",teacher:"مدرس",student:"زبان‌آموز"};
 function roleRoute(role){return role==="manager"?"m":role==="student"?"s":"t";}
 
+/* ══════════ دادهٔ واقعی ══════════
+   bootstrap.php همه‌چیز را در یک درخواست می‌دهد و اینجا به همان شکلی
+   ریخته می‌شود که نمایش‌ها از قبل با دادهٔ نمونه می‌شناختند. برای همین
+   بیشتر صفحه‌ها بدون تغییر با دادهٔ واقعی کار می‌کنند. */
+
+var DAY_LABEL={"فرد":"روزهای فرد","زوج":"روزهای زوج","پنجشنبه":"پنجشنبه‌ها",
+               "جمعه":"جمعه‌ها","فشرده":"فشرده"};
+
+function applyBootstrap(d){
+  API.data=d;
+  S.role=roleRoute(d.role)==="m"?"manager":roleRoute(d.role)==="s"?"student":"teacher";
+
+  DB.me[S.role]={name:d.me.name,role:d.me.role};
+  DB.institute={
+    name:d.institute.name||"آموزشگاه",
+    term:d.institute.term||"بدون ترم فعال",
+    week:d.institute.week||0,
+    weeks:d.institute.weeks||12,
+    today:jDay(d.serverDate)
+  };
+
+  DB.classes=(d.classes||[]).map(function(c){
+    return {id:c.id,name:c.name,level:c.level,
+            days:DAY_LABEL[c.dayPattern]||c.dayPattern,dayPattern:c.dayPattern,
+            time:fa(c.time),time24:c.time,room:c.room,roomId:c.roomId,mode:c.mode,
+            teacher:c.teacher,teacherId:c.teacherId,
+            session:c.session,total:c.total,cap:c.cap,enrolled:c.enrolled,
+            provider:c.provider,joinUrl:c.joinUrl,price:c.price,status:c.status,
+            avg:c.avg,attendance:c.attendance};
+  });
+
+  DB.students=(d.students||[]).map(function(s){
+    return {id:s.id,name:s.name,phone:s.phone,cls:s.cls,
+            att:s.att,grade:s.grade,balance:0,due:null};
+  });
+
+  DB.teachers=(d.teachers||[]).map(function(t){
+    return {id:t.id,name:t.name,phone:t.phone,langs:"",cap:0,busy:[],rate:t.rate};
+  });
+  DB.rooms=(d.rooms||[]).map(function(r){return {id:r.id,name:r.name,cap:r.cap};});
+  DB.sessions=d.sessions||[];
+
+  DB.assignments=(d.assignments||[]).map(function(a){
+    return {id:a.id,cls:a.cls,title:a.title,type:a.type,desc:a.desc,
+            due:a.due?jDate(a.due):"بدون مهلت",dueISO:a.due,
+            dueIn:a.due?daysUntil(a.due):null,
+            max:a.max,submitted:a.submitted,graded:a.graded,total:a.total,status:a.status};
+  });
+
+  DB.submissions=(d.submissions||[]).map(function(s){
+    return {id:s.id,sid:s.sid,name:s.name,aid:s.aid,at:jDateTime(s.at),late:s.late,
+            text:s.text||"",fileName:s.fileName,hasFile:s.hasFile,
+            words:s.text?String(s.text).trim().split(/\s+/).filter(Boolean).length:0,
+            score:s.score,feedback:s.feedback,state:s.state};
+  });
+
+  DB.alerts=d.alerts||[];
+
+  /* آنچه هنوز بک‌اند ندارد: مبلغ و حقوق. به‌جای نشان‌دادن عدد ساختگی،
+     خالی می‌ماند و نمایش‌ها حالت «هنوز نیست» می‌دهند. */
+  DB.payroll=[]; DB.books=[];
+
+  S.att={};
+  DB.students.forEach(function(s){S.att[s.id]="present";});
+}
+
+/** بعد از هر تغییر، داده را دوباره می‌گیریم — نه اینکه حدس بزنیم چه شد */
+function reload(then){
+  return apiCall("bootstrap.php").then(function(r){
+    if(r&&r.ok){applyBootstrap(r);render();}
+    else if(r&&r.error==="no_institute"){API.noWorkspace=true;render();}
+    if(then)then(r);
+    return r;
+  });
+}
+
+/** فراخوانی با نمایش خطا و تازه‌سازی خودکار */
+function act(file,body,okMsg,then){
+  if(S.busy)return Promise.resolve();
+  S.busy=true;
+  return apiCall(file,body).then(function(r){
+    S.busy=false;
+    if(!r||!r.ok){toast(r&&r.message?r.message:"انجام نشد");return r;}
+    return reload(function(){ if(okMsg)toast(okMsg); if(then)then(r); }).then(function(){return r;});
+  });
+}
+
 function applyUser(u){
   API.user=u;
   var r=roleRoute(u.role);
@@ -914,7 +1068,7 @@ function modeLabel(m){
 /* ══════════ صفحات: مدرس ══════════ */
 var V={};
 
-V["t"]=function(){
+var demoT=function(){
   var c=DB.classes[0];
   var live=S.live?cls(S.live.classId):null;
   return h`
@@ -1198,7 +1352,7 @@ V["t/schedule"]=V["t/materials"]=function(){
 };
 
 /* ══════════ صفحات: زبان‌آموز ══════════ */
-V["s"]=function(){
+var demoS=function(){
   var c=DB.classes[0], me=DB.students[0];
   var liveNow=S.live&&S.live.classId===c.id;
   return h`
@@ -1375,7 +1529,7 @@ V["s/classes"]=V["s/schedule"]=V["s/certificates"]=function(){
 };
 
 /* ══════════ صفحات: مدیر ══════════ */
-V["m"]=function(){
+var demoM=function(){
   var ob=S.onboard, obDone=Object.keys(ob).filter(function(k){return ob[k];}).length, obAll=6;
   return h`
   ${obDone<obAll?h`
@@ -1533,9 +1687,444 @@ V["m/finance"]=function(){
   </div>`;
 };
 
-V["m/classes"]=V["m/reports"]=V["m/settings"]=function(){
-  return '<div class="card"><div class="empty"><b>این بخش در این نمونه ساخته نشده</b>'+
-  '<p>ساختار کاملش در اسناد E، F و H آمده است.</p></div></div>';
+/* ══════════ کلاس‌ها — مدیر ══════════ */
+
+var MODE_FA={in_person:"حضوری",online:"آنلاین",hybrid:"ترکیبی"};
+var PROV_FA={bbb:"BigBlueButton",meet:"Google Meet",skyroom:"اسکای‌روم",custom:"لینک دلخواه"};
+
+V["m/classes"]=function(){
+  if(!API.live)return notBuilt();
+  var cs=DB.classes||[];
+  return h`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>کلاس‌های ترم</h3>
+      <div class="r">
+        <span class="muted num">${fa(cs.length)} کلاس</span>
+        <button class="btn btn--p btn--sm" data-act="cl-new">کلاس تازه</button>
+      </div></div>
+    ${cs.length===0?h`
+      <div class="empty"><b>هنوز کلاسی نساخته‌اید</b>
+        <p>یک کلاس بسازید، مدرس و ساعتش را تعیین کنید، بعد منتشرش کنید تا
+           جلسه‌های کل ترم خودکار ساخته شود.</p>
+        <button class="btn btn--p" data-act="cl-new" style="margin-top:12px">ساخت اولین کلاس</button>
+      </div>`:h`
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>کلاس</th><th>مدرس</th><th>روز و ساعت</th><th>ظرفیت</th>
+                 <th>پیشرفت</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>${cs.map(function(c){
+        var full=c.enrolled>=c.cap;
+        return h`<tr>
+          <td><b>${esc(c.name)}</b>${c.level?'<br><span class="muted">'+esc(c.level)+'</span>':""}
+              <br>${modeLabel(c.mode)}${c.mode!=="in_person"?" "+pill(PROV_FA[c.provider]||c.provider,"mute"):""}</td>
+          <td>${c.teacher?esc(c.teacher):'<span class="pill p-bad">بدون مدرس</span>'}</td>
+          <td>${esc(c.days)}<br><span class="num">${esc(c.time)}</span>
+              ${c.room&&c.room!=="—"?'<br><span class="muted">'+esc(c.room)+'</span>':""}</td>
+          <td class="num">${fa(c.enrolled)} از ${fa(c.cap)}
+              ${full?'<br>'+pill("پر","warn"):""}</td>
+          <td class="num">${c.total?fa(c.session)+" از "+fa(c.total):"—"}
+              ${c.attendance!=null?'<br><span class="muted num">حضور '+fa(c.attendance)+'٪</span>':""}</td>
+          <td>${c.status==="published"?pill("منتشر شده","ok")
+                :c.status==="closed"?pill("بسته","mute"):pill("پیش‌نویس","warn")}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn--g btn--sm" data-act="cl-edit" data-id="${c.id}">ویرایش</button>
+            <button class="btn btn--g btn--sm" data-act="cl-people" data-id="${c.id}">زبان‌آموزها</button>
+            ${c.status!=="published"
+              ?'<button class="btn btn--p btn--sm" data-act="cl-publish" data-id="'+c.id+'">انتشار</button>':""}
+          </td></tr>`;}).join("")}
+      </tbody></table></div>`}
+  </div>
+
+  ${cs.filter(function(c){return c.status!=="published";}).length>0?h`
+  <div class="card"><div class="card-b">
+    <p class="muted" style="margin:0">
+      کلاس «پیش‌نویس» در برنامهٔ مدرس و زبان‌آموز دیده نمی‌شود. وقتی منتشرش کنید،
+      جلسه‌های کل ترم بر اساس الگوی روز و تاریخ شروع ترم ساخته می‌شود.
+    </p></div></div>`:""}`;
+};
+
+/* ══════════ تنظیمات و اعضا ══════════ */
+
+V["m/settings"]=function(){
+  if(!API.live)return notBuilt();
+  var i=DB.institute, mem=S.members;
+  return h`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>مشخصات آموزشگاه</h3></div>
+    <div class="card-b">
+      <div class="fld"><label for="stName">نام آموزشگاه</label>
+        <input id="stName" type="text" value="${esc(i.name)}"></div>
+      <div class="grid g2">
+        <div class="fld"><label for="stCity">شهر</label>
+          <input id="stCity" type="text" value="${esc(API.data&&API.data.institute.city||"")}"></div>
+        <div class="fld"><label for="stPhone">تلفن آموزشگاه</label>
+          <input id="stPhone" type="tel" dir="ltr" style="text-align:end"
+                 value="${esc(API.data&&API.data.institute.phone||"")}"></div>
+      </div>
+      <button class="btn btn--p" data-act="st-save">ذخیره</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>اعضا</h3>
+      <div class="r">
+        <button class="btn btn--g btn--sm" data-act="mem-invite" data-role="teacher">دعوت مدرس</button>
+        <button class="btn btn--p btn--sm" data-act="mem-invite" data-role="student">دعوت زبان‌آموز</button>
+      </div></div>
+    ${!mem?h`<div class="card-b"><p class="muted">در حال بارگذاری…</p></div>`
+    :h`<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>نام</th><th>شماره</th><th>نقش</th><th></th></tr></thead>
+      <tbody>${(mem.members||[]).map(function(m){
+        return h`<tr class="${m.status!=="active"?"muted":""}">
+          <td><b>${esc(m.name)}</b></td>
+          <td class="num" dir="ltr" style="text-align:end">${fa(m.phone)}</td>
+          <td>${pill(ROLE_FA[m.role]||m.role,m.role==="manager"?"info":m.role==="teacher"?"ok":"mute")}
+              ${m.status!=="active"?" "+pill("غیرفعال","mute"):""}</td>
+          <td>${m.role!=="manager"&&m.status==="active"
+              ?'<button class="btn btn--g btn--sm" data-act="mem-remove" data-id="'+m.id+'">حذف</button>':""}</td>
+        </tr>`;}).join("")}
+        ${(mem.invites||[]).map(function(v){
+          return h`<tr>
+            <td><b>${esc(v.name)}</b><br><span class="muted">هنوز وارد نشده</span></td>
+            <td class="num" dir="ltr" style="text-align:end">${fa(v.phone)}</td>
+            <td>${pill(ROLE_FA[v.role]||v.role,"mute")} ${pill("دعوت‌شده","warn")}</td>
+            <td></td></tr>`;}).join("")}
+      </tbody></table></div>
+      <div class="card-b"><p class="muted" style="margin:0">
+        دعوت‌شده حسابی ندارد تا وقتی خودش با همان شماره و کد پیامکی وارد شود.
+        این‌طور هیچ حسابی بدون تأیید شمارهٔ واقعی ساخته نمی‌شود.
+      </p></div>`}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>کلاس‌های فیزیکی</h3>
+      <div class="r"><button class="btn btn--g btn--sm" data-act="room-new">افزودن</button></div></div>
+    ${(DB.rooms||[]).length===0
+      ?'<div class="empty"><b>هنوز کلاسی ثبت نشده</b><p>برای کلاس‌های حضوری لازم است.</p></div>'
+      :h`<div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>نام</th><th>ظرفیت</th><th></th></tr></thead>
+        <tbody>${DB.rooms.map(function(r){
+          return h`<tr><td>${esc(r.name)}</td><td class="num">${fa(r.cap)} نفر</td>
+            <td><button class="btn btn--g btn--sm" data-act="room-del" data-id="${r.id}">حذف</button></td></tr>`;
+        }).join("")}</tbody></table></div>`}
+  </div>`;
+};
+
+/* ══════════ گزارش‌ها ══════════ */
+
+V["m/reports"]=function(){
+  if(!API.live)return notBuilt();
+  var cs=DB.classes||[], st=DB.students||[];
+  var withAtt=cs.filter(function(c){return c.attendance!=null;});
+  var avgAtt=withAtt.length?Math.round(withAtt.reduce(function(a,c){return a+c.attendance;},0)/withAtt.length):null;
+  var withAvg=cs.filter(function(c){return c.avg!=null;});
+  var avgGrade=withAvg.length?(withAvg.reduce(function(a,c){return a+c.avg;},0)/withAvg.length).toFixed(1):null;
+  var risky=st.filter(function(s){return s.att!=null&&s.att<75;});
+
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("زبان‌آموز فعال",fa(st.length))}
+    ${kpi("کلاس منتشرشده",fa(cs.filter(function(c){return c.status==="published";}).length))}
+    ${kpi("میانگین حضور",avgAtt!=null?fa(avgAtt)+"٪":"—",avgAtt==null?"هنوز حضوری ثبت نشده":"",avgAtt!=null&&avgAtt<80?"down":"up",avgAtt)}
+    ${kpi("میانگین نمره",avgGrade!=null?fa(avgGrade):"—",avgGrade==null?"هنوز نمره‌ای ثبت نشده":"")}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>حضور به تفکیک کلاس</h3></div>
+    ${withAtt.length===0
+      ?'<div class="empty"><b>هنوز حضور و غیابی ثبت نشده</b><p>وقتی مدرس‌ها شروع کنند، اینجا پر می‌شود.</p></div>'
+      :h`<div class="card-b">${withAtt.map(function(c){
+        return h`<div class="poll-bar">
+          <span class="t">${esc(c.level||c.name.slice(0,10))}</span>
+          <span class="b"><i style="width:${c.attendance}%"></i></span>
+          <span class="v num">${fa(c.attendance)}٪</span></div>`;}).join("")}</div>`}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>زبان‌آموزان در خطر</h3>
+      <div class="r"><span class="muted">حضور زیر ۷۵ درصد</span></div></div>
+    ${risky.length===0
+      ?'<div class="empty"><b>کسی زیر حد نیست</b><p>هر زبان‌آموزی که حضورش افت کند اینجا می‌آید.</p></div>'
+      :h`<div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>میانگین نمره</th></tr></thead>
+        <tbody>${risky.map(function(s){var c=cls(s.cls);
+          return h`<tr><td><b>${esc(s.name)}</b></td><td>${c?esc(c.name):"—"}</td>
+            <td class="num">${pill(fa(s.att)+"٪","bad")}</td>
+            <td class="num">${s.grade!=null?fa(s.grade):"—"}</td></tr>`;}).join("")}
+        </tbody></table></div>`}
+  </div>`;
+};
+
+function notBuilt(){
+  return '<div class="card"><div class="empty"><b>این بخش در نسخهٔ نمایشی ساخته نشده</b>'+
+  '<p>روی نصب واقعی با دادهٔ آموزشگاه خودتان کار می‌کند.</p></div></div>';
+}
+
+/* ══════════ پیشخوان‌ها روی دادهٔ واقعی ══════════
+   هر سه نقش یک الگو دارند: اگر بک‌اند هست، دادهٔ واقعی؛ وگرنه همان
+   نمایش قدیمی با دادهٔ نمونه. حالت خالی هم واقعی است — به‌جای صفر
+   نشان‌دادن، می‌گوید قدم بعدی چیست. */
+
+V["t"]=function(){return API.live?liveTeacher():demoT();};
+V["s"]=function(){return API.live?liveStudent():demoS();};
+V["m"]=function(){return API.live?liveManager():demoM();};
+
+/** جلسه‌های امروز از دادهٔ bootstrap */
+function todaySessions(){
+  var t=API.data?API.data.serverDate:todayISO();
+  return (DB.sessions||[]).filter(function(x){return x.date===t&&x.status!=="cancelled";})
+    .sort(function(a,b){return a.time<b.time?-1:1;});
+}
+function nextSessions(n){
+  var t=API.data?API.data.serverDate:todayISO();
+  /* جلسهٔ زنده هم باید بماند. اگر فقط scheduled را می‌گرفتیم، مدرسی که
+     جلسه‌ای جلوتر از امروز را شروع می‌کرد آن را از هر دو فهرست گم می‌کرد
+     و راهی برای ثبت حضور یا بستنش نداشت. */
+  return (DB.sessions||[]).filter(function(x){
+      return x.date>=t&&(x.status==="scheduled"||x.status==="live");})
+    .sort(function(a,b){
+      if(a.status!==b.status)return a.status==="live"?-1:1;   // زنده اول
+      return (a.date+a.time)<(b.date+b.time)?-1:1;})
+    .slice(0,n||5);
+}
+function sessionCard(x,who){
+  var c=cls(x.cls)||{name:"کلاس"};
+  var live=x.status==="live";
+  return h`<div class="asg">
+    <span class="ic">${icon(live?"video":"cal",19)}</span>
+    <span class="tx"><b>${esc(c.name)}</b>
+      <small>جلسهٔ ${fa(x.seq)} · ${jDay(x.date)} · <span class="num">${fa(x.time)}</span>
+      ${live?" · "+pill("در حال برگزاری","live"):""}</small></span>
+    <span class="r">${who==="teacher"
+      ? (live
+         ? '<button class="btn btn--g btn--sm" data-act="se-att" data-id="'+x.id+'">حضور و غیاب</button>'
+          +'<button class="btn btn--q btn--sm" data-act="se-end" data-id="'+x.id+'">پایان</button>'
+         : '<button class="btn btn--p btn--sm" data-act="se-start" data-id="'+x.id+'">شروع کلاس</button>')
+      : (live||c.mode!=="in_person"
+         ? '<button class="btn btn--'+(live?"live":"g")+' btn--sm" data-act="se-join" data-id="'+x.id+'">ورود به کلاس</button>'
+         : "")}</span>
+  </div>`;
+}
+
+/* ─── مدرس ─── */
+function liveTeacher(){
+  var today=todaySessions(), soon=nextSessions(5);
+  var mine=DB.classes||[], stu=DB.students||[];
+  var pend=(DB.submissions||[]).filter(function(x){return x.state==="submitted";}).length;
+
+  if(mine.length===0){
+    return h`<div class="card"><div class="empty">
+      <b>هنوز کلاسی به شما داده نشده</b>
+      <p>وقتی مدیر آموزشگاه کلاسی را به نام شما ثبت و منتشر کند،
+         برنامه و زبان‌آموزهایش همین‌جا می‌آید.</p></div></div>`;
+  }
+
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("کلاس‌های من",fa(mine.length))}
+    ${kpi("زبان‌آموز",fa(stu.length))}
+    ${kpi("جلسهٔ امروز",fa(today.length))}
+    ${kpi("در انتظار تصحیح",fa(pend),pend?"":"چیزی نمانده",pend?"down":"up")}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>امروز — ${DB.institute.today}</h3></div>
+    ${today.length===0
+      ?'<div class="empty"><b>امروز کلاسی ندارید</b><p>جلسهٔ بعدی‌تان پایین‌تر است.</p></div>'
+      :'<div class="card-b">'+today.map(function(x){return sessionCard(x,"teacher");}).join("")+'</div>'}
+  </div>
+
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>جلسه‌های بعدی</h3></div>
+      ${soon.length===0?'<div class="empty"><b>جلسه‌ای در برنامه نیست</b></div>'
+        :'<div class="card-b">'+soon.map(function(x){return sessionCard(x,"teacher");}).join("")+'</div>'}
+    </div>
+    <div class="card"><div class="card-h"><h3>کلاس‌های من</h3></div>
+      <div class="card-b">${mine.map(function(c){
+        return h`<div class="asg"><span class="ic">${icon("book",19)}</span>
+          <span class="tx"><b>${esc(c.name)}</b>
+            <small>${esc(c.days)} · <span class="num">${esc(c.time)}</span> ·
+              <span class="num">${fa(c.enrolled)}</span> زبان‌آموز
+              ${c.attendance!=null?" · حضور "+fa(c.attendance)+"٪":""}</small></span>
+          <span class="r"><button class="btn btn--g btn--sm" data-act="ag-new" data-cls="${c.id}">تکلیف</button></span>
+        </div>`;}).join("")}</div>
+    </div>
+  </div>`;
+}
+
+/* ─── زبان‌آموز ─── */
+function liveStudent(){
+  var today=todaySessions(), soon=nextSessions(5);
+  var my=DB.classes||[];
+  var asgs=(DB.assignments||[]).filter(function(a){return a.status!=="closed";});
+  var mySubs=DB.submissions||[];
+  var done={}; mySubs.forEach(function(x){done[x.aid]=x;});
+  var todo=asgs.filter(function(a){return !done[a.id];});
+  var graded=mySubs.filter(function(x){return x.score!=null;});
+  var avg=graded.length?(graded.reduce(function(a,x){return a+x.score;},0)/graded.length).toFixed(1):null;
+
+  if(my.length===0){
+    return h`<div class="card"><div class="empty">
+      <b>هنوز در کلاسی ثبت‌نام نشده‌اید</b>
+      <p>وقتی آموزشگاه شما را در کلاسی ثبت‌نام کند، برنامه، تکلیف‌ها و
+         نمره‌هایتان همین‌جا می‌آید.</p></div></div>`;
+  }
+
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("کلاس‌های من",fa(my.length))}
+    ${kpi("تکلیف باز",fa(todo.length),todo.length?"":"همه را داده‌اید",todo.length?"down":"up")}
+    ${kpi("میانگین نمره",avg!=null?fa(avg):"—",avg==null?"هنوز نمره‌ای نگرفته‌اید":"")}
+    ${kpi("حضور",(function(){
+      var s=(API.data&&API.data.students||[]).filter(function(x){return x.id===API.data.me.id;})[0];
+      return s&&s.att!=null?fa(s.att)+"٪":"—";})())}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>امروز — ${DB.institute.today}</h3></div>
+    ${today.length===0
+      ?'<div class="empty"><b>امروز کلاسی ندارید</b></div>'
+      :'<div class="card-b">'+today.map(function(x){return sessionCard(x,"student");}).join("")+'</div>'}
+  </div>
+
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>تکلیف‌های باز</h3></div>
+      ${todo.length===0?'<div class="empty"><b>تکلیف بازی ندارید</b></div>'
+      :'<div class="card-b">'+todo.map(function(a){
+        var late=a.dueIn!=null&&a.dueIn<0;
+        return '<div class="asg"><span class="ic">'+typeIcon(a.type)+'</span>'
+          +'<span class="tx"><b>'+esc(a.title)+'</b><small>'+esc(typeName(a.type))+' · '
+          +(late?'<span class="pill p-bad">'+dueLabel(a.dueISO)+'</span>':esc(dueLabel(a.dueISO)))+'</small></span>'
+          +'<span class="r"><button class="btn btn--p btn--sm" data-act="sub-open" data-id="'+a.id+'">پاسخ</button></span></div>';
+      }).join("")+'</div>'}
+    </div>
+    <div class="card"><div class="card-h"><h3>جلسه‌های بعدی</h3></div>
+      ${soon.length===0?'<div class="empty"><b>جلسه‌ای در برنامه نیست</b></div>'
+        :'<div class="card-b">'+soon.map(function(x){return sessionCard(x,"student");}).join("")+'</div>'}
+    </div>
+  </div>`;
+}
+
+/* ─── مدیر ─── */
+function liveManager(){
+  var cs=DB.classes||[], st=DB.students||[], te=DB.teachers||[];
+  var today=todaySessions();
+  var draft=cs.filter(function(c){return c.status!=="published";}).length;
+  var noTerm=!(API.data&&API.data.institute.term);
+
+  /* راه‌اندازی: تا وقتی ترم و کلاس نیست، پیشخوان جای کارت‌های صفر
+     یک مسیر مشخص نشان می‌دهد. */
+  if(noTerm||cs.length===0){
+    var steps=[
+      ["ترم",!noTerm,"ترم فعال با تاریخ شروع و تعداد هفته",noTerm?'<button class="btn btn--p btn--sm" data-act="tm-setup">ساخت ترم</button>':""],
+      ["مدرس",te.length>0,"مدرس‌ها را با شماره دعوت کنید",'<button class="btn btn--'+(te.length?"g":"p")+' btn--sm" data-act="mem-invite" data-role="teacher">دعوت مدرس</button>'],
+      ["کلاس",cs.length>0,"کلاس، روز، ساعت و مدرسش",noTerm?"":'<button class="btn btn--'+(cs.length?"g":"p")+' btn--sm" data-act="cl-new">کلاس تازه</button>'],
+      ["زبان‌آموز",st.length>0,"دعوت و ثبت‌نام در کلاس",cs.length?'<button class="btn btn--'+(st.length?"g":"p")+' btn--sm" data-act="mem-invite" data-role="student">دعوت زبان‌آموز</button>':""]
+    ];
+    var doneN=steps.filter(function(x){return x[1];}).length;
+    return h`
+    <div class="card" style="border-color:var(--brand)">
+      <div class="card-h"><h3>راه‌اندازی ${esc(DB.institute.name)}</h3>
+        <div class="r"><span class="pill p-info num">${fa(doneN)} از ${fa(steps.length)}</span></div></div>
+      <div class="card-b" style="padding-block-end:6px">
+        <div class="bar" style="margin-bottom:6px"><i style="width:${doneN/steps.length*100}%"></i></div>
+        <p class="muted" style="margin:10px 0 0">به ترتیب پیش بروید؛ هر قدم به قدم قبلی وابسته است.</p>
+      </div>
+      <div style="border-block-start:1px solid var(--line)">
+        ${steps.map(function(x){
+          return h`<div class="chk ${x[1]?"done":""}">
+            <span class="box">${x[1]?'<i class="ck" style="inline-size:.36em;block-size:.62em"></i>':""}</span>
+            <span class="tx">${x[0]}<small>${x[2]}</small></span>
+            ${x[1]?pill("انجام شد","ok"):x[3]}
+          </div>`;}).join("")}
+      </div>
+    </div>`;
+  }
+
+  var withAtt=cs.filter(function(c){return c.attendance!=null;});
+  var avgAtt=withAtt.length?Math.round(withAtt.reduce(function(a,c){return a+c.attendance;},0)/withAtt.length):null;
+
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("زبان‌آموز فعال",fa(st.length))}
+    ${kpi("کلاس",fa(cs.length),draft?fa(draft)+" پیش‌نویس":"همه منتشر شده",draft?"down":"up")}
+    ${kpi("مدرس",fa(te.length))}
+    ${kpi("میانگین حضور",avgAtt!=null?fa(avgAtt)+"٪":"—",avgAtt==null?"هنوز ثبت نشده":"",avgAtt!=null&&avgAtt<80?"down":"up",avgAtt)}
+  </div>
+
+  ${(DB.alerts||[]).length?h`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>نیاز به رسیدگی</h3></div>
+    <div class="card-b">${DB.alerts.map(function(al){
+      return h`<div class="asg">
+        <span class="ic t-${al.sev==="hi"?"quiz":"file"}">${icon("cog",18)}</span>
+        <span class="tx"><b>${esc(al.t)}</b><small>${esc(al.a)}</small></span>
+        <span class="r">${al.go?'<button class="btn btn--g btn--sm" data-nav="'+al.go+'">بررسی</button>':""}</span>
+      </div>`;}).join("")}</div>
+  </div>`:""}
+
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>کلاس‌های امروز</h3>
+        <div class="r"><span class="muted">${DB.institute.today}</span></div></div>
+      ${today.length===0?'<div class="empty"><b>امروز جلسه‌ای در برنامه نیست</b></div>'
+        :h`<div class="card-b">${today.map(function(x){
+          var c=cls(x.cls)||{};
+          return h`<div class="asg"><span class="ic">${icon("video",19)}</span>
+            <span class="tx"><b>${esc(c.name||"کلاس")}</b>
+              <small>${esc(c.teacher||"بدون مدرس")} · <span class="num">${fa(x.time)}</span>
+                ${x.status==="live"?" · "+pill("در حال برگزاری","live")
+                  :x.status==="done"?" · "+pill("برگزار شد","ok"):""}</small></span>
+          </div>`;}).join("")}</div>`}
+    </div>
+    <div class="card"><div class="card-h"><h3>ترم جاری</h3>
+        <div class="r"><button class="btn btn--g btn--sm" data-nav="m/classes">کلاس‌ها</button></div></div>
+      <div class="card-b">
+        <div class="metaline" style="margin-bottom:8px">
+          <span class="muted">${esc(DB.institute.term)}</span>
+          <b class="num">هفتهٔ ${fa(DB.institute.week)} از ${fa(DB.institute.weeks)}</b></div>
+        <div class="bar"><i style="width:${DB.institute.weeks?DB.institute.week/DB.institute.weeks*100:0}%"></i></div>
+        <div style="margin-top:16px">${cs.slice(0,5).map(function(c){
+          return h`<div class="asg"><span class="ic">${icon("book",19)}</span>
+            <span class="tx"><b>${esc(c.name)}</b>
+              <small>${esc(c.teacher||"بدون مدرس")} · <span class="num">${fa(c.enrolled)} از ${fa(c.cap)}</span></small></span>
+            <span class="r">${c.status!=="published"?pill("پیش‌نویس","warn"):""}</span></div>`;
+        }).join("")}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ══════════ بدون فضای کاری ══════════
+   کاربر وارد شده ولی عضو هیچ آموزشگاهی نیست. دو راه دارد: آموزشگاه
+   خودش را بسازد، یا صبر کند مدیری با شماره‌اش دعوتش کند. صفحهٔ خالی
+   یا خطای مبهم نشان نمی‌دهیم. */
+V["nows"]=function(){
+  return h`
+  <div class="auth-wrap">
+    <aside class="auth-aside">
+      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ت</span><span>تاکورا</span></div>
+      <h2>یک قدم مانده</h2>
+      <ul>
+        <li><i class="ck"></i><span>اگر مدیر آموزشگاهید، همین‌جا فضای کاری‌تان را بسازید</span></li>
+        <li><i class="ck"></i><span>اگر مدرس یا زبان‌آموزید، مدیر باید با همین شماره دعوت‌تان کند</span></li>
+      </ul>
+    </aside>
+    <main class="auth-main"><div class="auth-box">
+      <h1 class="auth-h">هنوز به آموزشگاهی وصل نیستید</h1>
+      <p class="auth-p">شماره‌تان تأیید شده، ولی هیچ آموزشگاهی شما را عضو نکرده است.</p>
+      <div class="fld" style="margin-top:22px">
+        <label for="nwInst">نام آموزشگاه</label>
+        <input id="nwInst" type="text" placeholder="مثلاً آموزشگاه زبان پردیس">
+        <span class="hint">با ساختن آموزشگاه، شما مدیرش می‌شوید و می‌توانید مدرس و زبان‌آموز دعوت کنید.</span>
+      </div>
+      ${S.auth.err?h`<div class="au-err" role="alert">${esc(S.auth.err)}</div>`:""}
+      <button class="btn btn--p btn--b btn--lg" data-act="nw-create">ساخت آموزشگاه</button>
+      <p class="auth-p" style="margin-top:18px">
+        مدرس یا زبان‌آموزید؟ شمارهٔ <span class="num" dir="ltr">${fa(API.user&&API.user.phone||"")}</span>
+        را به مدیر آموزشگاه بدهید تا دعوت‌تان کند، بعد دوباره وارد شوید.
+      </p>
+      <button class="btn btn--q btn--b" style="margin-top:8px" data-act="logout">خروج</button>
+    </div></main>
+  </div>`;
 };
 
 /* ══════════ ورود و ثبت‌نام ══════════ */
@@ -1582,9 +2171,19 @@ function verifyOtp(){
     stopCooldown();
     applyUser(r.user);
     S.auth.code=""; S.auth.err="";
-    go(roleRoute(r.user.role));
-    render();
-    toast(r.isNew?"خوش آمدید، حساب شما ساخته شد":"خوش آمدید، "+r.user.name);
+
+    /*
+     * دادهٔ واقعی را *قبل* از رفتن به داشبورد می‌گیریم.
+     * وگرنه کاربر تازه‌وارد لحظه‌ای دادهٔ نمونه می‌دید — کلاس‌ها و
+     * زبان‌آموزهایی که مال او نیستند — تا اولین رفرش. آن یک لحظه
+     * بدترین چیزی است که می‌شد نشان داد.
+     */
+    reload(function(b){
+      if(b&&!b.ok&&b.error==="no_institute"){ API.noWorkspace=true; go("nows"); render(); return; }
+      go(roleRoute(r.user.role));
+      render();
+      toast(r.isNew?"خوش آمدید، حساب شما ساخته شد":"خوش آمدید، "+r.user.name);
+    });
   });
 }
 
@@ -2249,6 +2848,251 @@ V["s/exam"]=function(){
   </div>`;
 };
 
+/* ══════════ فرم‌های واقعی مدیر ══════════ */
+
+function fieldsClass(c){
+  c=c||{};
+  var provNote={
+    bbb:"حضور و غیاب خودکار و ضبط کلاس — ولی سرور اختصاصی BigBlueButton می‌خواهد.",
+    meet:"راه‌اندازی ساده. حضور و غیاب دستی می‌ماند؛ گوگل هویت زبان‌آموز را به ما نمی‌دهد.",
+    skyroom:"سرور داخل ایران. لینک اتاق را از پنل اسکای‌روم بگیرید.",
+    custom:"هر لینک دیگری که دارید."
+  };
+  return h`
+  <div class="fld"><label for="clName">نام کلاس <span class="rq">*</span></label>
+    <input id="clName" type="text" placeholder="مثلاً American English File 2A" value="${esc(c.name||"")}"></div>
+  <div class="grid g2">
+    <div class="fld"><label for="clLevel">سطح</label>
+      <input id="clLevel" type="text" placeholder="AEF 2A" value="${esc(c.level||"")}"></div>
+    <div class="fld"><label for="clTeacher">مدرس</label>
+      <select id="clTeacher"><option value="">— انتخاب کنید —</option>
+        ${(DB.teachers||[]).map(function(t){
+          return '<option value="'+t.id+'"'+(c.teacherId===t.id?" selected":"")+'>'+esc(t.name)+'</option>';}).join("")}
+      </select>
+      ${(DB.teachers||[]).length===0?'<span class="hint">هنوز مدرسی دعوت نکرده‌اید. از تنظیمات دعوت کنید.</span>':""}</div>
+  </div>
+  <div class="grid g2">
+    <div class="fld"><label for="clDay">روزها</label>
+      <select id="clDay">${DB.dayPatterns.map(function(d){
+        return '<option value="'+d.id+'"'+((c.dayPattern||"فرد")===d.id?" selected":"")+'>'+esc(d.t)+'</option>';}).join("")}
+      </select></div>
+    <div class="fld"><label for="clTime">ساعت شروع</label>
+      <input id="clTime" type="text" inputmode="numeric" dir="ltr" style="text-align:end"
+             placeholder="18:00" value="${esc(c.time24||"18:00")}">
+      <span class="hint">۲۴ ساعته، مثل ۱۸:۰۰</span></div>
+  </div>
+  <div class="grid g2">
+    <div class="fld"><label for="clCap">ظرفیت</label>
+      <input id="clCap" type="text" inputmode="numeric" value="${fa(c.cap||12)}"></div>
+    <div class="fld"><label for="clTotal">تعداد جلسه</label>
+      <input id="clTotal" type="text" inputmode="numeric" value="${fa(c.total||20)}"></div>
+  </div>
+  <div class="grid g2">
+    <div class="fld"><label for="clMode">نوع برگزاری</label>
+      <select id="clMode">${["in_person","online","hybrid"].map(function(m){
+        return '<option value="'+m+'"'+((c.mode||"in_person")===m?" selected":"")+'>'+MODE_FA[m]+'</option>';}).join("")}
+      </select></div>
+    <div class="fld"><label for="clRoom">کلاس فیزیکی</label>
+      <select id="clRoom"><option value="">—</option>
+        ${(DB.rooms||[]).map(function(r){
+          return '<option value="'+r.id+'"'+(c.roomId===r.id?" selected":"")+'>'+esc(r.name)+' ('+fa(r.cap)+' نفر)</option>';}).join("")}
+      </select></div>
+  </div>
+  <div class="fld"><label for="clProv">ارائه‌دهندهٔ کلاس آنلاین</label>
+    <select id="clProv">${["meet","skyroom","custom","bbb"].map(function(p){
+      return '<option value="'+p+'"'+((c.provider||"meet")===p?" selected":"")+'>'+PROV_FA[p]+'</option>';}).join("")}
+    </select>
+    <span class="hint" id="clProvNote">${provNote[c.provider||"meet"]}</span></div>
+  <div class="fld"><label for="clUrl">لینک ثابت جلسه</label>
+    <input id="clUrl" type="url" dir="ltr" style="text-align:end"
+           placeholder="https://meet.google.com/xxx-xxxx-xxx" value="${esc(c.joinUrl||"")}">
+    <span class="hint">برای کلاس آنلاین لازم است. زبان‌آموز آن را فقط از ۱۵ دقیقه قبل تا پایان جلسه می‌بیند.</span></div>
+  <div class="fld"><label for="clPrice">شهریه (تومان)</label>
+    <input id="clPrice" type="text" inputmode="numeric" value="${c.price?fa(Math.round(c.price/10)):""}"
+           placeholder="۱٬۳۵۰٬۰۰۰">
+    <span class="hint">فعلاً فقط ثبت می‌شود؛ صورت‌حساب و درگاه هنوز وصل نیست.</span></div>`;
+}
+
+function readClass(){
+  function v(id){var e=el(id);return e?e.value:"";}
+  return {
+    name:v("clName").trim(), level:v("clLevel").trim(), teacherId:v("clTeacher"),
+    dayPattern:v("clDay"), time:enDigits(v("clTime")).trim(),
+    cap:+enDigits(v("clCap"))||12, totalSessions:+enDigits(v("clTotal"))||20,
+    mode:v("clMode"), roomId:v("clRoom"), provider:v("clProv"),
+    joinUrl:v("clUrl").trim(),
+    price:(+enDigits(v("clPrice").replace(/[٬,\s]/g,""))||0)*10
+  };
+}
+
+function modalClass(id){
+  var c=id?cls(id):null;
+  openModal(h`
+    <div class="modal-h"><h3>${c?"ویرایش کلاس":"کلاس تازه"}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">${fieldsClass(c)}</div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="cl-save" data-id="${id||""}">${c?"ذخیره":"ساخت کلاس"}</button>
+    </div>`,true);
+}
+
+function modalPeople(id){
+  var c=cls(id); if(!c)return;
+  var inCls=(DB.students||[]).filter(function(s){return s.cls===id;});
+  var free=(S.members&&S.members.members||[]).filter(function(m){
+    return m.role==="student"&&m.status==="active"&&
+           !(DB.students||[]).some(function(s){return s.id===m.userId&&s.cls===id;});
+  });
+  openModal(h`
+    <div class="modal-h"><h3>زبان‌آموزهای ${esc(c.name)}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <p class="muted num">${fa(inCls.length)} از ${fa(c.cap)} ظرفیت</p>
+      ${inCls.length===0?'<div class="empty"><b>هنوز کسی ثبت‌نام نشده</b></div>'
+      :h`<div class="tbl-wrap"><table class="tbl"><tbody>
+        ${inCls.map(function(s){
+          return h`<tr><td><b>${esc(s.name)}</b></td>
+            <td class="num">${s.att!=null?"حضور "+fa(s.att)+"٪":""}</td>
+            <td><button class="btn btn--g btn--sm" data-act="cl-withdraw"
+                        data-cls="${id}" data-sid="${s.id}">حذف از کلاس</button></td></tr>`;
+        }).join("")}</tbody></table></div>`}
+      <div class="fld" style="margin-top:18px">
+        <label for="enrPick">افزودن زبان‌آموز</label>
+        <select id="enrPick"><option value="">— انتخاب کنید —</option>
+          ${free.map(function(m){return '<option value="'+m.userId+'">'+esc(m.name)+'</option>';}).join("")}
+        </select>
+        ${free.length===0?'<span class="hint">همهٔ زبان‌آموزها در این کلاس‌اند، یا هنوز کسی را دعوت نکرده‌اید.</span>':""}
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">بستن</button>
+      <button class="btn btn--p" data-act="cl-enrol" data-cls="${id}">افزودن</button>
+    </div>`,true);
+}
+
+function modalInvite(role){
+  var isT=role==="teacher";
+  openModal(h`
+    <div class="modal-h"><h3>${isT?"دعوت مدرس":"دعوت زبان‌آموز"}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <div class="fld"><label for="ivName">نام و نام خانوادگی <span class="rq">*</span></label>
+        <input id="ivName" type="text"></div>
+      <div class="fld"><label for="ivPhone">شمارهٔ موبایل <span class="rq">*</span></label>
+        <input id="ivPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end" placeholder="09121234567">
+        <span class="hint">با همین شماره وارد می‌شود. حسابی ساخته نمی‌شود تا خودش با کد پیامکی وارد شود.</span></div>
+      ${isT?"":h`<div class="fld"><label for="ivClass">ثبت‌نام مستقیم در کلاس</label>
+        <select id="ivClass"><option value="">— بعداً —</option>
+          ${(DB.classes||[]).map(function(c){
+            return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join("")}
+        </select></div>`}
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="mem-send" data-role="${role}">ثبت دعوت</button>
+    </div>`);
+}
+
+function modalRoom(){
+  openModal(h`
+    <div class="modal-h"><h3>کلاس فیزیکی تازه</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <div class="fld"><label for="rmName">نام <span class="rq">*</span></label>
+        <input id="rmName" type="text" placeholder="کلاس ۱"></div>
+      <div class="fld"><label for="rmCap">ظرفیت</label>
+        <input id="rmCap" type="text" inputmode="numeric" value="۱۲"></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="room-save">افزودن</button>
+    </div>`);
+}
+
+function modalAssignment(clsId){
+  openModal(h`
+    <div class="modal-h"><h3>تکلیف تازه</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <div class="fld"><label for="agCls">کلاس</label>
+        <select id="agCls">${(DB.classes||[]).map(function(c){
+          return '<option value="'+c.id+'"'+(c.id===clsId?" selected":"")+'>'+esc(c.name)+'</option>';}).join("")}
+        </select></div>
+      <div class="fld"><label for="agTitle">عنوان <span class="rq">*</span></label>
+        <input id="agTitle" type="text" placeholder="Unit 4 Writing"></div>
+      <div class="fld"><label for="agType">نوع</label>
+        <select id="agType">
+          <option value="writing">نوشتاری</option><option value="speaking">صوتی</option>
+          <option value="quiz">آزمون</option><option value="file">فایل</option></select></div>
+      <div class="fld"><label for="agDesc">توضیح</label>
+        <textarea id="agDesc" rows="4" dir="auto" placeholder="در ۱۲۰ تا ۱۵۰ کلمه…"></textarea></div>
+      <div class="grid g2">
+        <div class="fld"><label for="agDue">مهلت</label>
+          <input id="agDue" type="date" dir="ltr" value="${todayISO()}">
+          <span class="hint" id="agDueFa">${jFull(todayISO())}</span></div>
+        <div class="fld"><label for="agMax">نمرهٔ کامل</label>
+          <input id="agMax" type="text" inputmode="numeric" value="۲۰"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="ag-save">ساخت تکلیف</button>
+    </div>`,true);
+}
+
+function modalTerm(){
+  openModal(h`
+    <div class="modal-h"><h3>ساخت ترم</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <p class="muted">جلسه‌های هر کلاس از تاریخ شروع ترم و الگوی روزهایش ساخته می‌شود.</p>
+      <div class="fld" style="margin-top:16px"><label for="tmName">نام ترم <span class="rq">*</span></label>
+        <input id="tmName" type="text" placeholder="مثلاً پاییز ۱۴۰۵"></div>
+      <div class="grid g2">
+        <div class="fld"><label for="tmStart">تاریخ شروع</label>
+          <input id="tmStart" type="date" dir="ltr" value="${todayISO()}">
+          <span class="hint" id="tmStartFa">${jFull(todayISO())}</span></div>
+        <div class="fld"><label for="tmWeeks">تعداد هفته</label>
+          <input id="tmWeeks" type="text" inputmode="numeric" value="۱۲"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="tm-save">ساخت ترم</button>
+    </div>`);
+}
+
+function modalAnswer(aid){
+  var a=asg(aid); if(!a)return;
+  var prev=(DB.submissions||[]).filter(function(x){return x.aid===aid;})[0];
+  openModal(h`
+    <div class="modal-h"><h3>${esc(a.title)}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      ${a.desc?h`<p style="font-size:14px;line-height:1.9" dir="auto">${esc(a.desc)}</p>`:""}
+      <p class="muted">${esc(typeName(a.type))} · ${esc(dueLabel(a.dueISO))} ·
+         نمرهٔ کامل <span class="num">${fa(a.max)}</span></p>
+      ${prev?h`<div class="au-err" style="background:var(--ok-soft);color:var(--ok)">
+         قبلاً پاسخ داده‌اید (${esc(prev.at)}). ارسال دوباره جایگزینش می‌شود.</div>`:""}
+      <div class="fld" style="margin-top:14px">
+        <label for="ansText">پاسخ شما</label>
+        <textarea id="ansText" rows="8" dir="auto"
+          placeholder="${a.type==="speaking"?"اگر فایل صوتی می‌فرستید، این را خالی بگذارید":"پاسخ‌تان را بنویسید…"}">${esc(prev&&prev.text||"")}</textarea>
+      </div>
+      <div class="fld">
+        <label for="ansFile">فایل ${a.type==="speaking"?"صوتی":"پیوست"}</label>
+        <input id="ansFile" type="file">
+        <span class="hint">حداکثر ۸ مگابایت. pdf، تصویر، صوت، docx.
+          ${prev&&prev.fileName?"فایل فعلی: "+esc(prev.fileName):""}</span>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="sub-send" data-id="${aid}">ارسال</button>
+    </div>`,true);
+}
+
 /* ══════════ مودال‌ها ══════════ */
 function providerName(id){
   var p=DB.providers.filter(function(x){return x.id===id;})[0];
@@ -2417,7 +3261,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
-var FULL={"auth":1};
+var FULL={"auth":1,"nows":1};
 
 function go(route){location.hash="#/"+route;}
 function render(){
@@ -2431,7 +3275,8 @@ function render(){
    */
   if(API.live){
     if(!API.user){ r="auth"; }
-    else if(r==="auth"){ r=roleRoute(API.user.role); }
+    else if(API.noWorkspace){ r="nows"; }
+    else if(r==="auth"||r==="nows"){ r=roleRoute(API.user.role); }
     else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
     if("#/"+r!==location.hash){ location.replace("#/"+r); }
   }
@@ -2494,7 +3339,12 @@ document.addEventListener("click",function(e){
 
   /* حضور و غیاب */
   var segBtn=t.closest(".seg button");
-  if(segBtn){
+  /*
+   * فقط ردیف‌های حضورِ نمایشی (.rrow). مودال حضور واقعی هم دکمه‌های .seg
+   * دارد ولی داخل .att-row است و کنترل‌کنندهٔ [data-att] رسیدگی‌اش می‌کند.
+   * بدون این شرط، کلیک در مودال واقعی اینجا می‌افتاد و روی null می‌شکست.
+   */
+  if(segBtn&&segBtn.closest(".rrow")){
     var row=segBtn.closest(".rrow"), sid=row.dataset.sid, v=segBtn.dataset.v;
     S.att[sid]=v;
     Array.prototype.forEach.call(segBtn.parentNode.children,function(b){
@@ -2620,6 +3470,17 @@ document.addEventListener("click",function(e){
     S.auth.name=pn; S.auth.inst=((el("auInst2")||{}).value||"").trim();
     S.auth.err=""; S.auth.busy=true; render();
     verifyOtp();
+  }
+  else if(a==="nw-create"){
+    var nwi=((el("nwInst")||{}).value||"").trim();
+    if(!nwi){S.auth.err="نام آموزشگاه را وارد کنید.";render();return;}
+    S.auth.err="";
+    apiCall("workspace.php",{action:"create",name:nwi}).then(function(r){
+      if(!r.ok){S.auth.err=r.message||"ساخته نشد.";render();return;}
+      API.noWorkspace=false;
+      applyUser({name:(API.user&&API.user.name)||nwi,role:"manager",institute:nwi});
+      reload(function(){go("m");toast("آموزشگاه «"+nwi+"» ساخته شد");});
+    });
   }
   else if(a==="au-finish"){
     if(S.auth.inst)DB.institute.name=S.auth.inst;
@@ -2793,10 +3654,204 @@ document.addEventListener("click",function(e){
         :k==="money"?"تنظیمات مالی و پنل پیامک ثبت شد":"انجام شد");
   }
   else if(a==="noop"){toast("این بخش در نمونهٔ تعاملی فعال نیست.");}
+
+  /* ══════ کارهای واقعی: کلاس ══════ */
+  else if(a==="cl-new"){modalClass("");}
+  else if(a==="cl-edit"){modalClass(act.dataset.id);}
+  else if(a==="cl-save"){
+    var f=readClass();
+    if(!f.name){toast("نام کلاس را وارد کنید");return;}
+    if(!/^\d{1,2}:\d{2}$/.test(f.time)){toast("ساعت را مثل ۱۸:۰۰ وارد کنید");return;}
+    if(f.mode!=="in_person"&&!f.joinUrl&&f.provider!=="bbb"){
+      toast("کلاس آنلاین لینک جلسه می‌خواهد");return;}
+    var id=act.dataset.id;
+    if(id)f.id=id;
+    f.action=id?"update":"create";
+    closeModal();
+    doAct("classes.php",f,id?"کلاس ذخیره شد":"کلاس ساخته شد");
+  }
+  else if(a==="cl-publish"){
+    doAct("classes.php",{action:"publish",id:act.dataset.id},null,function(r){
+      toast("منتشر شد؛ "+fa(r.sessions)+" جلسه ساخته شد");});
+  }
+  else if(a==="cl-people"){loadMembers(function(){modalPeople(act.dataset.id);});}
+  else if(a==="cl-enrol"){
+    var sid=(el("enrPick")||{}).value;
+    if(!sid){toast("زبان‌آموز را انتخاب کنید");return;}
+    var cid=act.dataset.cls;
+    doAct("classes.php",{action:"enrol",classId:cid,studentId:sid},"ثبت‌نام شد",function(){
+      modalPeople(cid);});
+  }
+  else if(a==="cl-withdraw"){
+    var cid2=act.dataset.cls;
+    doAct("classes.php",{action:"withdraw",classId:cid2,studentId:act.dataset.sid},
+          "از کلاس حذف شد",function(){modalPeople(cid2);});
+  }
+
+  /* ══════ ترم ══════ */
+  else if(a==="tm-setup"){modalTerm();}
+  else if(a==="tm-save"){
+    var tn=((el("tmName")||{}).value||"").trim();
+    if(!tn){toast("نام ترم را وارد کنید");return;}
+    var tmStart=(el("tmStart")||{}).value||todayISO();
+    var tmWeeks=+enDigits((el("tmWeeks")||{}).value)||12;
+    closeModal();
+    doAct("institute.php",{action:"setup",termName:tn,termStart:tmStart,weeks:tmWeeks,
+      rooms:[{name:"کلاس ۱",cap:12},{name:"کلاس ۲",cap:16}]},"ترم ساخته شد");
+  }
+
+  /* ══════ ارسال پاسخ زبان‌آموز ══════ */
+  else if(a==="sub-open"){modalAnswer(act.dataset.id);}
+  else if(a==="sub-send"){
+    var aid=act.dataset.id, txt=((el("ansText")||{}).value||"").trim();
+    var fi=el("ansFile"), file=fi&&fi.files&&fi.files[0];
+    if(!txt&&!file){toast("متن یا فایل پاسخ را بدهید");return;}
+    if(!API.live){toast("در نسخهٔ نمایشی ذخیره نمی‌شود.");return;}
+    var fd=new FormData();
+    fd.append("action","submit"); fd.append("id",aid); fd.append("text",txt);
+    if(file)fd.append("file",file);
+    S.busy=true;
+    fetch(API.base+"assignments.php",{method:"POST",body:fd,credentials:"same-origin"})
+      .then(function(r){return r.json();})
+      .then(function(r){
+        S.busy=false;
+        if(!r.ok){toast(r.message||"ارسال نشد");return;}
+        closeModal();
+        reload(function(){toast(r.late?"ارسال شد — با تأخیر":"پاسخ ارسال شد");});
+      },function(){S.busy=false;toast("ارتباط با سرور برقرار نشد");});
+  }
+
+  /* ══════ اعضا و تنظیمات ══════ */
+  else if(a==="mem-invite"){loadMembers(function(){modalInvite(act.dataset.role);});}
+  else if(a==="mem-send"){
+    var nm=((el("ivName")||{}).value||"").trim();
+    var ph2=enDigits((el("ivPhone")||{}).value||"").replace(/\s/g,"");
+    if(!nm){toast("نام را وارد کنید");return;}
+    if(!/^09\d{9}$/.test(ph2)){toast("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود");return;}
+    /* همهٔ مقدارها را *قبل* از بستن مودال می‌خوانیم.
+       closeModal مودال را خالی می‌کند و بعدش el(...) همیشه null است. */
+    var ivCls=(el("ivClass")||{}).value||"";
+    closeModal();
+    doAct("institute.php",{action:"invite",fullName:nm,phone:ph2,role:act.dataset.role,
+                           classId:ivCls},null,function(r){
+      toast(r.message||"دعوت ثبت شد"); S.members=null; loadMembers();});
+  }
+  else if(a==="mem-remove"){
+    doAct("institute.php",{action:"removeMember",id:act.dataset.id},"حذف شد",function(){
+      S.members=null; loadMembers();});
+  }
+  else if(a==="st-save"){
+    doAct("institute.php",{action:"update",name:((el("stName")||{}).value||"").trim(),
+      city:(el("stCity")||{}).value||"",phone:(el("stPhone")||{}).value||""},"ذخیره شد");
+  }
+  else if(a==="room-new"){modalRoom();}
+  else if(a==="room-save"){
+    var rn=((el("rmName")||{}).value||"").trim();
+    if(!rn){toast("نام را وارد کنید");return;}
+    closeModal();
+    doAct("institute.php",{action:"addRoom",name:rn,cap:+enDigits((el("rmCap")||{}).value)||12},"افزوده شد");
+  }
+  else if(a==="room-del"){doAct("institute.php",{action:"deleteRoom",id:act.dataset.id},"حذف شد");}
+
+  /* ══════ جلسه ══════ */
+  else if(a==="se-start"){
+    doAct("sessions.php",{action:"start",id:act.dataset.id},null,function(r){
+      if(r.joinUrl)window.open(r.joinUrl,"_blank","noopener");
+      toast(r.attendanceAuto?"کلاس شروع شد؛ حضور خودکار ثبت می‌شود"
+                            :"کلاس شروع شد؛ حضور و غیاب را دستی بزنید");
+    });
+  }
+  else if(a==="se-end"){doAct("sessions.php",{action:"end",id:act.dataset.id},"جلسه بسته شد");}
+  else if(a==="se-join"){
+    apiCall("sessions.php",{action:"join",id:act.dataset.id}).then(function(r){
+      if(!r.ok){toast(r.message||"ورود ممکن نشد");return;}
+      window.open(r.joinUrl,"_blank","noopener");
+    });
+  }
+  else if(a==="se-att"){openAttendance(act.dataset.id);}
+  else if(a==="att-save"){
+    var marks=Object.keys(S.attNow||{}).map(function(k){return {id:k,status:S.attNow[k]};});
+    doAct("attendance.php",{action:"save",id:act.dataset.id,marks:marks},null,function(r){
+      toast("حضور "+fa(r.saved)+" نفر ثبت شد");closeModal();});
+  }
+
+  /* ══════ تکلیف ══════ */
+  else if(a==="ag-new"){modalAssignment(act.dataset.cls||"");}
+  else if(a==="ag-save"){
+    var t2=((el("agTitle")||{}).value||"").trim();
+    if(!t2){toast("عنوان را وارد کنید");return;}
+    var agv={classId:(el("agCls")||{}).value,type:(el("agType")||{}).value,
+             desc:(el("agDesc")||{}).value||"",dueDate:(el("agDue")||{}).value||"",
+             max:+enDigits((el("agMax")||{}).value)||20};
+    closeModal();
+    doAct("assignments.php",{action:"create",title:t2,classId:agv.classId,type:agv.type,
+      desc:agv.desc,dueDate:agv.dueDate,max:agv.max},"تکلیف ساخته شد");
+  }
+  else if(a==="ag-close"){doAct("assignments.php",{action:"close",id:act.dataset.id},"بسته شد");}
+});
+
+/* ــــ کمکی‌های کار واقعی ــــ */
+
+function doAct(file,body,okMsg,then){
+  if(!API.live){toast("این کار در نسخهٔ نمایشی ذخیره نمی‌شود.");return;}
+  act(file,body,okMsg,then);
+}
+
+function loadMembers(then){
+  if(S.members){if(then)then();return;}
+  apiCall("institute.php",{action:"members"}).then(function(r){
+    if(r&&r.ok)S.members=r;
+    if(then)then();
+  });
+}
+
+function openAttendance(sessionId){
+  apiCall("attendance.php",{action:"get",id:sessionId}).then(function(r){
+    if(!r.ok){toast(r.message||"باز نشد");return;}
+    S.attNow={};
+    r.roster.forEach(function(s){S.attNow[s.id]=s.status;});
+    S.attSession=r;
+    drawAttendance(sessionId);
+  });
+}
+
+function drawAttendance(sessionId){
+  var r=S.attSession, absent=0;
+  Object.keys(S.attNow).forEach(function(k){if(S.attNow[k]==="absent")absent++;});
+  openModal(h`
+    <div class="modal-h"><h3>حضور و غیاب — جلسهٔ ${fa(r.session.seq)}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <p class="muted">${esc(r.className)} · ${jDay(r.session.date)}</p>
+      <p style="font-size:13.5px">همه پیش‌فرض حاضرند. فقط غایب‌ها را بزنید.
+         ${absent>0?h`<b class="num">${fa(absent)} غایب</b>`:""}</p>
+      ${r.roster.length===0?'<div class="empty"><b>کسی در این کلاس ثبت‌نام نیست</b></div>'
+      :h`<div>${r.roster.map(function(s){
+        var st=S.attNow[s.id];
+        return h`<div class="att-row">
+          <span class="nm"><b>${esc(s.name)}</b></span>
+          <span class="seg" role="group" aria-label="وضعیت ${esc(s.name)}">
+            ${[["present","حاضر"],["late","تأخیر"],["absent","غایب"],["excused","موجه"]].map(function(o){
+              return '<button class="'+(st===o[0]?"on "+o[0]:"")+'" data-att="'+s.id+'" data-v="'+o[0]+'">'+o[1]+'</button>';
+            }).join("")}
+          </span></div>`;}).join("")}</div>`}
+    </div>
+    <div class="modal-f">
+      <button class="btn btn--g" data-act="close">انصراف</button>
+      <button class="btn btn--p" data-act="att-save" data-id="${sessionId}">ثبت</button>
+    </div>`,true);
+}
+
+document.addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("[data-att]");
+  if(b){S.attNow[b.dataset.att]=b.dataset.v; drawAttendance(S.attSession.session.id);}
 });
 
 document.addEventListener("input",function(e){
   if(e.target.id==="subText"){wordCount();return;}
+  /* تاریخ میلادی که کاربر می‌زند، همان‌جا شمسی نشان داده می‌شود */
+  if(e.target.id==="agDue"){var n=el("agDueFa"); if(n)n.textContent=jFull(e.target.value);return;}
+  if(e.target.id==="tmStart"){var n2=el("tmStartFa"); if(n2)n2.textContent=jFull(e.target.value);return;}
 
   /* کد یک‌بارمصرف: رقم که خورد، خودکار برو خانهٔ بعد */
   if(e.target.dataset&&e.target.dataset.otp!=null){
@@ -2876,18 +3931,26 @@ function boot(){
     if(!hl||!hl.ok||!hl.database){startDemo();return;}
     API.live=true;
     return withTimeout(apiCall("me.php"),4000).then(function(m){
-      if(m&&m.ok&&m.authenticated){
-        applyUser(m.user);
-        var r=location.hash.replace(/^#\/?/,"");
-        /* مسیر ذخیره‌شده فقط اگر به نقش همین کاربر بخورد نگه داشته می‌شود */
-        if(!r||r==="auth"||r.split("/")[0]!==roleRoute(m.user.role)){
-          location.hash="#/"+roleRoute(m.user.role);
-        }
-      }else{
+      if(!m||!m.ok||!m.authenticated){
         API.user=null;
         location.hash="#/auth";
+        finishBoot();
+        return;
       }
-      finishBoot();
+      applyUser(m.user);
+      // دادهٔ واقعی؛ اگر کاربر عضو هیچ آموزشگاهی نباشد سرور no_institute می‌دهد
+      return withTimeout(apiCall("bootstrap.php"),8000).then(function(b){
+        if(b&&b.ok){applyBootstrap(b);}
+        else if(b&&b.error==="no_institute"){API.noWorkspace=true;}
+        else if(b){toast(b.message||"دریافت داده ناموفق بود");}
+
+        var want=API.noWorkspace?"nows":roleRoute(m.user.role);
+        var r=location.hash.replace(/^#\/?/,"");
+        if(!r||r==="auth"||r==="nows"||r.split("/")[0]!==want){
+          location.hash="#/"+want;
+        }
+        finishBoot();
+      });
     });
   },startDemo);
 }

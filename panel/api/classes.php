@@ -1,0 +1,191 @@
+<?php
+/**
+ * کلاس‌ها: ساخت، ویرایش، انتشار، ثبت‌نام زبان‌آموز.
+ *
+ * «انتشار» یعنی جلسه‌های ترم ساخته می‌شوند. تا قبل از آن کلاس پیش‌نویس
+ * است و در برنامهٔ کسی نمی‌آید. دلیلش این است که مدیر معمولاً چند بار
+ * برنامه را عوض می‌کند و نباید هر بار به مدرس و زبان‌آموز اعلان برود.
+ */
+declare(strict_types=1);
+require __DIR__ . '/_bootstrap.php';
+require __DIR__ . '/_ctx.php';
+
+require_post();
+$in     = body_json();
+$action = s_in($in, 'action', 40);
+
+const DAY_PATTERNS = ['فرد', 'زوج', 'پنجشنبه', 'جمعه', 'فشرده'];
+const MODES        = ['in_person', 'online', 'hybrid'];
+const PROVIDERS    = ['bbb', 'meet', 'skyroom', 'custom'];
+
+switch ($action) {
+
+case 'create':
+    require_role('manager');
+    $name = s_in($in, 'name', 160);
+    if ($name === '') fail(400, 'invalid', 'نام کلاس را وارد کنید.');
+
+    $teacherId = member_or_null($in, 'teacherId', 'teacher');
+    $roomId    = s_in($in, 'roomId', 32);
+    if ($roomId !== '') own('room', $roomId, 'کلاس');
+
+    $term = t_one('SELECT id FROM term WHERE __I__ AND status = ? ORDER BY starts_on DESC LIMIT 1', ['active']);
+
+    $id = new_id();
+    db()->prepare(
+        'INSERT INTO klass (id, institute_id, term_id, name, level, teacher_user_id, room_id,
+                            day_pattern, start_time, duration_min, capacity, total_sessions,
+                            mode, provider, join_url, price, status, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+    )->execute([
+        $id, inst_id(), $term['id'] ?? null, $name, s_in($in, 'level', 40),
+        $teacherId, $roomId ?: null,
+        enum_in($in, 'dayPattern', DAY_PATTERNS, 'فرد'),
+        time_in($in, 'time', '18:00'),
+        i_in($in, 'duration', 90, 15, 480),
+        i_in($in, 'cap', 12, 1, 200),
+        i_in($in, 'totalSessions', 20, 1, 60),
+        enum_in($in, 'mode', MODES, 'in_person'),
+        enum_in($in, 'provider', PROVIDERS, 'meet'),
+        join_url_in($in, 'joinUrl'),
+        i_in($in, 'price', 0, 0, 9999999999),
+        'draft', now_utc(),
+    ]);
+    audit('class.created', my_id(), ['class' => $id, 'name' => $name]);
+    ok(['id' => $id]);
+
+case 'update':
+    require_role('manager');
+    $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
+
+    $teacherId = array_key_exists('teacherId', $in) ? member_or_null($in, 'teacherId', 'teacher') : $cl['teacher_user_id'];
+    $roomId    = array_key_exists('roomId', $in) ? s_in($in, 'roomId', 32) : (string)$cl['room_id'];
+    if ($roomId !== '') own('room', $roomId, 'کلاس');
+
+    $newCap = i_in($in, 'cap', (int)$cl['capacity'], 1, 200);
+    $have   = (int)(t_one('SELECT COUNT(*) AS n FROM enrolment WHERE __I__ AND class_id = ? AND status = ?', [$cl['id'], 'active'])['n'] ?? 0);
+    if ($newCap < $have) {
+        fail(409, 'capacity_below_enrolled', "ظرفیت را نمی‌شود کمتر از {$have} نفرِ ثبت‌نام‌شده گذاشت.");
+    }
+
+    db()->prepare(
+        'UPDATE klass SET name=?, level=?, teacher_user_id=?, room_id=?, day_pattern=?, start_time=?,
+                          duration_min=?, capacity=?, total_sessions=?, mode=?, provider=?, join_url=?, price=?
+          WHERE id=? AND institute_id=?'
+    )->execute([
+        s_in($in, 'name', 160) ?: (string)$cl['name'],
+        array_key_exists('level', $in) ? s_in($in, 'level', 40) : (string)$cl['level'],
+        $teacherId, $roomId ?: null,
+        enum_in($in, 'dayPattern', DAY_PATTERNS, (string)$cl['day_pattern']),
+        time_in($in, 'time', (string)$cl['start_time']),
+        i_in($in, 'duration', (int)$cl['duration_min'], 15, 480),
+        $newCap,
+        i_in($in, 'totalSessions', (int)$cl['total_sessions'], 1, 60),
+        enum_in($in, 'mode', MODES, (string)$cl['mode']),
+        enum_in($in, 'provider', PROVIDERS, (string)$cl['provider']),
+        array_key_exists('joinUrl', $in) ? join_url_in($in, 'joinUrl') : $cl['join_url'],
+        i_in($in, 'price', (int)$cl['price'], 0, 9999999999),
+        $cl['id'], inst_id(),
+    ]);
+    audit('class.updated', my_id(), ['class' => $cl['id']]);
+    ok();
+
+/* ─────────── انتشار: جلسه‌ها ساخته می‌شوند ─────────── */
+case 'publish':
+    require_role('manager');
+    $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
+
+    if (empty($cl['teacher_user_id'])) {
+        fail(409, 'no_teacher', 'کلاس بدون مدرس منتشر نمی‌شود. اول مدرس را تعیین کنید.');
+    }
+    if ($cl['mode'] !== 'in_person' && empty($cl['join_url']) && $cl['provider'] !== 'bbb') {
+        fail(409, 'no_link', 'کلاس آنلاین بدون لینک جلسه منتشر نمی‌شود. لینک را وارد کنید.');
+    }
+
+    $term = t_one('SELECT * FROM term WHERE __I__ AND status = ? ORDER BY starts_on DESC LIMIT 1', ['active']);
+    if (!$term) fail(409, 'no_term', 'اول یک ترم فعال بسازید.');
+
+    $from = date_in($in, 'from', (string)$term['starts_on']);
+    $made = generate_sessions((string)$cl['id'], (string)$cl['day_pattern'], (string)$cl['start_time'],
+                              (int)$cl['total_sessions'], (string)$from, $cl['join_url']);
+
+    db()->prepare('UPDATE klass SET status = ?, term_id = ? WHERE id = ? AND institute_id = ?')
+        ->execute(['published', $term['id'], $cl['id'], inst_id()]);
+
+    audit('class.published', my_id(), ['class' => $cl['id'], 'sessions' => $made]);
+    ok(['sessions' => $made]);
+
+case 'delete':
+    require_role('manager');
+    $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
+    $n = (int)(t_one('SELECT COUNT(*) AS n FROM enrolment WHERE __I__ AND class_id = ? AND status = ?', [$cl['id'], 'active'])['n'] ?? 0);
+    if ($n > 0) {
+        fail(409, 'has_students', "این کلاس {$n} زبان‌آموز دارد. اول آن‌ها را جابه‌جا کنید یا کلاس را ببندید.");
+    }
+    db()->prepare('DELETE FROM klass WHERE id = ? AND institute_id = ?')->execute([$cl['id'], inst_id()]);
+    audit('class.deleted', my_id(), ['class' => $cl['id']]);
+    ok();
+
+case 'close':
+    require_role('manager');
+    $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
+    db()->prepare('UPDATE klass SET status = ? WHERE id = ? AND institute_id = ?')->execute(['closed', $cl['id'], inst_id()]);
+    ok();
+
+/* ─────────── ثبت‌نام و حذف زبان‌آموز ─────────── */
+case 'enrol':
+    require_role('manager');
+    $cl  = own('klass', s_in($in, 'classId', 32), 'کلاس');
+    $uid = s_in($in, 'studentId', 32);
+
+    $mem = t_one('SELECT user_id FROM membership WHERE __I__ AND user_id = ? AND role = ? AND status = ?', [$uid, 'student', 'active']);
+    if (!$mem) fail(404, 'not_found', 'زبان‌آموز پیدا نشد.');
+
+    $n = (int)(t_one('SELECT COUNT(*) AS n FROM enrolment WHERE __I__ AND class_id = ? AND status = ?', [$cl['id'], 'active'])['n'] ?? 0);
+    if ($n >= (int)$cl['capacity']) fail(409, 'class_full', 'ظرفیت این کلاس پر است.');
+
+    try {
+        db()->prepare('INSERT INTO enrolment (id, institute_id, class_id, student_user_id, status, created_at) VALUES (?,?,?,?,?,?)')
+            ->execute([new_id(), inst_id(), $cl['id'], $uid, 'active', now_utc()]);
+    } catch (PDOException $e) {
+        db()->prepare('UPDATE enrolment SET status = ? WHERE class_id = ? AND student_user_id = ?')
+            ->execute(['active', $cl['id'], $uid]);
+    }
+    audit('enrolment.created', my_id(), ['class' => $cl['id'], 'student' => $uid]);
+    ok();
+
+case 'withdraw':
+    require_role('manager');
+    $cl = own('klass', s_in($in, 'classId', 32), 'کلاس');
+    // ردیف می‌ماند و فقط وضعیتش عوض می‌شود؛ حضور و نمرهٔ گذشته نباید گم شود
+    db()->prepare('UPDATE enrolment SET status = ? WHERE class_id = ? AND student_user_id = ? AND institute_id = ?')
+        ->execute(['withdrawn', $cl['id'], s_in($in, 'studentId', 32), inst_id()]);
+    audit('enrolment.withdrawn', my_id(), ['class' => $cl['id']]);
+    ok();
+
+/* ─────────── فهرست زبان‌آموزان یک کلاس ─────────── */
+case 'roster':
+    $cl = own_class(s_in($in, 'classId', 32));
+    $rows = t_all(
+        'SELECT u.id, u.full_name, u.phone FROM enrolment e JOIN app_user u ON u.id = e.student_user_id
+          WHERE e.__I__ AND e.class_id = ? AND e.status = ? ORDER BY u.full_name',
+        [$cl['id'], 'active']
+    );
+    ok(['roster' => array_map(fn($r) => [
+        'id' => (string)$r['id'], 'name' => (string)$r['full_name'],
+        'phone' => preg_replace('/^(\d{4})\d{4}(\d{3})$/', '$1****$2', (string)$r['phone']),
+    ], $rows)]);
+
+default:
+    fail(400, 'unknown_action', 'درخواست نامشخص.');
+}
+
+/** شناسهٔ عضوی با نقش خواسته‌شده، یا null — تا کلاس به کاربر آموزشگاه دیگر وصل نشود */
+function member_or_null(array $in, string $key, string $role): ?string
+{
+    $id = s_in($in, $key, 32);
+    if ($id === '') return null;
+    $m = t_one('SELECT user_id FROM membership WHERE __I__ AND user_id = ? AND role = ? AND status = ?', [$id, $role, 'active']);
+    if (!$m) fail(404, 'not_found', 'مدرس پیدا نشد.');
+    return (string)$m['user_id'];
+}

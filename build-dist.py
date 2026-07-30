@@ -95,6 +95,19 @@ PANEL_HTACCESS = f"""# تاکورا — پنل ({PANEL_DOMAIN})
 ErrorDocument 404 /index.html
 """
 
+SITE_API_HTACCESS = """# فقط public.php از بیرون قابل صداکردن است
+<FilesMatch "^(_bootstrap|_admin|config|config\\.sample)\\.php$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\\.(sql|md|log|bak|sample)$">
+  Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+Options -Indexes
+"""
+
 SITE_ROBOTS = f"""User-agent: *
 Allow: /
 
@@ -311,6 +324,112 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
 (خط خدماتی در برابر تبلیغاتی) در پوشهٔ docs را بخوانید.
 """
 
+EMAIL_GUIDE = f"""راهنمای ایمیل کاری با دامنهٔ خودتان
+════════════════════════════════════════════════════
+هدف: آدرس‌هایی مثل  info@{SITE_DOMAIN}  و  admin@{SITE_DOMAIN}
+که هم بتوانید با آن‌ها ایمیل بگیرید و بفرستید، هم درخواست‌های دموی
+سایت به آن‌ها برسد.
+
+⚠ این بخش کد نیست — کارِ پنل پلسک است. باید خودتان انجامش دهید.
+
+
+─────────────────────────────────────────────────
+گام ۱) سرویس ایمیل دامنه را روشن کنید
+
+   Websites & Domains ← {SITE_DOMAIN} ← Mail ← Mail Settings
+   تیک «Activate mail service on domain» را بزنید.
+
+   اگر این گزینه را ندارید، پکیج هاست‌تان ایمیل ندارد و باید از
+   شرکت هاست بخواهید فعالش کند.
+
+
+گام ۲) صندوق‌ها را بسازید
+
+   Mail ← Create Email Address
+
+        info@{SITE_DOMAIN}    ← تماس عمومی و فرستندهٔ سایت
+        admin@{SITE_DOMAIN}   ← شخصی خودتان
+
+   برای هرکدام رمز قوی بگذارید. اندازهٔ صندوق پیش‌فرض کافی است.
+
+   پیشنهاد: به‌جای صندوق دوم می‌توانید «Forwarding» بسازید تا همه‌چیز
+   به یک صندوق برسد و مجبور نباشید دو جا را چک کنید.
+
+
+گام ۳) رکوردهای DNS  ← این گام را رد نکنید
+
+   بدون این‌ها ایمیل‌هایتان به پوشهٔ اسپم می‌رود یا اصلاً نمی‌رسد.
+   پلسک معمولاً خودش می‌سازدشان؛ فقط بررسی کنید که باشند:
+
+   Websites & Domains ← {SITE_DOMAIN} ← DNS Settings
+
+     MX     {SITE_DOMAIN}         →  mail.{SITE_DOMAIN}   (اولویت ۱۰)
+     A      mail.{SITE_DOMAIN}    →  آی‌پی سرور
+     TXT    {SITE_DOMAIN}         →  v=spf1 a mx ~all
+     DKIM                          ← از Mail Settings روشنش کنید
+     TXT    _dmarc                 →  v=DMARC1; p=none; rua=mailto:admin@{SITE_DOMAIN}
+
+   SPF می‌گوید «فقط سرور من حق دارد با نام دامنهٔ من ایمیل بفرستد».
+   DKIM ایمیل را امضا می‌کند. DMARC می‌گوید با ایمیل جعلی چه کنند.
+   هر سه رایگان‌اند و نبودشان یعنی ایمیل‌تان اسپم حساب می‌شود.
+
+
+گام ۴) به پنل ادمین وصلش کنید
+
+   وارد  https://{PANEL_DOMAIN}/admin/  شوید
+   ← بخش «تماس و ایمیل»
+   ← در «درخواست دموی رایگان به این آدرس برود» بنویسید:
+        info@{SITE_DOMAIN}
+   ← ذخیره
+   ← دکمهٔ «ارسال ایمیل آزمایشی» را بزنید
+
+   اگر رسید، تمام است. اگر نه، به بخش «مشکلات» پایین نگاه کنید.
+
+
+گام ۵) خواندن ایمیل‌ها
+
+   وب‌میل:   https://webmail.{SITE_DOMAIN}
+   یا در موبایل و Outlook با این تنظیمات:
+
+        IMAP   mail.{SITE_DOMAIN}   پورت ۹۹۳   SSL/TLS
+        SMTP   mail.{SITE_DOMAIN}   پورت ۴۶۵   SSL/TLS
+        نام کاربری: آدرس کامل ایمیل، نه فقط بخش اولش
+
+
+─────────────────────────────────────────────────
+مشکلات
+
+ایمیل آزمایشی نمی‌رسد
+    ۱. صندوق info@{SITE_DOMAIN} واقعاً ساخته شده؟
+    ۲. در Mail Settings، گزینهٔ mail service روشن است؟
+    ۳. پوشهٔ اسپم را نگاه کنید.
+    ۴. بعضی هاست‌های اشتراکی تابع mail() را می‌بندند. اگر چنین است،
+       از پشتیبانی هاست بخواهید بازش کنند.
+
+ایمیل می‌رود ولی در اسپم می‌افتد
+    گام ۳ ناقص است. مخصوصاً SPF و DKIM.
+    بعد از اضافه‌کردن، تا ۲۴ ساعت طول می‌کشد.
+
+ایمیل به Gmail نمی‌رسد ولی به بقیه می‌رسد
+    گوگل سخت‌گیرترین است و بدون DKIM و DMARC رد می‌کند.
+
+هیچ‌کدام کار نکرد
+    درخواست‌های دمو با شکست ایمیل گم نمی‌شوند — همه در پنل ادمین،
+    بخش «درخواست‌های دمو» ثبت می‌شوند و ستون «ایمیل نرفت» نشان
+    می‌دهد کدام‌ها ایمیل نشده‌اند. پس مشتری از دست نمی‌رود، فقط
+    باید خودتان پنل را چک کنید تا ایمیل درست شود.
+
+─────────────────────────────────────────────────
+نکتهٔ صادقانه دربارهٔ ارسال ایمیل
+
+کد از تابع mail() خود PHP استفاده می‌کند. برای اعلان «یک نفر دمو
+خواست» کافی است، ولی صف و تلاش دوباره ندارد: اگر لحظهٔ ارسال سرور
+ایمیل مشکل داشته باشد، آن یک ایمیل از دست می‌رود (خود درخواست نه).
+
+اگر بعداً ایمیل برایتان حیاتی شد — مثل رسید پرداخت — باید به SMTP
+با صف تبدیل شود. آن موقع سراغش می‌رویم.
+"""
+
 # ─────────────────────────── ساخت ───────────────────────────
 
 
@@ -381,6 +500,14 @@ def main() -> int:
     (site_out / "sitemap.xml").write_text(SITEMAP, encoding="utf-8")
     (site_out / "راهنمای-آپلود.txt").write_text(SITE_GUIDE, encoding="utf-8")
 
+    # سایت هم یک api کوچک می‌گیرد: تنظیماتی که ادمین عوض می‌کند و فرم دمو.
+    # بقیهٔ سایت هنوز HTML ایستاست؛ اگر PHP بمیرد صفحه سالم بالا می‌آید.
+    site_api = site_out / "api"
+    site_api.mkdir()
+    for f in ("_bootstrap.php", "_admin.php", "public.php", "config.sample.php"):
+        shutil.copy2(api_src / f, site_api / f)
+    (site_api / ".htaccess").write_text(SITE_API_HTACCESS, encoding="utf-8")
+
     # ── بستهٔ پنل ─────────────────────────────────────────────
     panel_out = DIST / "panel"
     panel_out.mkdir(parents=True)
@@ -403,6 +530,13 @@ def main() -> int:
     (panel_out / ".htaccess").write_text(PANEL_HTACCESS, encoding="utf-8")
     (panel_out / "robots.txt").write_text(PANEL_ROBOTS, encoding="utf-8")
     (panel_out / "راهنمای-پنل.txt").write_text(PANEL_GUIDE, encoding="utf-8")
+    (panel_out / "راهنمای-ایمیل.txt").write_text(EMAIL_GUIDE, encoding="utf-8")
+
+    # پنل ادمین محصول — مسیر جدا، نشست جدا، رمز جدا
+    admin_out = panel_out / "admin"
+    admin_out.mkdir()
+    (admin_out / "index.html").write_text(
+        (ROOT / "panel" / "admin" / "index.html").read_text(encoding="utf-8"), encoding="utf-8")
 
     # ── بررسی‌ها ───────────────────────────────────────────────
     bad = check_external(site_out) + check_external(panel_out)
@@ -428,6 +562,23 @@ def main() -> int:
     if "../site/fonts/" in (panel_out / "index.html").read_text(encoding="utf-8"):
         print("خطا: پنل هنوز فونت را از دامنهٔ اصلی می‌خواند.", file=sys.stderr)
         return 1
+
+    if not (panel_out / "admin" / "index.html").exists():
+        print("خطا: پنل ادمین در بسته نیست.", file=sys.stderr)
+        return 1
+
+    if not (site_out / "api" / "public.php").exists():
+        print("خطا: api سایت در بسته نیست؛ فرم دمو و قیمت‌ها کار نمی‌کند.", file=sys.stderr)
+        return 1
+
+    if "api/public.php" not in (site_out / "index.html").read_text(encoding="utf-8"):
+        print("خطا: سایت به api/public.php وصل نیست.", file=sys.stderr)
+        return 1
+
+    for pkg in (site_out, panel_out):
+        if (pkg / "api" / "config.php").exists():
+            print(f"خطا: config.php واقعی داخل {pkg.name} رفته است.", file=sys.stderr)
+            return 1
 
     # ── زیپ‌ها ────────────────────────────────────────────────
     site_zip = ROOT / "talkora-site.zip"
