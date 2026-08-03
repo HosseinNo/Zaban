@@ -41,6 +41,7 @@ sharpened. Read in order for the full picture; jump directly for a specific work
 | R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
 | S | [استقرار روی زیرساخت ایران](docs/S-deployment.md) | Iranian hosting, OTP, BBB/Meet wiring, automatic recording upload |
 | T | [بالا آوردن سایت و پنل](docs/T-going-live.md) | Step-by-step for the real Plesk host: `talkora.ir` and the `panel.talkora.ir` subdomain with OTP over sms.ir |
+| **U** | **[چک‌لیست راه‌اندازی](docs/U-checklist.md)** | **Start here to deploy. 29 tasks in dependency order, with four gating steps.** |
 | — | [CUSTOMIZE.md](CUSTOMIZE.md) | What to change before the site goes public: phone, prices, form endpoint |
 
 ---
