@@ -29,7 +29,55 @@ if (realpath(__FILE__) === realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''))
 
 
 /**
- * @return array{sent:bool, messageId:?int, cost:?float, error:?string}
+ * تنظیمات پیامک: اول از جدول site_setting، بعد از config.php.
+ *
+ * چرا دو جا؟ چون کلید sms.ir معمولاً چند روز بعد از راه‌اندازی سایت
+ * به دست صاحب آموزشگاه می‌رسد. اگر تنها جایش config.php بود، برای
+ * گذاشتنش باید دوباره سراغ FTP می‌رفت. حالا از پنل ادمین وارد می‌شود.
+ * config.php هنوز کار می‌کند و اولویتش پایین‌تر است، تا نصب‌های قدیمی
+ * نشکنند.
+ *
+ * @return array{mode:string, key:string, template:int, param:string}
+ */
+function sms_conf(): array
+{
+    static $s = null;
+    if ($s !== null) return $s;
+
+    $c   = cfg();
+    $row = [];
+    try {
+        $st = db()->query(
+            "SELECT skey, svalue FROM site_setting
+              WHERE skey IN ('sms_mode','smsir_api_key','smsir_template_id','smsir_param_name')"
+        );
+        foreach ($st->fetchAll() as $r) $row[(string)$r['skey']] = (string)$r['svalue'];
+    } catch (Throwable $e) {
+        error_log('sms settings read failed: ' . $e->getMessage());
+    }
+
+    $key      = $row['smsir_api_key']     ?? '';
+    $template = (int)($row['smsir_template_id'] ?? 0);
+    if ($key === '')      $key      = (string)($c['smsir_api_key'] ?? '');
+    if ($template === 0)  $template = (int)($c['smsir_template_id'] ?? 0);
+
+    $mode = $row['sms_mode'] ?? '';
+    if ($mode === '') $mode = ($key !== '' && $template > 0) ? 'smsir' : 'bridge';
+
+    $s = [
+        'mode'     => $mode,
+        'key'      => $key,
+        'template' => $template,
+        'param'    => $row['smsir_param_name'] ?? (string)($c['smsir_param_name'] ?? 'CODE'),
+    ];
+    return $s;
+}
+
+/** آیا الان کد ورود از راه پنل ادمین به دست کاربر می‌رسد؟ */
+function sms_is_bridge(): bool { return sms_conf()['mode'] === 'bridge'; }
+
+/**
+ * @return array{sent:bool, messageId:?int, cost:?float, error:?string, bridge?:bool}
  */
 function sms_send_verify(string $phone, string $code): array
 {
@@ -41,17 +89,32 @@ function sms_send_verify(string $phone, string $code): array
         return ['sent' => true, 'messageId' => null, 'cost' => 0.0, 'error' => null];
     }
 
-    if (empty($c['smsir_api_key']) || empty($c['smsir_template_id'])) {
+    $s = sms_conf();
+
+    /*
+     * حالت پل: پیامکی نمی‌رود. کد در پنل ادمین دیده می‌شود و مدیر
+     * آموزشگاه آن را به کاربر می‌گوید.
+     *
+     * این برای روزهای بین «سفارش قالب sms.ir» و «تأیید قالب» است که
+     * چند روز طول می‌کشد. بدون آن، سامانه در آن روزها کاملاً غیرقابل
+     * استفاده است — نه مدیر می‌تواند وارد شود نه استادی. با آن، آموزشگاه
+     * از همان روز اول کار می‌کند، فقط ورود دستی‌تر است.
+     */
+    if ($s['mode'] === 'bridge') {
+        return ['sent' => true, 'messageId' => null, 'cost' => 0.0, 'error' => null, 'bridge' => true];
+    }
+
+    if ($s['key'] === '' || $s['template'] <= 0) {
         return ['sent' => false, 'messageId' => null, 'cost' => null,
                 'error' => 'کلید یا شناسهٔ قالب sms.ir تنظیم نشده'];
     }
 
     $payload = json_encode([
         'mobile'     => $phone,
-        'templateId' => (int)$c['smsir_template_id'],
+        'templateId' => $s['template'],
         'parameters' => [
             // نام پارامتر باید دقیقاً با متغیر داخل قالب پنل sms.ir یکی باشد
-            ['name' => $c['smsir_param_name'] ?? 'CODE', 'value' => $code],
+            ['name' => $s['param'], 'value' => $code],
         ],
     ], JSON_UNESCAPED_UNICODE);
 
@@ -65,7 +128,7 @@ function sms_send_verify(string $phone, string $code): array
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'Accept: text/plain',
-            'x-api-key: ' . $c['smsir_api_key'],
+            'x-api-key: ' . $s['key'],
         ],
     ]);
 

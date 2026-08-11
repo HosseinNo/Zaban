@@ -264,7 +264,8 @@ function call(body){
 }
 
 /* ══════════ وضعیت ══════════ */
-var S={view:"dash",settings:null,leads:null,stats:null,events:null,busy:false,err:""};
+var S={view:"dash",settings:null,leads:null,stats:null,events:null,
+       codes:null,health:null,issued:null,busy:false,err:""};
 
 var NAV=[
   {g:"مرور"},
@@ -276,12 +277,15 @@ var NAV=[
   {v:"content",t:"متن‌های سایت"},
   {v:"trust",t:"نمادها و وضعیت"},
   {g:"سامانه"},
+  {v:"sms",t:"ورود و پیامک"},
+  {v:"health",t:"سلامت سامانه"},
   {v:"events",t:"رویدادها"},
   {v:"account",t:"حساب من"}
 ];
 
 var TITLES={dash:"پیشخوان",leads:"درخواست‌های دموی رایگان",pricing:"قیمت‌ها",
   contact:"تماس و ایمیل",content:"متن‌های سایت",trust:"نمادها و وضعیت",
+  sms:"ورود کاربران و پیامک",health:"سلامت سامانه",
   events:"رویدادهای اخیر",account:"حساب من"};
 
 /* ══════════ نماها ══════════ */
@@ -548,6 +552,96 @@ function viewTrust(){
   </div>`;
 }
 
+/* ── ورود کاربران و پیامک ── */
+/*
+ * دو حالت وجود دارد و تفاوت‌شان برای صاحب سامانه باید بی‌ابهام باشد،
+ * چون یکی‌شان یعنی «کد ورود را من به کاربر می‌گویم» و آن یکی یعنی
+ * «سامانه خودش می‌فرستد». اگر این را نفهمد، یا منتظر پیامکی می‌ماند
+ * که نمی‌آید، یا فکر می‌کند سامانه خراب است.
+ */
+function viewSms(){
+  if(!S.settings)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
+  var bridge=S.settings.sms_mode!=="smsir";
+  var c=S.codes;
+
+  return h`
+  <div class="note ${bridge?"note--w":"note--i"}">
+    ${bridge
+      ? "<b>حالت پل روشن است.</b> هیچ پیامکی فرستاده نمی‌شود؛ هر کس بخواهد وارد شود، کدش پایین همین صفحه ظاهر می‌شود و شما به او می‌گویید. سامانه کامل کار می‌کند — فقط ورود دستی است. به محض تأیید قالب sms.ir حالت را عوض کنید."
+      : "<b>ارسال واقعی روشن است.</b> کدها مستقیم به موبایل کاربر پیامک می‌شوند و در این پنل دیده نمی‌شوند."}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>حالت ارسال</h3></div>
+    <div class="card-b">
+      <div class="fld"><label for="f_sms_mode">کد ورود چطور به کاربر برسد</label>
+        <select id="f_sms_mode" data-k="sms_mode">
+          <option value="bridge"${bridge?" selected":""}>کد را در همین پنل ببینم (بدون پیامک)</option>
+          <option value="smsir"${bridge?"":" selected"}>با پیامک از sms.ir فرستاده شود</option>
+        </select>
+        <span class="hint">تا وقتی قالب sms.ir تأیید نشده، گزینهٔ دوم را انتخاب نکنید؛ کسی نمی‌تواند وارد شود.</span></div>
+      ${setField("smsir_api_key","کلید API پنل sms.ir","پنل sms.ir → توسعه‌دهندگان → کلید API")}
+      ${setField("smsir_template_id","شناسهٔ قالب وریفای","پنل sms.ir → قالب‌های وریفای — فقط عدد")}
+      ${setField("smsir_param_name","نام متغیر داخل قالب","اگر در قالب نوشته‌اید #CODE#، اینجا هم CODE")}
+    </div>
+    ${saveBar()}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>کد ورود بساز</h3></div>
+    <div class="card-b">
+      <div class="fld"><label for="icPhone">شمارهٔ موبایل</label>
+        <input id="icPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
+               placeholder="09121234567"></div>
+      <button class="btn btn--p" data-a="issue">ساخت کد</button>
+      <span class="hint">وقتی پای تلفن با استاد یا مدیر آموزشگاه صحبت می‌کنید و می‌خواهید همان لحظه واردش کنید.</span>
+      ${S.issued?h`<div class="note note--i" style="margin-block-start:14px">
+        کد <b class="num" style="font-size:22px;letter-spacing:.12em">${fa(S.issued.code)}</b>
+        برای <span class="num" dir="ltr">${fa(S.issued.phone)}</span> — دو دقیقه اعتبار دارد.</div>`:""}
+    </div>
+  </div>
+
+  ${bridge?h`
+  <div class="card">
+    <div class="card-h"><h3>کدهای زندهٔ همین لحظه</h3>
+      <button class="btn btn--g btn--sm" data-a="codes">تازه‌سازی</button></div>
+    ${!c||!c.length
+      ? '<div class="card-b"><div class="empty"><b>کسی منتظر کد نیست</b><br>'
+        +'وقتی کسی در صفحهٔ ورود شماره‌اش را بزند، کدش اینجا ظاهر می‌شود.</div></div>'
+      : h`<div class="tbl-wrap"><table>
+          <thead><tr><th>موبایل</th><th>کد</th><th>باقی‌مانده</th></tr></thead>
+          <tbody>${c.map(function(x){
+            return h`<tr>
+              <td class="num" dir="ltr" style="text-align:end">${fa(x.phone)}</td>
+              <td class="num" style="font-size:20px;font-weight:700;letter-spacing:.12em">${fa(x.code)}</td>
+              <td class="num">${fa(x.seconds)} ثانیه</td></tr>`;}).join("")}
+          </tbody></table></div>`}
+  </div>`:""}`;
+}
+
+/* ── سلامت سامانه ── */
+function viewHealth(){
+  if(!S.health)return '<div class="card"><div class="empty">در حال بررسی…</div></div>';
+  var bad=S.health.filter(function(x){return x.state==="bad";}).length;
+  return h`
+  <div class="note ${bad?"note--e":"note--i"}">
+    ${bad?"<b>"+fa(bad)+" مورد نیاز به رسیدگی دارد.</b> تا وقتی درست نشوند، بخشی از سامانه کار نمی‌کند."
+         :"همه‌چیز سرجایش است. این صفحه را بعد از هر تغییر روی هاست یک بار باز کنید."}
+  </div>
+  <div class="card"><div class="tbl-wrap"><table>
+    <thead><tr><th>مورد</th><th>وضعیت</th><th>توضیح</th></tr></thead>
+    <tbody>${S.health.map(function(x){
+      var p=x.state==="ok"?"p-ok":x.state==="warn"?"p-warn":"p-bad";
+      var t=x.state==="ok"?"سالم":x.state==="warn"?"توجه":"خراب";
+      return h`<tr><td>${esc(x.title)}</td>
+        <td><span class="pill ${p}">${t}</span></td>
+        <td class="muted">${esc(x.detail)}</td></tr>`;}).join("")}
+    </tbody></table></div>
+    <div class="card-b" style="border-block-start:1px solid var(--line)">
+      <button class="btn btn--g" data-a="health">بررسی دوباره</button></div>
+  </div>`;
+}
+
 var EV_FA={"institute.created":"آموزشگاه تازه ساخته شد","admin.login":"ورود ادمین",
   "admin.login_failed":"ورود ناموفق ادمین","admin.settings_saved":"تنظیمات ذخیره شد",
   "otp.send_failed":"ارسال پیامک ناموفق","admin.rate_limited":"سقف تلاش ادمین",
@@ -595,7 +689,8 @@ function viewAccount(){
 }
 
 var VIEWS={dash:viewDash,leads:viewLeads,pricing:viewPricing,contact:viewContact,
-           content:viewContent,trust:viewTrust,events:viewEvents,account:viewAccount};
+           content:viewContent,trust:viewTrust,sms:viewSms,health:viewHealth,
+           events:viewEvents,account:viewAccount};
 
 /* ══════════ رندر ══════════ */
 function render(){
@@ -632,15 +727,43 @@ function need(view){
   if(view==="dash"&&!S.stats)      return call({action:"stats"}).then(function(r){if(r.ok)S.stats=r.stats;});
   if(view==="leads"&&!S.leads)     return call({action:"leads"}).then(function(r){if(r.ok)S.leads=r;});
   if(view==="events"&&!S.events)   return call({action:"recent"}).then(function(r){if(r.ok)S.events=r.events;});
+  if(view==="health"&&!S.health)   return call({action:"diagnostics"}).then(function(r){if(r.ok)S.health=r.checks;});
+  if(view==="sms"){
+    var jobs=[call({action:"loginCodes"}).then(function(r){if(r.ok)S.codes=r.codes;})];
+    if(!S.settings)jobs.push(call({action:"settings"}).then(function(r){if(r.ok)S.settings=r.settings;}));
+    return Promise.all(jobs);
+  }
   if(!S.settings&&["pricing","contact","content","trust"].indexOf(view)>=0){
     return call({action:"settings"}).then(function(r){if(r.ok)S.settings=r.settings;});
   }
   return Promise.resolve();
 }
 
+/*
+ * کدهای ورود دو دقیقه بیشتر زنده نیستند، پس فهرست ثابت بی‌فایده است:
+ * تا مدیر برسد صفحه را ببیند، عدد گذشته است. فقط وقتی همین صفحه باز
+ * است تازه می‌شود — نه در پس‌زمینه، تا درخواست بی‌مصرف نفرستیم.
+ */
+var codeTimer=null;
+function syncCodeTimer(){
+  if(S.view==="sms"&&!codeTimer){
+    codeTimer=setInterval(function(){
+      if(S.view!=="sms"||!API.admin)return;
+      call({action:"loginCodes"}).then(function(r){
+        if(!r.ok)return;
+        S.codes=r.codes;
+        if(S.view==="sms")render();
+      });
+    },7000);
+  }else if(S.view!=="sms"&&codeTimer){
+    clearInterval(codeTimer); codeTimer=null;
+  }
+}
+
 function goView(v){
-  S.view=v; render();
-  need(v).then(render);
+  S.view=v; if(v!=="sms")S.issued=null;
+  render(); syncCodeTimer();
+  need(v).then(function(){render();syncCodeTimer();});
 }
 
 /* ══════════ کنش‌ها ══════════ */
@@ -714,6 +837,33 @@ document.addEventListener("click",function(e){
     return;
   }
 
+  if(a==="codes"){
+    call({action:"loginCodes"}).then(function(r){if(r.ok){S.codes=r.codes;render();}});
+    return;
+  }
+
+  if(a==="health"){
+    S.health=null; render();
+    call({action:"diagnostics"}).then(function(r){if(r.ok)S.health=r.checks;render();});
+    return;
+  }
+
+  if(a==="issue"){
+    if(S.busy)return;
+    var ph=enDigits(((el("icPhone")||{}).value||"")).replace(/\s/g,"");
+    if(!/^09\d{9}$/.test(ph)){toast("شماره باید ۱۱ رقم و با ۰۹ شروع شود");return;}
+    S.busy=true;
+    call({action:"issueCode",phone:ph}).then(function(r){
+      S.busy=false;
+      if(!r.ok){render();toast(r.message||"ساخته نشد");return;}
+      /* در حالت پیامک واقعی کدی برنمی‌گردد؛ همان پیامک کافی است */
+      S.issued=r.code?{code:r.code,phone:r.phone}:null;
+      S.codes=null; need("sms").then(render);
+      toast(r.code?"کد ساخته شد":"کد پیامک شد");
+    });
+    return;
+  }
+
   if(a==="testmail"){
     toast("در حال ارسال…");
     call({action:"testMail"}).then(function(r){
@@ -738,6 +888,8 @@ document.addEventListener("click",function(e){
   if(a==="logout"){
     call({action:"logout"}).then(function(){
       API.admin=null; S.settings=S.leads=S.stats=S.events=null;
+      S.codes=S.health=S.issued=null;
+      if(codeTimer){clearInterval(codeTimer);codeTimer=null;}
       render(); toast("خارج شدید");
     });
     return;

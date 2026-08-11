@@ -41,7 +41,7 @@ sharpened. Read in order for the full picture; jump directly for a specific work
 | R | [تکلیف و نمره‌دهی](docs/R-assignments-grading.md) | Assignments, audio submissions, rubrics, the grading screen, gradebook |
 | S | [استقرار روی زیرساخت ایران](docs/S-deployment.md) | Iranian hosting, OTP, BBB/Meet wiring, automatic recording upload |
 | T | [بالا آوردن سایت و پنل](docs/T-going-live.md) | Step-by-step for the real Plesk host: `talkora.ir` and the `panel.talkora.ir` subdomain with OTP over sms.ir |
-| **U** | **[چک‌لیست راه‌اندازی](docs/U-checklist.md)** | **Start here to deploy. 29 tasks in dependency order, with four gating steps.** |
+| **U** | **[چک‌لیست راه‌اندازی](docs/U-checklist.md)** | **Start here to deploy. 30 tasks in dependency order, six of them gating. Generated with the interactive version from `docs/build-checklist.py`.** |
 | — | [CUSTOMIZE.md](CUSTOMIZE.md) | What to change before the site goes public: phone, prices, form endpoint |
 
 ---
@@ -184,8 +184,17 @@ Verified over real HTTP against a live database, not reasoned about:
   **404 on direct request** — enforced in PHP itself, not only in `.htaccess`, because Plesk in
   "nginx only" mode ignores `.htaccess` entirely.
 
-`config.php` holds the DB password and the sms.ir key. It is gitignored, and the build refuses
-to run if it exists, so it can never end up inside a distributed package.
+`config.php` holds the DB password and the OTP signing key. It is gitignored, the build refuses
+to run if it exists, and the installer prefers to write it *outside* the webroot entirely.
+
+**Login works before SMS does.** Getting an sms.ir Verify template approved takes days, and
+without a bridge the product is unusable in that window — nobody, including the owner, can log
+in. So a `bridge` mode issues codes normally but shows them in the admin panel instead of
+sending them; the manager reads the code to the user. The plaintext lives in `otp_code.pending_code`
+for at most the code's two-minute lifetime, is wiped the moment the code is consumed, is visible
+only to a logged-in admin, and is never written at all once the mode is `smsir`. Switching to
+`smsir` without a key and template ID is refused, because that combination locks everyone out
+with no way back in.
 
 ---
 
@@ -236,14 +245,27 @@ Splitting them is not tidiness — it buys three concrete things:
 
 Each zip carries its own Persian, step-by-step upload guide written against this specific
 Plesk host — nameservers, `httpdocs` (not `public_html`), the subdomain, the MySQL database,
-the phpMyAdmin schema import, the sms.ir Verify template, Let's Encrypt, and an ordered
-test sequence. The database schema ships in a `_نصب-آپلود-نکنید` folder that is explicitly
-**not** for upload, so the table structure isn't readable over the web if `.htaccess` is ignored.
+Let's Encrypt, and an ordered test sequence.
+
+**Setup is a web installer, not a text editor.** After uploading, `panel.talkora.ir/setup/`
+probes the server (PHP version, `pdo_mysql`, `curl`, `mbstring`, writability, HTTPS), tests the
+database credentials before touching anything, creates the 20 tables, generates the OTP signing
+key itself, creates the admin account, and writes the config file — preferring a `private/`
+directory outside the webroot. It then locks itself: once a config file exists, every request
+including the harmless server probe is refused, and it will not create a second admin if one
+already exists in the database. An attacker cannot complete an install without the database
+password, which is the actual protection; the lock and the "delete `setup/`" instruction are
+the layers behind it.
+
+The schema also ships as `_نصب-آپلود-نکنید/پایگاه-داده.sql` for manual import if the installer
+ever fails, and inside `api/_schema.php` for the installer to read — a PHP file, never served
+as text even when Plesk ignores `.htaccess`.
 
 **The build fails rather than shipping something broken.** It refuses to run if a real
-`config.php` exists, and it aborts on any external reference, on a schema left inside `api/`,
-on a panel that isn't wired to `api/health.php`, or on a panel still loading fonts from the
-parent domain.
+`config.php` exists, and it aborts on any external reference, on a schema left inside `api/`
+as `.sql`, on a generated `_schema.php` with fewer than 20 tables or a broken heredoc
+terminator, on a missing installer, on a panel that isn't wired to `api/health.php`, or on a
+panel still loading fonts from the parent domain.
 
 ---
 

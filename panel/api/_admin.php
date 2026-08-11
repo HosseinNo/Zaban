@@ -121,6 +121,18 @@ function setting_defaults(): array
         'banner_text'      => '',      // نوار بالای سایت؛ خالی یعنی نمایش داده نمی‌شود
         'banner_on'        => '0',
 
+        // ── پیامک ──
+        /*
+         * 'bridge' یعنی پیامکی فرستاده نمی‌شود و کد ورود در همین پنل
+         * دیده می‌شود؛ 'smsir' یعنی ارسال واقعی. کلید و شناسهٔ قالب
+         * اینجا هم می‌آیند تا بدون FTP قابل تغییر باشند. هیچ‌کدام از
+         * این چهار کلید در فهرست عمومی public.php نیست.
+         */
+        'sms_mode'          => 'bridge',
+        'smsir_api_key'     => '',
+        'smsir_template_id' => '',
+        'smsir_param_name'  => 'CODE',
+
         // ── نمادها ──
         'enamad_html'      => '',
         'samandehi_html'   => '',

@@ -842,7 +842,7 @@ DB.students.forEach(function(s){S.att[s.id]="present";});
  * تصمیم با یک درخواست به api/health.php گرفته می‌شود. اگر پاسخ نداد یا
  * پایگاه داده بالا نبود، به حالت نمایشی برمی‌گردیم تا پنل هیچ‌وقت سفید نماند.
  */
-var API={base:"api/",live:false,user:null};
+var API={base:"api/",live:false,bridge:false,user:null};
 
 function apiCall(path,body){
   var opt={credentials:"same-origin",headers:{Accept:"application/json"}};
@@ -2208,7 +2208,9 @@ V["auth"]=function(){
       </div>
       ${a.step===1?h`
         <h1 class="auth-h">${a.newInst?"ثبت‌نام آموزشگاه":"ورود"}</h1>
-        <p class="auth-p">شمارهٔ موبایل‌تان را وارد کنید. یک کد پنج‌رقمی برایتان پیامک می‌شود.</p>
+        <p class="auth-p">شمارهٔ موبایل‌تان را وارد کنید.
+          ${API.bridge?"یک کد پنج‌رقمی ساخته می‌شود که مدیر آموزشگاه به شما می‌گوید."
+                      :"یک کد پنج‌رقمی برایتان پیامک می‌شود."}</p>
         <div class="fld" style="margin-top:22px">
           <label for="auPhone">شمارهٔ موبایل <span class="rq">*</span></label>
           <input id="auPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
@@ -2231,7 +2233,13 @@ V["auth"]=function(){
           <button class="btn btn--q btn--sm" data-act="au-toggle">${a.newInst?"ورود":"ثبت‌نام"}</button></p>
       `:a.step===2?h`
         <h1 class="auth-h">کد را وارد کنید</h1>
-        <p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>
+        ${a.bridge?h`
+        <p class="auth-p">کد پنج‌رقمی برای <span class="num" dir="ltr">${fa(a.phone)}</span> ساخته شد.</p>
+        <div class="au-err" style="background:var(--warn-soft,#FFF6E5);color:var(--ink-2);border-color:#F0C674" role="status">
+          هنوز پیامک راه نیفتاده. کد را از مدیر آموزشگاه بگیرید — در پنل ادمین دیده می‌شود.
+          کد دو دقیقه اعتبار دارد.
+        </div>`
+        :h`<p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>`}
         <div class="otp" id="otpBox">
           ${[0,1,2,3,4].map(function(i){
             return '<input type="text" inputmode="numeric" maxlength="1" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'"'+
@@ -3444,8 +3452,11 @@ document.addEventListener("click",function(e){
         if(r.error==="cooldown"){S.auth.step=2;startCooldown(r.retryAfter||60);render();return;}
         authErr(r.message||"ارسال کد ممکن نشد."); return;
       }
+      /* در حالت پل پیامکی نرفته؛ گفتن «پیامک شد» یعنی کاربر منتظر
+         چیزی می‌ماند که هرگز نمی‌آید. */
+      S.auth.bridge=!!r.bridge;
       S.auth.step=2; startCooldown(r.resendAfter||60); render();
-      toast("کد به "+fa(ph)+" پیامک شد");
+      toast(r.bridge?"کد ساخته شد؛ از مدیر آموزشگاه بگیرید":"کد به "+fa(ph)+" پیامک شد");
     });
   }
   else if(a==="au-back"){S.auth.step=1;S.auth.err="";stopCooldown();render();}
@@ -3930,6 +3941,8 @@ function boot(){
   withTimeout(apiCall("health.php"),4000).then(function(hl){
     if(!hl||!hl.ok||!hl.database){startDemo();return;}
     API.live=true;
+    /* "bridge" یعنی کد ورود پیامک نمی‌شود؛ صفحهٔ ورود نباید وعدهٔ پیامک بدهد */
+    API.bridge=(hl.sms==="bridge");
     return withTimeout(apiCall("me.php"),4000).then(function(m){
       if(!m||!m.ok||!m.authenticated){
         API.user=null;

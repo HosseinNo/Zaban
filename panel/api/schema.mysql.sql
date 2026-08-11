@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS otp_code (
   phone       VARCHAR(15)  NOT NULL,
   -- فقط HMAC کد ذخیره می‌شود؛ خود کد هیچ‌جا نوشته نمی‌شود
   code_hash   CHAR(64)     NOT NULL,
+  -- فقط در «حالت پل» پر می‌شود: وقتی هنوز sms.ir راه نیفتاده و کد را
+  -- مدیر از پنل ادمین می‌خواند و به کاربر می‌گوید. حداکثر دو دقیقه
+  -- زنده می‌ماند و لحظهٔ مصرف‌شدن پاک می‌شود. در حالت پیامک واقعی
+  -- همیشه NULL است.
+  pending_code VARCHAR(8)  NULL,
   attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
   expires_at  DATETIME     NOT NULL,
   consumed_at DATETIME     NULL,

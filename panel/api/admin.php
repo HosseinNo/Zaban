@@ -10,6 +10,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_admin.php';
+require __DIR__ . '/_sms.php';
 
 require_post();
 $in     = body_json();
@@ -149,6 +150,31 @@ case 'saveSettings':
         fail(400, 'invalid_number', 'تخفیف سالانه نمی‌تواند بیشتر از ۹۰ درصد باشد.');
     }
 
+    /*
+     * جلوگیری از حالتی که سامانه در آن قفل می‌شود: اگر روی «ارسال
+     * واقعی» بروید ولی کلید یا قالب نداشته باشید، هیچ‌کس دیگر نمی‌تواند
+     * وارد شود و راه برگشت هم از همین پنل است که خودتان با کد وارد
+     * نمی‌شوید. پس اینجا جلویش را می‌گیریم، نه بعد از اولین شکایت.
+     */
+    if (isset($vals['sms_mode'])) {
+        if (!in_array($vals['sms_mode'], ['bridge', 'smsir'], true)) {
+            fail(400, 'invalid', 'حالت پیامک نامعتبر است.');
+        }
+        if ($vals['sms_mode'] === 'smsir') {
+            $now  = settings_all();
+            $key  = trim((string)($vals['smsir_api_key'] ?? $now['smsir_api_key']));
+            $tpl  = (int)en_digits_admin((string)($vals['smsir_template_id'] ?? $now['smsir_template_id']));
+            if ($key === '' || $tpl <= 0) {
+                fail(400, 'sms_incomplete',
+                    'برای ارسال واقعی، هم کلید API و هم شناسهٔ قالب sms.ir لازم است. '
+                  . 'تا وقتی قالب تأیید نشده، روی «کد در پنل» بمانید.');
+            }
+        }
+    }
+    if (isset($vals['smsir_template_id'])) {
+        $vals['smsir_template_id'] = preg_replace('/\D/', '', en_digits_admin((string)$vals['smsir_template_id'])) ?: '';
+    }
+
     $n = settings_save($vals, (string)$a['id']);
     audit('admin.settings_saved', null, ['count' => $n, 'keys' => array_keys($vals)]);
     ok(['saved' => $n, 'settings' => settings_all()]);
@@ -237,6 +263,142 @@ case 'recent':
         'meta'   => $r['meta'],
         'at'     => (string)$r['created_at'],
     ], $st->fetchAll())]);
+
+/* ─────────── کدهای ورود (حالت پل) ─────────── */
+/*
+ * فهرست کدهایی که همین حالا زنده‌اند. هر کد حداکثر دو دقیقه اینجاست
+ * و به محض استفاده ناپدید می‌شود. فقط ادمینِ واردشده می‌بیندش.
+ *
+ * این صفحه عمداً کوتاه‌عمر است: وقتی sms.ir راه افتاد و حالت روی
+ * «ارسال واقعی» رفت، ستون pending_code دیگر هرگز پر نمی‌شود و این
+ * فهرست برای همیشه خالی می‌ماند.
+ */
+case 'loginCodes':
+    require_admin();
+    $st = db()->prepare(
+        'SELECT phone, pending_code, expires_at, created_at FROM otp_code
+          WHERE pending_code IS NOT NULL AND consumed_at IS NULL AND expires_at > ?
+          ORDER BY created_at DESC LIMIT 20'
+    );
+    $st->execute([now_utc()]);
+
+    $s = sms_conf();
+    ok([
+        'mode'  => $s['mode'],
+        'codes' => array_map(fn($r) => [
+            'phone'   => (string)$r['phone'],
+            'code'    => (string)$r['pending_code'],
+            'seconds' => max(0, strtotime((string)$r['expires_at'] . ' UTC') - time()),
+        ], $st->fetchAll()),
+    ]);
+
+/*
+ * ساخت کد برای یک شماره، بدون اینکه صاحب شماره کاری کرده باشد.
+ *
+ * برای وقتی است که مدیر آموزشگاه پای تلفن با استاد صحبت می‌کند و
+ * می‌خواهد همان لحظه واردش کند. در حالت پیامک واقعی، پیامک هم
+ * فرستاده می‌شود و کد به خود ادمین نشان داده نمی‌شود — چون آنجا
+ * دیگر لازم نیست و نمایشش فقط یک راه لو رفتن است.
+ */
+case 'issueCode':
+    require_admin();
+    $phone = normalize_phone((string)($in['phone'] ?? ''));
+    if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
+
+    $c      = cfg();
+    $bridge = sms_is_bridge();
+    $code   = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    $ttl    = (int)($c['otp_ttl'] ?? 120);
+
+    db()->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE phone = ? AND consumed_at IS NULL')
+        ->execute([now_utc(), $phone]);
+    db()->prepare(
+        'INSERT INTO otp_code (phone, code_hash, pending_code, expires_at, ip, created_at) VALUES (?,?,?,?,?,?)'
+    )->execute([
+        $phone,
+        hash_hmac('sha256', $phone . ':' . $code, (string)$c['otp_pepper']),
+        $bridge ? $code : null,
+        now_utc($ttl), client_ip(), now_utc(),
+    ]);
+
+    $sms = sms_send_verify($phone, $code);
+    audit('admin.issued_code', null, ['phone' => $phone, 'bridge' => $bridge]);
+
+    if (!$bridge && !$sms['sent']) {
+        fail(502, 'sms_failed', 'ارسال پیامک ممکن نشد: ' . (string)($sms['error'] ?? ''));
+    }
+    ok(['phone' => $phone, 'code' => $bridge ? $code : null, 'expiresIn' => $ttl, 'bridge' => $bridge]);
+
+/* ─────────── سلامت سامانه ─────────── */
+/*
+ * همان چیزهایی که نصب‌کننده قبل از نصب بررسی می‌کرد، ولی این بار
+ * روی سامانهٔ زنده. هدف این است که وقتی چیزی کار نمی‌کند، جواب
+ * «کدام قطعه خراب است» یک کلیک دورتر باشد، نه یک تماس پشتیبانی.
+ */
+case 'diagnostics':
+    require_admin();
+    $c = cfg();
+    $d = [];
+    $add = function (string $t, string $state, string $detail) use (&$d): void {
+        $d[] = ['title' => $t, 'state' => $state, 'detail' => $detail];   // ok | warn | bad
+    };
+
+    $add('نسخهٔ PHP', PHP_VERSION_ID >= 80000 ? 'ok' : 'bad', 'PHP ' . PHP_VERSION);
+
+    $tables = 0;
+    try { $tables = count(db()->query('SHOW TABLES')->fetchAll()); }
+    catch (Throwable $e) {
+        try { $tables = count(db()->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll()); }
+        catch (Throwable $e2) { /* بی‌خیال؛ پایین گزارش می‌شود */ }
+    }
+    $add('پایگاه داده', $tables >= 20 ? 'ok' : ($tables > 0 ? 'warn' : 'bad'),
+         $tables > 0 ? "متصل — {$tables} جدول" : 'اتصال برقرار نشد');
+
+    $confPath = null;
+    foreach (CONFIG_PATHS as $p) if (is_file($p)) { $confPath = $p; break; }
+    $outside = $confPath !== null && !str_starts_with((string)realpath($confPath), (string)realpath(__DIR__));
+    $add('فایل پیکربندی', $outside ? 'ok' : 'warn',
+         $outside ? 'بیرون از پوشهٔ وب — امن‌ترین حالت'
+                  : 'داخل پوشهٔ api است. کار می‌کند، ولی اگر بتوانید بیرون از httpdocs ببریدش بهتر است.');
+
+    $add('گواهی SSL', is_https() ? 'ok' : 'bad',
+         is_https() ? 'پنل روی https باز شده'
+                    : 'پنل روی http است؛ کوکی ورود پرچم Secure دارد و کاربران بیرون می‌افتند.');
+
+    $setupLeft = is_dir(__DIR__ . '/../setup');
+    $add('پوشهٔ نصب', $setupLeft ? 'warn' : 'ok',
+         $setupLeft ? 'پوشهٔ setup/ هنوز روی هاست است. حالا که نصب تمام شده پاکش کنید.'
+                    : 'پاک شده');
+
+    $s = sms_conf();
+    if ($s['mode'] === 'smsir') {
+        $add('پیامک', extension_loaded('curl') ? 'ok' : 'bad',
+             extension_loaded('curl') ? 'ارسال واقعی از طریق sms.ir، قالب ' . $s['template']
+                                      : 'حالت ارسال واقعی است ولی افزونهٔ curl خاموش است — هیچ پیامکی نمی‌رود.');
+    } else {
+        $add('پیامک', 'warn', 'حالت پل: کد ورود در همین پنل دیده می‌شود و پیامکی فرستاده نمی‌شود.');
+    }
+
+    $add('ارسال ایمیل', function_exists('mail') ? 'ok' : 'warn',
+         function_exists('mail') ? 'تابع mail در دسترس است — با دکمهٔ «ایمیل آزمایشی» واقعی‌اش را امتحان کنید.'
+                                 : 'تابع mail خاموش است؛ اعلان درخواست دمو نمی‌رود ولی در همین پنل ثبت می‌شود.');
+
+    $pepper = (string)($c['otp_pepper'] ?? '');
+    $add('کلید امضای کدها', strlen($pepper) >= 32 && !str_contains($pepper, 'CHANGE') ? 'ok' : 'bad',
+         strlen($pepper) >= 32 && !str_contains($pepper, 'CHANGE')
+            ? 'یک کلید تصادفی سالم' : 'کلید نمونه یا کوتاه است — کدهای ورود قابل حدس می‌شوند.');
+
+    $stale = 0;
+    try {
+        $st = db()->prepare('SELECT COUNT(*) FROM otp_code WHERE pending_code IS NOT NULL AND expires_at < ?');
+        $st->execute([now_utc()]);
+        $stale = (int)$st->fetchColumn();
+    } catch (Throwable $e) { /* جدول قدیمی */ }
+    if ($stale > 0) {
+        $add('کدهای منقضی', 'warn', "{$stale} کد منقضی هنوز خوانا مانده — با اولین درخواست ورود پاک می‌شود.");
+    }
+
+    ok(['checks' => $d, 'serverTime' => gmdate('c')]);
 
 /* ─────────── آزمایش ایمیل ─────────── */
 case 'testMail':

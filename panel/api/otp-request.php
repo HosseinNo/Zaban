@@ -52,17 +52,32 @@ if ($last && (time() - strtotime((string)$last . ' UTC')) < $cooldown) {
 }
 
 // کدهای قبلیِ همین شماره باطل می‌شوند
-$db->prepare('UPDATE otp_code SET consumed_at = ? WHERE phone = ? AND consumed_at IS NULL')
+$db->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE phone = ? AND consumed_at IS NULL')
    ->execute([now_utc(), $phone]);
+
+/*
+ * کدهای منقضی‌شده‌ای که در حالت پل خوانا مانده‌اند پاک می‌شوند.
+ * کد منقضی به درد کسی نمی‌خورد، ولی دلیلی هم ندارد نگهش داریم.
+ */
+$db->prepare('UPDATE otp_code SET pending_code = NULL WHERE pending_code IS NOT NULL AND expires_at < ?')
+   ->execute([now_utc()]);
 
 $code = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
 $hash = hash_hmac('sha256', $phone . ':' . $code, (string)$c['otp_pepper']);
 $ttl  = (int)($c['otp_ttl'] ?? 120);
 
+/*
+ * در حالت پل، خودِ کد هم کنار هش نوشته می‌شود تا مدیر بتواند در پنل
+ * ادمین ببیندش. عمر این مقدار حداکثر همان دو دقیقهٔ اعتبار کد است و
+ * لحظهٔ مصرف‌شدن پاک می‌شود. در حالت پیامک واقعی همیشه NULL می‌ماند —
+ * یعنی روی سامانهٔ راه‌افتاده هیچ کدی به شکل خوانا ذخیره نمی‌شود.
+ */
+$bridge = sms_is_bridge();
+
 $db->prepare(
-    'INSERT INTO otp_code (phone, code_hash, expires_at, ip, created_at)
-     VALUES (?, ?, ?, ?, ?)'
-)->execute([$phone, $hash, now_utc($ttl), $ip, now_utc()]);
+    'INSERT INTO otp_code (phone, code_hash, pending_code, expires_at, ip, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)'
+)->execute([$phone, $hash, $bridge ? $code : null, now_utc($ttl), $ip, now_utc()]);
 
 $sms = sms_send_verify($phone, $code);
 
@@ -74,11 +89,14 @@ if (!$sms['sent']) {
     fail(502, 'sms_failed', 'ارسال پیامک ممکن نشد. کمی بعد دوباره تلاش کنید.');
 }
 
-audit('otp.sent', null, ['phone' => $phone, 'messageId' => $sms['messageId']]);
+audit($bridge ? 'otp.bridge' : 'otp.sent', null,
+      ['phone' => $phone, 'messageId' => $sms['messageId']]);
 
 ok([
     'resendAfter' => $cooldown,
     'expiresIn'   => $ttl,
+    // رابط کاربری باید بگوید «کد را از مدیر بگیرید»، نه «پیامک را ببینید»
+    'bridge'      => $bridge,
     // فقط برای اینکه رابط کاربری بداند کاربر تازه است یا نه — هویتی لو نمی‌دهد
     'isNew'       => !user_exists($phone),
 ]);

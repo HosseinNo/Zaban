@@ -44,7 +44,7 @@ if (!$row) fail(400, 'expired', 'کد منقضی شده. دوباره درخوا
 
 $maxAttempts = (int)($c['otp_max_attempts'] ?? 5);
 if ((int)$row['attempts'] >= $maxAttempts) {
-    $db->prepare('UPDATE otp_code SET consumed_at = ? WHERE id = ?')->execute([now_utc(), $row['id']]);
+    $db->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE id = ?')->execute([now_utc(), $row['id']]);
     audit('otp.too_many_attempts', null, ['phone' => $phone]);
     fail(429, 'too_many_attempts', 'تلاش زیاد. کد باطل شد؛ دوباره درخواست کنید.');
 }
@@ -62,7 +62,7 @@ $st->execute([$phone]);
 $user = $st->fetch();
 
 if ($user && $user['status'] !== 'active') {
-    $db->prepare('UPDATE otp_code SET consumed_at = ? WHERE id = ?')->execute([now_utc(), $row['id']]);
+    $db->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE id = ?')->execute([now_utc(), $row['id']]);
     fail(403, 'account_disabled', 'این حساب غیرفعال است. با پشتیبانی تماس بگیرید.');
 }
 
@@ -78,7 +78,7 @@ if (!$user && $fullName === '') {
 }
 
 // از اینجا به بعد ورود قطعی است، پس کد یک‌بارمصرف سوزانده می‌شود
-$db->prepare('UPDATE otp_code SET consumed_at = ? WHERE id = ?')->execute([now_utc(), $row['id']]);
+$db->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE id = ?')->execute([now_utc(), $row['id']]);
 
 $isNew = false;
 if (!$user) {
