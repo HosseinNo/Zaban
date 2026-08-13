@@ -2246,8 +2246,21 @@ V["auth"]=function(){
         :h`<p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>`}
         <div class="otp" id="otpBox">
           ${[0,1,2,3,4].map(function(i){
-            return '<input type="text" inputmode="numeric" maxlength="1" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'"'+
-                   (i===0?' autocomplete="one-time-code"':'')+'>';}).join("")}
+            /*
+             * عمداً maxlength ندارد.
+             *
+             * با maxlength="1" مرورگر مقدار چسبانده‌شده را *قبل* از
+             * رویداد input می‌برد به یک نویسه. یعنی کاربر کد را از
+             * پیامک کپی می‌کند، paste می‌زند، و فقط رقم اول می‌نشیند —
+             * که دقیقاً همان کاری است که کپی‌کردن باید از آن نجاتش دهد.
+             * محدودیت یک‌رقمی در جاوااسکریپت اعمال می‌شود، بعد از اینکه
+             * رشتهٔ کامل را دیدیم و بین خانه‌ها پخشش کردیم.
+             *
+             * autocomplete روی همهٔ خانه‌هاست تا تکمیل خودکار iOS در هر
+             * کدام که فوکوس بود کار کند، نه فقط اولی.
+             */
+            return '<input type="text" inputmode="numeric" autocomplete="one-time-code" '+
+                   'enterkeyhint="go" data-otp="'+i+'" aria-label="رقم '+fa(i+1)+'">';}).join("")}
         </div>
         ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
         <button class="btn btn--p btn--b btn--lg" data-act="au-verify" id="auVerify" disabled>
@@ -3471,16 +3484,17 @@ document.addEventListener("click",function(e){
          چیزی می‌ماند که هرگز نمی‌آید. */
       S.auth.bridge=!!r.bridge; S.auth.expires=r.expiresIn||300;
       S.auth.step=2; startCooldown(r.resendAfter||60); render();
+      /* از همین لحظه منتظر پیامک می‌مانیم؛ اگر گوشی پشتیبانی کند خودش پر می‌شود */
+      watchSmsCode();
       toast(r.bridge?"کد ساخته شد؛ از مدیر آموزشگاه بگیرید":"کد به "+fa(ph)+" پیامک شد");
     });
   }
-  else if(a==="au-back"){S.auth.step=1;S.auth.err="";stopCooldown();render();}
+  else if(a==="au-back"){S.auth.step=1;S.auth.err="";stopCooldown();stopSmsWatch();render();}
   else if(a==="au-verify"){
     if(S.auth.busy)return;
-    var box=el("otpBox"), code="";
-    if(box)Array.prototype.forEach.call(box.querySelectorAll("input"),function(x){code+=x.value;});
-    code=enDigits(code).replace(/\D/g,"");
+    var code=otpValue();
     if(code.length!==5){authErr("هر پنج رقم کد را وارد کنید.");return;}
+    stopSmsWatch();   // کد در دست است؛ دیگر لازم نیست منتظر پیامک بمانیم
     if(!API.live){
       if(S.auth.newInst){S.auth.step=3;S.auth.err="";render();}
       else{stopCooldown();go("m");toast("خوش آمدید");}
@@ -3881,13 +3895,18 @@ document.addEventListener("input",function(e){
 
   /* کد یک‌بارمصرف: رقم که خورد، خودکار برو خانهٔ بعد */
   if(e.target.dataset&&e.target.dataset.otp!=null){
-    var box=el("otpBox"), inputs=box.querySelectorAll("input");
-    e.target.value=enDigits(e.target.value).replace(/\D/g,"").slice(0,1);
-    e.target.classList.toggle("filled",!!e.target.value);
+    var digits=enDigits(e.target.value).replace(/\D/g,"");
+    /*
+     * بیشتر از یک رقم یعنی یا کاربر کد را چسبانده، یا گوشی خودش
+     * پرش کرده. از همین خانه به بعد پخشش می‌کنیم.
+     */
+    if(digits.length>1){ spreadOtp(+e.target.dataset.otp,digits); return; }
+    e.target.value=digits;
+    e.target.classList.toggle("filled",!!digits);
+    var inputs=el("otpBox").querySelectorAll("input");
     var i=+e.target.dataset.otp;
-    if(e.target.value&&i<inputs.length-1)inputs[i+1].focus();
-    var all=Array.prototype.every.call(inputs,function(x){return x.value;});
-    var v=el("auVerify"); if(v)v.disabled=!all;
+    if(digits&&i<inputs.length-1)inputs[i+1].focus();
+    otpReady();
     return;
   }
 
@@ -3917,6 +3936,94 @@ document.addEventListener("keydown",function(e){
     if(i>0)inputs[i-1].focus();
   }
 });
+
+/* ── کد یک‌بارمصرف: چسباندن، تکمیل خودکار، و پرکردن از پیامک ── */
+
+/** رقم‌ها را از خانهٔ start به بعد پخش می‌کند و اگر کامل شد، خودش تأیید را می‌زند */
+function spreadOtp(start,digits){
+  var box=el("otpBox"); if(!box)return;
+  var inputs=box.querySelectorAll("input");
+  /*
+   * اگر رشته دقیقاً به اندازهٔ کل خانه‌هاست، از اول می‌نشیند حتی اگر
+   * فوکوس وسط بوده. کسی که کد پنج‌رقمی را در خانهٔ سوم می‌چسباند،
+   * منظورش کل کد است نه دو رقم آخرش.
+   */
+  if(digits.length>=inputs.length)start=0;
+  for(var k=0;k<inputs.length-start;k++){
+    var d=digits.charAt(k);
+    inputs[start+k].value=d;
+    inputs[start+k].classList.toggle("filled",!!d);
+  }
+  var last=Math.min(start+digits.length,inputs.length)-1;
+  if(inputs[last])inputs[last].focus();
+  otpReady();
+
+  /* کد کامل است و چیزی برای تصمیم‌گیری نمانده — منتظر کلیک نمی‌مانیم */
+  if(otpValue().length===inputs.length){
+    var v=el("auVerify");
+    if(v&&!v.disabled&&!S.auth.busy)v.click();
+  }
+}
+
+function otpValue(){
+  var box=el("otpBox"); if(!box)return "";
+  var s="";
+  Array.prototype.forEach.call(box.querySelectorAll("input"),function(x){s+=x.value;});
+  return enDigits(s).replace(/\D/g,"");
+}
+
+function otpReady(){
+  var box=el("otpBox"); if(!box)return;
+  var all=Array.prototype.every.call(box.querySelectorAll("input"),function(x){return x.value;});
+  var v=el("auVerify"); if(v)v.disabled=!all;
+}
+
+/*
+ * چسباندن را جدا هم می‌گیریم.
+ *
+ * رویداد input در بیشتر مرورگرها بعد از paste هم می‌آید و همان راه
+ * کافی است، ولی وقتی کاربر رشته‌ای با فاصله یا ارقام فارسی می‌چسباند
+ * («۱۲ ۳۴۵» از یک پیامک)، اینجا تمیزش می‌کنیم و جلوی رفتار پیش‌فرض را
+ * می‌گیریم تا در خانه ننشیند.
+ */
+document.addEventListener("paste",function(e){
+  if(!e.target.dataset||e.target.dataset.otp==null)return;
+  var txt=(e.clipboardData||window.clipboardData);
+  if(!txt)return;
+  var digits=enDigits(String(txt.getData("text")||"")).replace(/\D/g,"");
+  if(!digits)return;
+  e.preventDefault();
+  spreadOtp(+e.target.dataset.otp,digits);
+});
+
+/*
+ * پرکردن خودکار از پیامک روی اندروید (WebOTP).
+ *
+ * روی iOS بدون هیچ کدی کار می‌کند: سیستم کد را در نوار پیشنهاد بالای
+ * صفحه‌کلید نشان می‌دهد و با یک لمس در خانه می‌نشیند — به شرطی که
+ * autocomplete="one-time-code" روی input باشد، که هست.
+ *
+ * روی اندروید کروم این API لازم است، و فقط وقتی جواب می‌دهد که آخرین
+ * خط پیامک دقیقاً «@دامنه #کد» باشد. اگر قالب پیامک این خط را نداشته
+ * باشد هیچ اتفاقی نمی‌افتد و هیچ خطایی هم نمی‌دهد — یعنی گذاشتنش
+ * بی‌ضرر است حتی اگر قالب هنوز به‌روز نشده باشد.
+ */
+var otpAbort=null;
+function watchSmsCode(){
+  if(!("OTPCredential" in window)||!navigator.credentials)return;
+  stopSmsWatch();
+  otpAbort=new AbortController();
+  navigator.credentials.get({otp:{transport:["sms"]},signal:otpAbort.signal})
+    .then(function(c){
+      if(!c||!c.code)return;
+      var d=enDigits(String(c.code)).replace(/\D/g,"");
+      if(d)spreadOtp(0,d);
+    })
+    .catch(function(){ /* لغو یا رد کاربر — نه خطاست نه چیزی برای نمایش */ });
+}
+function stopSmsWatch(){
+  if(otpAbort){try{otpAbort.abort();}catch(e){} otpAbort=null;}
+}
 
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"&&el("ov").classList.contains("on")){closeModal();}
