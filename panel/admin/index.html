@@ -265,7 +265,7 @@ function call(body){
 
 /* ══════════ وضعیت ══════════ */
 var S={view:"dash",settings:null,leads:null,stats:null,events:null,
-       codes:null,health:null,issued:null,busy:false,err:""};
+       codes:null,health:null,issued:null,smsTest:null,busy:false,err:""};
 
 var NAV=[
   {g:"مرور"},
@@ -582,10 +582,40 @@ function viewSms(){
         <span class="hint">تا وقتی قالب sms.ir تأیید نشده، گزینهٔ دوم را انتخاب نکنید؛ کسی نمی‌تواند وارد شود.</span></div>
       ${setField("smsir_api_key","کلید API پنل sms.ir","پنل sms.ir → توسعه‌دهندگان → کلید API")}
       ${setField("smsir_template_id","شناسهٔ قالب وریفای","پنل sms.ir → قالب‌های وریفای — فقط عدد")}
-      ${setField("smsir_param_name","نام متغیر داخل قالب","اگر در قالب نوشته‌اید #CODE#، اینجا هم CODE")}
+      ${setField("smsir_param_name","نام متغیر داخل قالب",
+        "دقیقاً همان کلمه‌ای که در قالب sms.ir بین دو # نوشته‌اید، ولی بدون #. "+
+        "اگر در قالب نوشته‌اید <span dir=\"ltr\">#otp#</span>، اینجا بنویسید <span dir=\"ltr\">otp</span>.")}
+      ${setField("otp_ttl","عمر کد ورود (ثانیه)",
+        "اگر پیامک با تأخیر می‌رسد این را بالا ببرید؛ وگرنه کد درست لحظه‌ای می‌رسد که منقضی شده. بین ۶۰ تا ۹۰۰.")}
     </div>
     ${saveBar()}
   </div>
+
+  ${bridge?"":h`
+  <div class="card">
+    <div class="card-h"><h3>پیامک آزمایشی</h3></div>
+    <div class="card-b">
+      <div class="note note--w">
+        اگر پیامک می‌رسد ولی به‌جای عدد داخلش نوشته
+        <b dir="ltr">#otp#</b> یا <b dir="ltr">#CODE#</b>، یعنی نام متغیر بالا با قالب sms.ir
+        یکی نیست. sms.ir در این حالت خطا نمی‌دهد و پیامک هم می‌رسد — فقط متن قالب
+        دست‌نخورده می‌ماند. نام متغیر را درست کنید و دوباره امتحان کنید.
+      </div>
+      <div class="fld"><label for="stPhone">شمارهٔ موبایل</label>
+        <input id="stPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
+               placeholder="09121234567"></div>
+      <button class="btn btn--p" data-a="smstest">ارسال پیامک آزمایشی</button>
+      ${S.smsTest?h`<div class="note ${S.smsTest.ok?"note--i":"note--e"}" style="margin-block-start:14px">
+        ${S.smsTest.ok
+          ? "پیامک فرستاده شد. باید عدد <b class=\"num\">"+fa(S.smsTest.code)+
+            "</b> داخلش باشد. اگر به‌جایش نام متغیر نوشته شده، مقدار «نام متغیر داخل قالب» را عوض کنید."
+          : esc(S.smsTest.message)}
+        <br><span class="muted" style="font-size:12.5px">فرستاده شد با قالب
+        <b class="num" dir="ltr">${esc(S.smsTest.template||"—")}</b> و نام متغیر
+        <b dir="ltr">${esc(S.smsTest.param||"—")}</b></span>
+      </div>`:""}
+    </div>
+  </div>`}
 
   <div class="card">
     <div class="card-h"><h3>کد ورود بساز</h3></div>
@@ -761,7 +791,7 @@ function syncCodeTimer(){
 }
 
 function goView(v){
-  S.view=v; if(v!=="sms")S.issued=null;
+  S.view=v; if(v!=="sms"){S.issued=null;S.smsTest=null;}
   render(); syncCodeTimer();
   need(v).then(function(){render();syncCodeTimer();});
 }
@@ -864,6 +894,22 @@ document.addEventListener("click",function(e){
     return;
   }
 
+  if(a==="smstest"){
+    if(S.busy)return;
+    var sp=enDigits(((el("stPhone")||{}).value||"")).replace(/\s/g,"");
+    if(!/^09\d{9}$/.test(sp)){toast("شماره باید ۱۱ رقم و با ۰۹ شروع شود");return;}
+    S.busy=true; toast("در حال ارسال…");
+    call({action:"smsTest",phone:sp}).then(function(r){
+      S.busy=false;
+      /* چه موفق چه ناموفق، شناسهٔ قالب و نام پارامتر را نشان می‌دهیم —
+         همان دو چیزی که تشخیص را ممکن می‌کند */
+      S.smsTest={ok:!!r.ok,code:r.code,param:r.param,template:r.template,message:r.message||""};
+      render();
+      toast(r.ok?"فرستاده شد":"فرستاده نشد");
+    });
+    return;
+  }
+
   if(a==="testmail"){
     toast("در حال ارسال…");
     call({action:"testMail"}).then(function(r){
@@ -888,7 +934,7 @@ document.addEventListener("click",function(e){
   if(a==="logout"){
     call({action:"logout"}).then(function(){
       API.admin=null; S.settings=S.leads=S.stats=S.events=null;
-      S.codes=S.health=S.issued=null;
+      S.codes=S.health=S.issued=S.smsTest=null;
       if(codeTimer){clearInterval(codeTimer);codeTimer=null;}
       render(); toast("خارج شدید");
     });

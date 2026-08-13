@@ -49,7 +49,7 @@ function sms_conf(): array
     try {
         $st = db()->query(
             "SELECT skey, svalue FROM site_setting
-              WHERE skey IN ('sms_mode','smsir_api_key','smsir_template_id','smsir_param_name')"
+              WHERE skey IN ('sms_mode','smsir_api_key','smsir_template_id','smsir_param_name','otp_ttl')"
         );
         foreach ($st->fetchAll() as $r) $row[(string)$r['skey']] = (string)$r['svalue'];
     } catch (Throwable $e) {
@@ -64,14 +64,44 @@ function sms_conf(): array
     $mode = $row['sms_mode'] ?? '';
     if ($mode === '') $mode = ($key !== '' && $template > 0) ? 'smsir' : 'bridge';
 
+    /*
+     * نام پارامتر بدون «#» ذخیره می‌شود، ولی کاربر تقریباً همیشه همان
+     * چیزی را کپی می‌کند که در قالب sms.ir نوشته — یعنی «#otp#». اگر
+     * همان را بفرستیم، sms.ir هیچ پارامتری با آن نام پیدا نمی‌کند و
+     * متن قالب دست‌نخورده می‌رود: کاربر پیامکی می‌گیرد که در آن به‌جای
+     * کد، عبارت #otp# نوشته شده. پس اینجا پاکش می‌کنیم.
+     */
+    $param = trim($row['smsir_param_name'] ?? (string)($c['smsir_param_name'] ?? 'CODE'));
+    $param = trim(str_replace('#', '', $param));
+    if ($param === '') $param = 'CODE';
+
     $s = [
         'mode'     => $mode,
         'key'      => $key,
         'template' => $template,
-        'param'    => $row['smsir_param_name'] ?? (string)($c['smsir_param_name'] ?? 'CODE'),
+        'param'    => $param,
+        'ttl'      => otp_ttl_from($row, $c),
     ];
     return $s;
 }
+
+/**
+ * عمر کد به ثانیه.
+ *
+ * عمداً به config.php نگاه نمی‌کند. نسخه‌های اول نصب‌کننده مقدار ۱۲۰
+ * را آنجا می‌نوشتند، و اگر آن را محترم بشماریم، هر نصب موجود روی همان
+ * دو دقیقه می‌ماند — یعنی دقیقاً همان چیزی که می‌خواهیم اصلاح کنیم:
+ * پیامک با دو دقیقه تأخیر می‌رسد و کد از قبل مرده است. تنها منبع
+ * معتبر، تنظیمات پنل ادمین است.
+ */
+function otp_ttl_from(array $row, array $c): int
+{
+    $ttl = (int)($row['otp_ttl'] ?? 0);
+    if ($ttl <= 0) $ttl = 300;
+    return max(60, min(900, $ttl));
+}
+
+function otp_ttl(): int { return sms_conf()['ttl']; }
 
 /** آیا الان کد ورود از راه پنل ادمین به دست کاربر می‌رسد؟ */
 function sms_is_bridge(): bool { return sms_conf()['mode'] === 'bridge'; }

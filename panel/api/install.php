@@ -426,6 +426,7 @@ case 'run':
      */
     $seed = [
         'sms_mode'      => 'bridge',
+        'otp_ttl'       => '300',
         'contact_email' => trim((string)($in['email'] ?? '')) ?: 'info@talkora.ir',
         'demo_email'    => trim((string)($in['email'] ?? '')) ?: 'info@talkora.ir',
         'contact_phone' => trim((string)($in['phone'] ?? '')),
@@ -458,7 +459,6 @@ case 'run':
         'smsir_param_name'  => 'CODE',
         'sms_dry_run'       => false,
 
-        'otp_ttl'          => 120,
         'resend_cooldown'  => 60,
         'otp_max_attempts' => 5,
         'rate_phone_hour'  => 5,

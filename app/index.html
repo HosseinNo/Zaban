@@ -825,7 +825,11 @@ DB.payroll=[
 var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        rec:{on:false,sec:0,done:false,timer:null},
        grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null,
-       auth:{step:1,phone:"",inst:"",name:"",code:"",err:"",busy:false,cool:0,tick:null,newInst:true},
+       /* پیش‌فرض «ورود» است، نه «ثبت‌نام».
+          سایت حالا دو در جدا دارد: دکمهٔ ورود به «/» می‌آید و دکمهٔ ثبت‌نام
+          به «#/signup». اگر پیش‌فرض ثبت‌نام بماند، کسی که «ورود» زده روی
+          فرمی می‌افتد که نام آموزشگاه می‌خواهد. */
+       auth:{step:1,phone:"",inst:"",name:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,newInst:false},
        onboard:{profile:true,levels:true,students:false,term:false,team:false,money:false},
        term:{step:1,rows:null,name:"زمستان ۱۴۰۵",from:"۱۵ دی",to:"۱۰ فروردین"},
        enrol:{step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false},
@@ -2237,7 +2241,7 @@ V["auth"]=function(){
         <p class="auth-p">کد پنج‌رقمی برای <span class="num" dir="ltr">${fa(a.phone)}</span> ساخته شد.</p>
         <div class="au-err" style="background:var(--warn-soft,#FFF6E5);color:var(--ink-2);border-color:#F0C674" role="status">
           هنوز پیامک راه نیفتاده. کد را از مدیر آموزشگاه بگیرید — در پنل ادمین دیده می‌شود.
-          کد دو دقیقه اعتبار دارد.
+          کد ${fa(Math.round((a.expires||300)/60))} دقیقه اعتبار دارد.
         </div>`
         :h`<p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>`}
         <div class="otp" id="otpBox">
@@ -3273,6 +3277,17 @@ var FULL={"auth":1,"nows":1};
 
 function go(route){location.hash="#/"+route;}
 function render(){
+  /*
+   * #/signup یک مسیر واقعی نیست، یک میان‌بر است: همان صفحهٔ ورود را باز
+   * می‌کند ولی روی حالت «ثبت‌نام آموزشگاه». دکمهٔ ثبت‌نام سایت به اینجا
+   * می‌آید، وگرنه کاربر روی صفحهٔ ورود می‌افتاد و باید خودش دنبال لینک
+   * کوچک «ثبت‌نام» می‌گشت.
+   */
+  if(/^#\/?signup/.test(location.hash||"")){
+    S.auth.newInst=true;
+    location.replace("#/auth");
+    return;
+  }
   var r=(location.hash||"#/t").replace(/^#\/?/,"")||"t";
   if(!V[r]){r=S.role==="student"?"s":S.role==="manager"?"m":"t";}
 
@@ -3454,7 +3469,7 @@ document.addEventListener("click",function(e){
       }
       /* در حالت پل پیامکی نرفته؛ گفتن «پیامک شد» یعنی کاربر منتظر
          چیزی می‌ماند که هرگز نمی‌آید. */
-      S.auth.bridge=!!r.bridge;
+      S.auth.bridge=!!r.bridge; S.auth.expires=r.expiresIn||300;
       S.auth.step=2; startCooldown(r.resendAfter||60); render();
       toast(r.bridge?"کد ساخته شد؛ از مدیر آموزشگاه بگیرید":"کد به "+fa(ph)+" پیامک شد");
     });
@@ -3937,6 +3952,15 @@ function finishBoot(){
 function startDemo(){API.live=false;finishBoot();}
 
 function boot(){
+  /*
+   * نیت «ثبت‌نام» را همین اول برمی‌داریم.
+   *
+   * چند خط پایین‌تر، وقتی معلوم شد کاربر وارد نشده، مسیر به #/auth
+   * عوض می‌شود و #/signup از بین می‌رود. اگر منتظر render بمانیم، دیگر
+   * چیزی برای خواندن نمانده و دکمهٔ ثبت‌نام سایت کاربر را روی فرم ورود
+   * می‌انداخت — همان چیزی که می‌خواستیم از آن فرار کنیم.
+   */
+  if(/^#\/?signup/.test(location.hash||"")) S.auth.newInst=true;
   if(!window.fetch||!window.Promise){startDemo();return;}
   withTimeout(apiCall("health.php"),4000).then(function(hl){
     if(!hl||!hl.ok||!hl.database){startDemo();return;}

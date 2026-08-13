@@ -518,6 +518,11 @@ def main() -> int:
     site_html, n_links = re.subn(r'href="#login"', f'href="{PANEL_URL}"', site_html)
     if n_links == 0:
         print("هشدار: هیچ لینک #login در سایت پیدا نشد؛ دکمهٔ ورود بررسی شود.", file=sys.stderr)
+
+    # ثبت‌نام یک قدم جلوتر می‌رود: صفحهٔ ورودِ پنل، ولی روی حالت ساخت آموزشگاه
+    site_html, n_signup = re.subn(r'href="#signup"', f'href="{PANEL_URL}#/signup"', site_html)
+    if n_signup == 0:
+        print("هشدار: هیچ لینک #signup در سایت پیدا نشد؛ دکمهٔ ثبت‌نام بررسی شود.", file=sys.stderr)
     (site_out / "index.html").write_text(site_html, encoding="utf-8")
     shutil.copytree(fonts, site_out / "fonts")
     (site_out / ".htaccess").write_text(SITE_HTACCESS, encoding="utf-8")
@@ -639,6 +644,21 @@ def main() -> int:
 
     if "api/public.php" not in (site_out / "index.html").read_text(encoding="utf-8"):
         print("خطا: سایت به api/public.php وصل نیست.", file=sys.stderr)
+        return 1
+
+    # دکمه‌های ورود و ثبت‌نام باید به پنل برسند، نه به لنگر خالی همان صفحه
+    built_site = (site_out / "index.html").read_text(encoding="utf-8")
+    for anchor in ('href="#login"', 'href="#signup"'):
+        if anchor in built_site:
+            print(f"خطا: {anchor} در بستهٔ سایت بازنویسی نشده؛ دکمه به جایی نمی‌رود.", file=sys.stderr)
+            return 1
+    if f'{PANEL_URL}#/signup' not in built_site:
+        print("خطا: دکمهٔ ثبت‌نام در بستهٔ سایت نیست.", file=sys.stderr)
+        return 1
+
+    # میان‌بر ثبت‌نام باید در خود پنل هم پیاده شده باشد، وگرنه لینک به صفحهٔ ورود ساده می‌افتد
+    if "signup" not in (panel_out / "index.html").read_text(encoding="utf-8"):
+        print("خطا: پنل مسیر #/signup را نمی‌شناسد.", file=sys.stderr)
         return 1
 
     for pkg in (site_out, panel_out):

@@ -175,6 +175,31 @@ case 'saveSettings':
         $vals['smsir_template_id'] = preg_replace('/\D/', '', en_digits_admin((string)$vals['smsir_template_id'])) ?: '';
     }
 
+    /*
+     * «#otp#» را به «otp» تبدیل می‌کنیم.
+     *
+     * کاربر همان چیزی را کپی می‌کند که در قالب sms.ir نوشته، و آنجا
+     * متغیر با # نوشته می‌شود. اگر عیناً ذخیره شود، sms.ir پارامتری با
+     * آن نام پیدا نمی‌کند و متن قالب را دست‌نخورده می‌فرستد — یعنی به
+     * کاربر پیامکی می‌رسد که در آن به‌جای کد نوشته «#otp#».
+     */
+    if (isset($vals['smsir_param_name'])) {
+        $p = trim(str_replace('#', '', (string)$vals['smsir_param_name']));
+        if ($p !== '' && !preg_match('/^[A-Za-z0-9_]{1,32}$/', $p)) {
+            fail(400, 'invalid', 'نام متغیر فقط حروف انگلیسی، رقم و زیرخط — بدون فاصله و بدون #.');
+        }
+        $vals['smsir_param_name'] = $p ?: 'CODE';
+    }
+
+    if (isset($vals['otp_ttl'])) {
+        $t = (int)preg_replace('/\D/', '', en_digits_admin((string)$vals['otp_ttl']));
+        if ($t < 60 || $t > 900) {
+            fail(400, 'invalid_number',
+                'عمر کد باید بین ۶۰ و ۹۰۰ ثانیه باشد. کمتر از یک دقیقه یعنی پیامک دیررس بی‌فایده می‌شود.');
+        }
+        $vals['otp_ttl'] = (string)$t;
+    }
+
     $n = settings_save($vals, (string)$a['id']);
     audit('admin.settings_saved', null, ['count' => $n, 'keys' => array_keys($vals)]);
     ok(['saved' => $n, 'settings' => settings_all()]);
@@ -308,7 +333,7 @@ case 'issueCode':
     $c      = cfg();
     $bridge = sms_is_bridge();
     $code   = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
-    $ttl    = (int)($c['otp_ttl'] ?? 120);
+    $ttl    = otp_ttl();
 
     db()->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE phone = ? AND consumed_at IS NULL')
         ->execute([now_utc(), $phone]);
@@ -328,6 +353,44 @@ case 'issueCode':
         fail(502, 'sms_failed', 'ارسال پیامک ممکن نشد: ' . (string)($sms['error'] ?? ''));
     }
     ok(['phone' => $phone, 'code' => $bridge ? $code : null, 'expiresIn' => $ttl, 'bridge' => $bridge]);
+
+/* ─────────── آزمایش پیامک ─────────── */
+/*
+ * یک پیامک واقعی می‌فرستد و *دقیقاً* چیزی را که فرستاده برمی‌گرداند:
+ * شناسهٔ قالب و نام پارامتر.
+ *
+ * چرا این‌ها را نشان می‌دهیم: شایع‌ترین خرابیِ راه‌اندازی پیامک این است
+ * که قالب متغیری به نام otp دارد ولی سامانه پارامتری به نام CODE
+ * می‌فرستد. آن‌وقت sms.ir «موفق» برمی‌گرداند و پیامک هم می‌رسد — ولی
+ * به‌جای کد، عبارت #otp# داخلش نوشته شده. هیچ خطایی هیچ‌جا ثبت نمی‌شود.
+ * با دیدن نام پارامتر کنار متن پیامک، تشخیصش چند ثانیه‌ای است.
+ */
+case 'smsTest':
+    require_admin();
+    $phone = normalize_phone((string)($in['phone'] ?? ''));
+    if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
+
+    $s = sms_conf();
+    if ($s['mode'] !== 'smsir') {
+        fail(400, 'bridge_mode',
+            'الان در حالت پل هستید و پیامکی فرستاده نمی‌شود. اول حالت را روی «ارسال با sms.ir» بگذارید.');
+    }
+
+    // کد نمایشی؛ به هیچ ورودی‌ای وصل نیست و کسی با آن وارد نمی‌شود
+    $demo = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    $res  = sms_send_verify($phone, $demo);
+    audit('admin.sms_test', null, ['phone' => $phone, 'sent' => $res['sent'], 'error' => $res['error']]);
+
+    if (!$res['sent']) {
+        fail(502, 'sms_failed', 'sms.ir قبول نکرد: ' . (string)($res['error'] ?? 'خطای نامشخص'),
+             ['template' => $s['template'], 'param' => $s['param']]);
+    }
+    ok([
+        'sent'     => true,
+        'code'     => $demo,          // تا بتوانید با پیامک رسیده مقایسه کنید
+        'param'    => $s['param'],
+        'template' => $s['template'],
+    ]);
 
 /* ─────────── سلامت سامانه ─────────── */
 /*
