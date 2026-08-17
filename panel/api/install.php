@@ -402,6 +402,27 @@ case 'run':
         error_log('pending_code alter: ' . $e->getMessage());
     }
 
+    /*
+     * نام کاربری و رمز هم بعداً اضافه شدند. روی نصب‌های موجود ستون‌ها
+     * نیستند و بدون این‌ها ورود با رمز خطای SQL می‌دهد.
+     */
+    foreach ([
+        'username'  => "ALTER TABLE app_user ADD COLUMN username VARCHAR(64) NULL AFTER status",
+        'pass_hash' => "ALTER TABLE app_user ADD COLUMN pass_hash VARCHAR(255) NULL AFTER username",
+    ] as $col => $sql) {
+        try {
+            if (!$pdo->query("SHOW COLUMNS FROM app_user LIKE '{$col}'")->fetchAll()) $pdo->exec($sql);
+        } catch (Throwable $e) {
+            error_log("{$col} alter: " . $e->getMessage());
+        }
+    }
+    try {
+        $idx = $pdo->query("SHOW INDEX FROM app_user WHERE Key_name = 'uq_user_username'")->fetchAll();
+        if (!$idx) $pdo->exec('ALTER TABLE app_user ADD UNIQUE KEY uq_user_username (username)');
+    } catch (Throwable $e) {
+        error_log('username index: ' . $e->getMessage());
+    }
+
     /* ── ادمین ── */
     if (!$hasAdmin) {
         $dup = $pdo->prepare('SELECT COUNT(*) FROM admin_user WHERE username = ?');

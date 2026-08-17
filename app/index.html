@@ -433,6 +433,8 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
   font-variant-numeric:tabular-nums}
 .otp input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
 .otp input.filled{border-color:var(--brand);background:var(--brand-soft)}
+.au-opt{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px}
+.au-opt input{inline-size:18px;block-size:18px;margin-block-start:3px;flex:none;accent-color:var(--brand)}
 .au-err{margin-block:2px 14px;padding:10px 12px;border-radius:var(--r1);font-size:13.5px;
         background:var(--bad-soft);color:var(--bad);border:1px solid currentColor}
 .steps-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
@@ -830,7 +832,7 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
           سایت حالا دو در جدا دارد: دکمهٔ ورود به «/» می‌آید و دکمهٔ ثبت‌نام
           به «#/signup». اگر پیش‌فرض ثبت‌نام بماند، کسی که «ورود» زده روی
           فرمی می‌افتد که نام آموزشگاه می‌خواهد. */
-       auth:{step:1,phone:"",inst:"",name:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,newInst:false},
+       auth:{step:1,mode:"pass",phone:"",inst:"",name:"",user:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,wantPass:false,newPass:"",p1:"",p2:"",newInst:false},
        onboard:{profile:true,levels:true,students:false,term:false,team:false,money:false},
        term:{step:1,rows:null,name:"زمستان ۱۴۰۵",from:"۱۵ دی",to:"۱۰ فروردین"},
        enrol:{step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false},
@@ -2267,15 +2269,23 @@ function startCooldown(sec){
  * لحظه نمی‌سوزاند، پس ثبت‌نام نیمه‌کاره نمی‌ماند.
  */
 function verifyOtp(){
-  apiCall("otp-verify.php",{
-    phone:S.auth.phone, code:S.auth.code,
-    fullName:S.auth.name, instituteName:S.auth.inst
-  }).then(function(r){
+  var body={phone:S.auth.phone, code:S.auth.code,
+            fullName:S.auth.name, instituteName:S.auth.inst};
+  /* نام کاربری و رمز فقط وقتی می‌روند که کاربر خواسته باشد */
+  if(S.auth.wantPass&&S.auth.newPass){ body.username=S.auth.user; body.password=S.auth.newPass; }
+  apiCall("otp-verify.php",body).then(function(r){
     S.auth.busy=false;
     if(r.ok&&r.needsProfile){S.auth.step=3;S.auth.err="";render();return;}
     if(!r.ok){
       if(r.error==="expired"||r.error==="too_many_attempts"){
         S.auth.step=1; stopCooldown();
+      }
+      /*
+       * نام کاربری تکراری یا رمز ضعیف، کد را نسوزانده. کاربر باید
+       * همان‌جا اصلاحش کند، نه اینکه به اول برگردد و کد تازه بخواهد.
+       */
+      if(r.error==="username_taken"||r.error==="weak_password"||r.error==="invalid_username"){
+        S.auth.step=3; S.auth.newPass="";
       }
       authErr(r.attemptsLeft!=null&&r.attemptsLeft>0
         ? (r.message||"کد اشتباه است.")+" "+fa(r.attemptsLeft)+" تلاش دیگر دارید."
@@ -2284,7 +2294,7 @@ function verifyOtp(){
     }
     stopCooldown();
     applyUser(r.user);
-    S.auth.code=""; S.auth.err="";
+    S.auth.code=""; S.auth.err=""; clearAuthSecrets();
 
     /*
      * دادهٔ واقعی را *قبل* از رفتن به داشبورد می‌گیریم.
@@ -2320,31 +2330,57 @@ V["auth"]=function(){
       <div class="steps-dots">
         <i class="${a.step>=1?"on":""}"></i><i class="${a.step>=2?"on":""}"></i><i class="${a.step>=3?"on":""}"></i>
       </div>
-      ${a.step===1?h`
-        <h1 class="auth-h">${a.newInst?"ثبت‌نام آموزشگاه":"ورود"}</h1>
+      ${a.step===1&&a.mode==="pass"?h`
+        <h1 class="auth-h">ورود</h1>
+        <p class="auth-p">اگر رمز ساخته‌اید از اینجا وارد شوید. اگر نه، با پیامک وارد شوید.</p>
+        <div class="fld" style="margin-top:22px">
+          <label for="lgUser">نام کاربری یا شمارهٔ موبایل <span class="rq">*</span></label>
+          <input id="lgUser" type="text" dir="ltr" style="text-align:end" autocomplete="username"
+                 autocapitalize="off" spellcheck="false" value="${esc(a.user)}">
+        </div>
+        <div class="fld">
+          <label for="lgPass">رمز عبور <span class="rq">*</span></label>
+          <input id="lgPass" type="password" dir="ltr" style="text-align:end" autocomplete="current-password"
+                 enterkeyhint="go">
+        </div>
+        ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-login" ${a.busy?"disabled":""}>
+          ${a.busy?"در حال ورود…":"ورود"}</button>
+        <p class="auth-p" style="margin-top:14px">
+          <button class="btn btn--q btn--sm" data-act="au-mode-otp">ورود با پیامک</button>
+          <button class="btn btn--q btn--sm" data-act="au-mode-forgot">رمزم را فراموش کرده‌ام</button>
+        </p>
+        <p class="auth-p" style="margin-top:6px">آموزشگاه جدید دارید؟
+          <button class="btn btn--q btn--sm" data-act="au-mode-signup">ثبت‌نام</button></p>
+      `:a.step===1?h`
+        <h1 class="auth-h">${a.mode==="signup"?"ثبت‌نام آموزشگاه"
+                           :a.mode==="forgot"?"بازیابی رمز":"ورود با پیامک"}</h1>
         <p class="auth-p">شمارهٔ موبایل‌تان را وارد کنید.
           ${API.bridge?"یک کد پنج‌رقمی ساخته می‌شود که مدیر آموزشگاه به شما می‌گوید."
                       :"یک کد پنج‌رقمی برایتان پیامک می‌شود."}</p>
         <div class="fld" style="margin-top:22px">
           <label for="auPhone">شمارهٔ موبایل <span class="rq">*</span></label>
           <input id="auPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:end"
-                 placeholder="09121234567" autocomplete="tel" value="${esc(a.phone)}">
-          <span class="hint">با همین شماره وارد می‌شوید؛ رمز عبور لازم نیست.</span>
+                 placeholder="09121234567" autocomplete="tel" enterkeyhint="go" value="${esc(a.phone)}">
+          ${a.mode==="forgot"
+            ?'<span class="hint">همان شماره‌ای که با آن ثبت‌نام کرده‌اید.</span>'
+            :'<span class="hint">با همین شماره وارد می‌شوید؛ رمز عبور لازم نیست.</span>'}
         </div>
-        ${a.newInst?h`<div class="fld">
-          <label for="auName">نام و نام خانوادگی <span class="rq">*</span></label>
-          <input id="auName" type="text" placeholder="مثلاً رضا کیانی" autocomplete="name" value="${esc(a.name)}">
-        </div>
-        <div class="fld">
-          <label for="auInst">نام آموزشگاه <span class="rq">*</span></label>
-          <input id="auInst" type="text" placeholder="مثلاً آموزشگاه زبان پردیس" value="${esc(a.inst)}">
-        </div>`:""}
+        ${/*
+           * در ثبت‌نام هم فقط شماره پرسیده می‌شود.
+           *
+           * نام و آموزشگاه و رمز بعد از تأیید شماره می‌آیند. دلیلش فقط
+           * کوتاه‌بودن فرم اول نیست: تا وقتی شماره تأیید نشده، پرکردن
+           * سه فیلد دیگر ممکن است دور ریخته شود، و اگر کاربر همان‌جا
+           * منصرف شود چیزی جز یک شمارهٔ تأییدنشده ثبت نکرده‌ایم.
+           */""}
         ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
         <button class="btn btn--p btn--b btn--lg" data-act="au-send" ${a.busy?"disabled":""}>
           ${a.busy?"در حال ارسال…":"ارسال کد"}</button>
         <p class="auth-p" style="margin-top:16px">
-          ${a.newInst?"قبلاً ثبت‌نام کرده‌اید؟":"آموزشگاه جدید دارید؟"}
-          <button class="btn btn--q btn--sm" data-act="au-toggle">${a.newInst?"ورود":"ثبت‌نام"}</button></p>
+          <button class="btn btn--q btn--sm" data-act="au-mode-pass">ورود با رمز</button>
+          ${a.mode==="signup"?"":h`<button class="btn btn--q btn--sm" data-act="au-mode-signup">ثبت‌نام آموزشگاه</button>`}
+        </p>
       `:a.step===2?h`
         <h1 class="auth-h">کد را وارد کنید</h1>
         ${a.bridge?h`
@@ -2381,18 +2417,77 @@ V["auth"]=function(){
             : h`<button class="btn btn--q btn--sm" data-act="au-resend">ارسال دوباره</button>`}
           ${API.live?"":h`<br><span class="muted" style="font-size:12.5px">در این نمونه هر کد پنج‌رقمی پذیرفته می‌شود.</span>`}</p>
         <button class="btn btn--q btn--b" style="margin-top:8px" data-act="au-back">بازگشت</button>
+      `:a.mode==="forgot"?h`
+        <h1 class="auth-h">رمز تازه بسازید</h1>
+        <p class="auth-p">شماره تأیید شد. رمز تازه‌تان را وارد کنید.</p>
+        <div class="fld" style="margin-top:20px">
+          <label for="auPass1">رمز تازه <span class="rq">*</span></label>
+          <input id="auPass1" type="password" dir="ltr" style="text-align:end" autocomplete="new-password"
+                 value="${esc(a.p1)}">
+          <span class="hint">حداقل ۸ نویسه، و نه فقط عدد.</span>
+        </div>
+        <div class="fld">
+          <label for="auPass2">تکرار رمز <span class="rq">*</span></label>
+          <input id="auPass2" type="password" dir="ltr" style="text-align:end" autocomplete="new-password"
+                 enterkeyhint="go" value="${esc(a.p2)}">
+        </div>
+        ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
+        <button class="btn btn--p btn--b btn--lg" data-act="au-reset" ${a.busy?"disabled":""}>
+          ${a.busy?"در حال ثبت…":"ثبت رمز تازه"}</button>
+        <p class="auth-p" style="margin-top:12px">
+          <span class="muted" style="font-size:12.5px">با ثبت رمز تازه، همهٔ دستگاه‌های دیگر از حساب بیرون می‌روند.</span></p>
       `:API.live?h`
-        <h1 class="auth-h">فقط نام‌تان مانده</h1>
-        <p class="auth-p">شماره تأیید شد. برای ساخت حساب، نام‌تان را وارد کنید.</p>
+        <h1 class="auth-h">${a.mode==="signup"?"آموزشگاه‌تان را بسازید":"فقط نام‌تان مانده"}</h1>
+        <p class="auth-p">شماره تأیید شد. ${a.mode==="signup"
+          ?"نام خودتان و نام آموزشگاه را وارد کنید."
+          :"برای ساخت حساب، نام‌تان را وارد کنید."}</p>
         <div class="fld" style="margin-top:20px">
           <label for="auName2">نام و نام خانوادگی <span class="rq">*</span></label>
           <input id="auName2" type="text" placeholder="مثلاً رضا کیانی" autocomplete="name" value="${esc(a.name)}">
         </div>
         <div class="fld">
-          <label for="auInst2">نام آموزشگاه</label>
-          <input id="auInst2" type="text" placeholder="اگر مدیر آموزشگاه هستید" value="${esc(a.inst)}">
-          <span class="hint">اگر زبان‌آموز یا مدرس هستید خالی بگذارید؛ آموزشگاه شما را اضافه می‌کند.</span>
+          <label for="auInst2">نام آموزشگاه ${a.mode==="signup"?'<span class="rq">*</span>':""}</label>
+          <input id="auInst2" type="text" placeholder="${a.mode==="signup"?"مثلاً آموزشگاه زبان پردیس":"اگر مدیر آموزشگاه هستید"}"
+                 value="${esc(a.inst)}">
+          <span class="hint">${a.mode==="signup"
+            ?"با پرکردن این خانه، آموزشگاه ساخته می‌شود و شما مدیرش می‌شوید."
+            :"اگر زبان‌آموز یا مدرس هستید خالی بگذارید؛ آموزشگاه شما را اضافه می‌کند."}</span>
         </div>
+
+        ${/*
+           * رمز اینجا اختیاری است و عمداً پایین‌تر از نام نشسته.
+           *
+           * زبان‌آموزی که یک بار در ترم وارد می‌شود نباید مجبور شود رمز
+           * بسازد و فراموشش کند؛ برای او پیامک کافی است. ولی منشی‌ای که
+           * روزی بیست بار وارد می‌شود نباید بیست بار منتظر پیامک بماند.
+           * پس هر دو، و انتخاب با خود کاربر.
+           */""}
+        <div style="border-block-start:1px solid var(--line);margin-block:18px 14px;padding-block-start:16px">
+          <label class="au-opt">
+            <input type="checkbox" id="auWantPass" ${a.wantPass?"checked":""} data-act="au-toggle-pass">
+            <span><b>رمز عبور هم بسازم</b><br>
+              <span class="muted" style="font-size:12.5px">تا دفعهٔ بعد بدون انتظار پیامک وارد شوم.</span></span>
+          </label>
+        </div>
+        ${a.wantPass?h`
+        <div class="fld">
+          <label for="auUser2">نام کاربری <span class="rq">*</span></label>
+          <input id="auUser2" type="text" dir="ltr" style="text-align:end" autocomplete="username"
+                 autocapitalize="off" spellcheck="false" placeholder="reza.kiani" value="${esc(a.user)}">
+          <span class="hint">حروف انگلیسی کوچک، رقم، نقطه و خط تیره — حداقل ۴ نویسه.</span>
+        </div>
+        <div class="fld">
+          <label for="auPass1">رمز عبور <span class="rq">*</span></label>
+          <input id="auPass1" type="password" dir="ltr" style="text-align:end" autocomplete="new-password"
+                 value="${esc(a.p1)}">
+          <span class="hint">حداقل ۸ نویسه، و نه فقط عدد.</span>
+        </div>
+        <div class="fld">
+          <label for="auPass2">تکرار رمز <span class="rq">*</span></label>
+          <input id="auPass2" type="password" dir="ltr" style="text-align:end" autocomplete="new-password"
+                 value="${esc(a.p2)}">
+        </div>`:""}
+
         ${a.err?h`<div class="au-err" role="alert">${esc(a.err)}</div>`:""}
         <button class="btn btn--p btn--b btn--lg" data-act="au-profile" ${a.busy?"disabled":""}>
           ${a.busy?"در حال ساخت…":"ساخت حساب"}</button>
@@ -3448,7 +3543,7 @@ function render(){
    * کوچک «ثبت‌نام» می‌گشت.
    */
   if(/^#\/?signup/.test(location.hash||"")){
-    S.auth.newInst=true;
+    S.auth.newInst=true; S.auth.mode="signup"; S.auth.step=1;
     location.replace("#/auth");
     return;
   }
@@ -3605,18 +3700,72 @@ document.addEventListener("click",function(e){
   var a=act.dataset.act;
 
   /* ── ورود و ثبت‌نام ── */
-  if(a==="au-toggle"){S.auth.newInst=!S.auth.newInst;S.auth.err="";render();}
+  if(a==="au-mode-pass"||a==="au-mode-otp"||a==="au-mode-signup"||a==="au-mode-forgot"){
+    var m=a.slice(8);                       /* pass | otp | signup | forgot */
+    S.auth.mode=m; S.auth.newInst=(m==="signup");
+    S.auth.step=1; S.auth.err=""; S.auth.code=""; clearAuthSecrets();
+    stopCooldown(); stopSmsWatch(); render();
+    return;
+  }
+  if(a==="au-toggle-pass"){
+    /*
+     * هرچه کاربر تا اینجا تایپ کرده را *قبل* از render برمی‌داریم.
+     *
+     * render فرم را از روی S می‌سازد. اگر نام و نام آموزشگاه را نگه
+     * نداریم، زدنِ تیکِ «رمز هم بسازم» آن‌ها را پاک می‌کند — و کاربر
+     * فکر می‌کند فرم خراب است، نه اینکه خودش چیزی را از دست داده.
+     */
+    readProfileFields();
+    var cb=el("auWantPass");
+    S.auth.wantPass=cb?cb.checked:!S.auth.wantPass;
+    render();
+    var f=el("auUser2"); if(f&&S.auth.wantPass)f.focus();
+    return;
+  }
+  if(a==="au-login"){
+    if(S.auth.busy)return;
+    var lu=((el("lgUser")||{}).value||"").trim(), lp=(el("lgPass")||{}).value||"";
+    S.auth.user=lu;
+    if(!lu||!lp){authErr("نام کاربری و رمز را وارد کنید.");return;}
+    if(!API.live){go("m");toast("خوش آمدید");return;}
+    S.auth.busy=true; S.auth.err=""; render();
+    apiCall("login.php",{username:lu,password:lp}).then(function(r){
+      S.auth.busy=false;
+      if(!r.ok){authErr(r.message||"ورود نشد.");return;}
+      /* داده را از سرور می‌گیریم، نه از پاسخ ورود: نقش و آموزشگاه
+         تعیین‌کنندهٔ مسیرند و باید از منبع اصلی بیایند */
+      applyUser(r.user);
+      reload(function(b){
+        if(b&&!b.ok&&b.error==="no_institute"){API.noWorkspace=true;go("nows");render();return;}
+        go(roleRoute(r.user.role)); render();
+        toast("خوش آمدید، "+r.user.name);
+      });
+    });
+    return;
+  }
+  if(a==="au-reset"){
+    if(S.auth.busy)return;
+    readProfileFields();
+    var p1=S.auth.p1, p2=S.auth.p2;
+    if(p1.length<8){authErr("رمز باید حداقل ۸ نویسه باشد.");return;}
+    if(/^\d+$/.test(p1)){authErr("رمز نمی‌تواند فقط عدد باشد.");return;}
+    if(p1!==p2){authErr("تکرار رمز با خودش نمی‌خواند.");return;}
+    S.auth.busy=true; S.auth.err=""; render();
+    apiCall("account.php",{action:"resetPassword",phone:S.auth.phone,code:S.auth.code,password:p1}).then(function(r){
+      S.auth.busy=false;
+      if(!r.ok){authErr(r.message||"ثبت نشد.");return;}
+      S.auth.mode="pass"; S.auth.step=1; S.auth.err=""; S.auth.code="";
+      clearAuthSecrets(); render();
+      toast("رمز عوض شد. حالا با رمز تازه وارد شوید.");
+    });
+    return;
+  }
   else if(a==="au-send"||a==="au-resend"){
     if(S.auth.busy)return;
     var ph=a==="au-resend"?S.auth.phone
                           :enDigits((el("auPhone")||{}).value||"").replace(/\s/g,"");
     if(!/^09\d{9}$/.test(ph)){authErr("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.");return;}
-    if(a==="au-send"&&S.auth.newInst){
-      var nv=((el("auName")||{}).value||"").trim(), iv=((el("auInst")||{}).value||"").trim();
-      if(!nv){authErr("نام و نام خانوادگی را وارد کنید.");return;}
-      if(!iv){authErr("نام آموزشگاه را وارد کنید.");return;}
-      S.auth.name=nv; S.auth.inst=iv;
-    }
+
     S.auth.phone=ph; S.auth.err="";
     if(!API.live){
       /* حالت نمایشی: پیامکی در کار نیست */
@@ -3629,7 +3778,18 @@ document.addEventListener("click",function(e){
       S.auth.busy=false;
       if(!r.ok){
         /* «کمی صبر کنید» خطا نیست، فقط فاصلهٔ ارسال است — کاربر را به عقب برنگردانیم */
-        if(r.error==="cooldown"){S.auth.step=2;startCooldown(r.retryAfter||60);render();return;}
+        if(r.error==="cooldown"){
+          /*
+           * کد قبلی هنوز زنده است و همان به درد می‌خورد. ولی پاسخ
+           * cooldown چیزی دربارهٔ حالت پیامک نمی‌گوید، پس از health
+           * برش می‌داریم — وگرنه در حالت پل به کاربر می‌گفتیم «پیامک
+           * شد» و او منتظر پیامکی می‌ماند که اصلاً فرستاده نشده.
+           */
+          S.auth.bridge=!!API.bridge;
+          S.auth.step=2;startCooldown(r.retryAfter||60);render();
+          watchSmsCode();
+          return;
+        }
         authErr(r.message||"ارسال کد ممکن نشد."); return;
       }
       /* در حالت پل پیامکی نرفته؛ گفتن «پیامک شد» یعنی کاربر منتظر
@@ -3652,14 +3812,37 @@ document.addEventListener("click",function(e){
       else{stopCooldown();go("m");toast("خوش آمدید");}
       return;
     }
-    S.auth.code=code; S.auth.err=""; S.auth.busy=true; render();
+    S.auth.code=code; S.auth.err="";
+    /*
+     * در بازیابی رمز، کد را همین‌جا مصرف نمی‌کنیم.
+     * account.php خودش کد را می‌خواهد و همان‌جا می‌سوزاندش — اگر اینجا
+     * otp-verify صدا می‌زدیم، کاربر وارد حسابش می‌شد بدون اینکه رمزی
+     * ساخته باشد، و کد هم دیگر برای ثبت رمز تازه معتبر نبود.
+     */
+    if(S.auth.mode==="forgot"){ S.auth.step=3; stopSmsWatch(); render(); return; }
+    S.auth.busy=true; render();
     verifyOtp();
   }
   else if(a==="au-profile"){
     if(S.auth.busy)return;
-    var pn=((el("auName2")||{}).value||"").trim();
+    readProfileFields();
+    var pn=S.auth.name;
     if(!pn){authErr("نام‌تان را وارد کنید.");return;}
-    S.auth.name=pn; S.auth.inst=((el("auInst2")||{}).value||"").trim();
+    if(S.auth.mode==="signup"&&!S.auth.inst){authErr("نام آموزشگاه را وارد کنید.");return;}
+
+    if(S.auth.wantPass){
+      var un=S.auth.user;
+      var q1=S.auth.p1, q2=S.auth.p2;
+      if(!/^[a-z0-9._-]{4,64}$/.test(un)){
+        authErr("نام کاربری بین ۴ تا ۶۴ نویسه و فقط حروف انگلیسی کوچک، رقم، نقطه و خط تیره.");return;}
+      if(q1.length<8){authErr("رمز باید حداقل ۸ نویسه باشد.");return;}
+      if(/^\d+$/.test(q1)){authErr("رمز نمی‌تواند فقط عدد باشد.");return;}
+      if(q1!==q2){authErr("تکرار رمز با خودش نمی‌خواند.");return;}
+      S.auth.newPass=q1;
+    }else{
+      S.auth.newPass="";
+    }
+
     S.auth.err=""; S.auth.busy=true; render();
     verifyOtp();
   }
@@ -4073,6 +4256,15 @@ document.addEventListener("input",function(e){
     var i=+e.target.dataset.otp;
     if(digits&&i<inputs.length-1)inputs[i+1].focus();
     otpReady();
+    /*
+     * آخرین رقم که خورد، خودش تأیید می‌شود — همان‌طور که چسباندن کد
+     * کامل تأیید می‌شود. رسیدن به رقم پنجم یعنی کاربر کارش تمام است و
+     * فشاردادن یک دکمهٔ اضافه چیزی به تصمیمش اضافه نمی‌کند.
+     */
+    if(digits&&i===inputs.length-1&&otpValue().length===inputs.length){
+      var vb=el("auVerify");
+      if(vb&&!vb.disabled&&!S.auth.busy)vb.click();
+    }
     return;
   }
 
@@ -4129,6 +4321,31 @@ function spreadOtp(start,digits){
     var v=el("auVerify");
     if(v&&!v.disabled&&!S.auth.busy)v.click();
   }
+}
+
+/** نام، آموزشگاه و نام کاربری را از فرم به S منتقل می‌کند */
+function readProfileFields(){
+  var n=el("auName2"), i=el("auInst2"), u=el("auUser2");
+  if(n)S.auth.name=n.value.trim();
+  if(i)S.auth.inst=i.value.trim();
+  if(u)S.auth.user=u.value.trim().toLowerCase();
+  /*
+   * رمز هم نگه داشته می‌شود.
+   *
+   * وقتی «این نام کاربری گرفته شده» می‌گیرد، صفحه دوباره ساخته می‌شود.
+   * اگر رمز را نگه نداریم، کاربر فقط نام کاربری را عوض می‌کند و دکمه
+   * را می‌زند و این بار «رمز باید حداقل ۸ نویسه باشد» می‌گیرد — بدون
+   * اینکه بفهمد چه شد. رمز در همان صفحه و همان حافظه می‌ماند و با
+   * ساخته‌شدن حساب پاک می‌شود.
+   */
+  var a1=el("auPass1"), a2=el("auPass2");
+  if(a1)S.auth.p1=a1.value;
+  if(a2)S.auth.p2=a2.value;
+}
+
+/** رمزها را از حافظه پاک می‌کند — بعد از ساخت حساب یا خروج از این صفحه */
+function clearAuthSecrets(){
+  S.auth.p1=""; S.auth.p2=""; S.auth.newPass="";
 }
 
 function otpValue(){
@@ -4191,6 +4408,21 @@ function stopSmsWatch(){
   if(otpAbort){try{otpAbort.abort();}catch(e){} otpAbort=null;}
 }
 
+/*
+ * Enter در صفحهٔ ورود همان دکمهٔ اصلی همان مرحله را می‌زند.
+ * بدون این، کاربر روی موبایل بعد از تایپ رمز دنبال دکمه می‌گردد و
+ * روی دسکتاپ Enter هیچ کاری نمی‌کند — هر دو حس خرابی می‌دهند.
+ */
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Enter"||S.route!=="auth"||e.target.tagName!=="INPUT")return;
+  if(e.target.dataset&&e.target.dataset.otp!=null)return;   /* خانه‌های کد خودشان تأیید می‌کنند */
+  var order=["au-login","au-send","au-reset","au-profile"];
+  for(var i=0;i<order.length;i++){
+    var btn=document.querySelector('[data-act="'+order[i]+'"]');
+    if(btn&&!btn.disabled){e.preventDefault();btn.click();return;}
+  }
+});
+
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"&&el("ov").classList.contains("on")){closeModal();}
   if((e.ctrlKey||e.metaKey)&&e.key==="Enter"&&S.route==="t/grading"){
@@ -4233,7 +4465,7 @@ function boot(){
    * چیزی برای خواندن نمانده و دکمهٔ ثبت‌نام سایت کاربر را روی فرم ورود
    * می‌انداخت — همان چیزی که می‌خواستیم از آن فرار کنیم.
    */
-  if(/^#\/?signup/.test(location.hash||"")) S.auth.newInst=true;
+  if(/^#\/?signup/.test(location.hash||"")){S.auth.newInst=true;S.auth.mode="signup";S.auth.step=1;}
   if(!window.fetch||!window.Promise){startDemo();return;}
   withTimeout(apiCall("health.php"),4000).then(function(hl){
     if(!hl||!hl.ok||!hl.database){startDemo();return;}

@@ -544,15 +544,44 @@ body.lt{
   .reel-sticky{grid-template-columns:1fr; block-size:auto; top:70px; padding-block:14px}
   .reel-copy{order:2}
 }
-.reel-copy{position:relative}
-.reel-step{opacity:.22; transition:opacity .35s ease; padding-block:12px;
-  border-inline-start:2px solid var(--line); padding-inline-start:18px; margin-inline-start:2px}
-.reel-step.on{opacity:1; border-inline-start-color:var(--brand)}
+/*
+ * مرحله‌ها روی هم می‌نشینند و فقط فعالی دیده می‌شود.
+ *
+ * قبلاً هر پنج مرحله زیر هم رندر می‌شدند و غیرفعال‌ها با opacity کم‌رنگ
+ * بودند. ارتفاع مجموع‌شان روی دسکتاپ حدود ۷۹۰ پیکسل می‌شد، داخل قابی
+ * که ۵۲۰ پیکسل ارتفاع دارد — یعنی حدود ۳۰۰ پیکسل از متن از قاب بیرون
+ * می‌زد و روی بخش بعدی سایت می‌افتاد. نتیجه: دو متن روی هم، هیچ‌کدام
+ * خوانا. روی موبایل این اشکال نبود، چون آنجا از قبل فقط مرحلهٔ فعال
+ * نمایش داده می‌شد.
+ *
+ * حالا همان قاعده در همه‌جا برقرار است: یک متن، وسط قاب، با محو و
+ * ظاهرشدن. پیشرفت را نقطه‌های پایین صفحه نشان می‌دهند.
+ */
+.reel-copy{position:relative; block-size:100%; min-block-size:230px}
+/*
+ * «محو از میان» و نه «محو متقاطع».
+ *
+ * اگر متن رفتنی و متن آمدنی هم‌زمان نیمه‌شفاف باشند، برای چند دهم
+ * ثانیه دو نوشته دقیقاً روی هم می‌افتند و هیچ‌کدام خوانا نیست — همان
+ * چیزی که در نگاه کاربر «متن روی متن» دیده می‌شود. پس اول قبلی کامل
+ * می‌رود، بعد بعدی می‌آید.
+ */
+.reel-step{position:absolute; inset-inline:0; inset-block-start:50%;
+  transform:translateY(-50%) translateY(8px); opacity:0; visibility:hidden;
+  border-inline-start:2px solid var(--brand); padding-inline-start:18px;
+  transition:opacity .16s ease, transform .16s ease, visibility 0s linear .16s}
+.reel-step.on{opacity:1; visibility:visible; transform:translateY(-50%);
+  transition:opacity .26s ease .18s, transform .26s ease .18s, visibility 0s}
 .reel-step .wk{font-size:12.5px; font-weight:700; color:var(--brand)}
 .reel-step h3{font-size:clamp(18px,2.2vw,24px); margin-top:5px}
 .reel-step p{font-size:14.5px; color:var(--ink-2); margin-top:7px; line-height:1.9; max-width:44ch}
-@media (max-width:940px){.reel-step{opacity:1; border:none; padding-inline-start:0}
-  .reel-step:not(.on){display:none}}
+@media (prefers-reduced-motion:reduce){.reel-step{transition:none}}
+@media (max-width:940px){
+  /* آنجا قاب ارتفاع ثابت ندارد، پس مرحله در جریان عادی می‌نشیند */
+  .reel-copy{block-size:auto; min-block-size:0}
+  .reel-step{position:static; transform:none; border:none; padding-inline-start:0}
+  .reel-step:not(.on){display:none}
+}
 
 .screen{background:var(--surface); border:1px solid var(--line-2); border-radius:16px;
   box-shadow:var(--shadow-lg); overflow:hidden; block-size:100%; display:flex; flex-direction:column}

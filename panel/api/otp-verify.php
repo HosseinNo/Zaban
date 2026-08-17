@@ -7,6 +7,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_creds.php';
 
 require_post();
 
@@ -15,6 +16,13 @@ $phone    = normalize_phone((string)($in['phone'] ?? ''));
 $codeRaw  = (string)($in['code'] ?? '');
 $fullName = trim((string)($in['fullName'] ?? ''));
 $instName = trim((string)($in['instituteName'] ?? ''));
+/*
+ * نام کاربری و رمز اختیاری‌اند و فقط هنگام ساخت حساب پذیرفته می‌شوند.
+ * اگر کاربر ندهدشان، حساب بدون رمز ساخته می‌شود و همیشه با پیامک وارد
+ * می‌شود — که برای زبان‌آموزها حالت عادی است.
+ */
+$wantUser = username_normalize((string)($in['username'] ?? ''));
+$wantPass = (string)($in['password'] ?? '');
 
 if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل معتبر نیست.');
 
@@ -77,6 +85,22 @@ if (!$user && $fullName === '') {
     ok(['needsProfile' => true, 'authenticated' => false]);
 }
 
+/*
+ * نام کاربری و رمز *قبل* از سوزاندن کد بررسی می‌شوند.
+ *
+ * اگر بعدش بررسی می‌کردیم، کاربری که نام کاربری گرفته‌شده‌ای انتخاب
+ * کرده پیام خطا می‌گرفت و کدش هم سوخته بود — یعنی باید شصت ثانیه صبر
+ * می‌کرد و کد تازه می‌گرفت، فقط چون یک نام تکراری تایپ کرده بود.
+ * اینجا کد دست‌نخورده می‌ماند و کاربر نام دیگری می‌زند و ادامه می‌دهد.
+ */
+if (!$user && ($wantUser !== '' || $wantPass !== '')) {
+    username_check($wantUser);
+    password_check($wantPass);
+    if (!username_free($wantUser)) {
+        fail(409, 'username_taken', 'این نام کاربری قبلاً گرفته شده. یکی دیگر انتخاب کنید.');
+    }
+}
+
 // از اینجا به بعد ورود قطعی است، پس کد یک‌بارمصرف سوزانده می‌شود
 $db->prepare('UPDATE otp_code SET consumed_at = ?, pending_code = NULL WHERE id = ?')->execute([now_utc(), $row['id']]);
 
@@ -84,10 +108,13 @@ $isNew = false;
 if (!$user) {
     $id = bin2hex(random_bytes(16));
     $db->prepare(
-        'INSERT INTO app_user (id, phone, full_name, institute_name, role, phone_verified_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO app_user (id, phone, full_name, institute_name, role, username, pass_hash, phone_verified_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([$id, $phone, $fullName, ($instName !== '' ? $instName : null),
-                $instName !== '' ? 'manager' : 'student', now_utc(), now_utc()]);
+                $instName !== '' ? 'manager' : 'student',
+                $wantUser !== '' ? $wantUser : null,
+                $wantPass !== '' ? password_hash($wantPass, PASSWORD_DEFAULT) : null,
+                now_utc(), now_utc()]);
     $user  = ['id' => $id, 'full_name' => $fullName, 'role' => $instName !== '' ? 'manager' : 'student',
               'institute_name' => $instName ?: null];
     $isNew = true;
