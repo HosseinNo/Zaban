@@ -22,6 +22,7 @@ DIST = ROOT / "dist"
 
 SITE_DOMAIN = "talkora.ir"
 PANEL_DOMAIN = "panel.talkora.ir"
+ADMIN_DOMAIN = "admin.talkora.ir"
 PANEL_URL = f"https://{PANEL_DOMAIN}/"
 
 # تنها مقصد بیرونی مجاز: سایت به پنل لینک می‌دهد و برعکس.
@@ -349,6 +350,57 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
 (خط خدماتی در برابر تبلیغاتی) در پوشهٔ docs را بخوانید.
 """
 
+ADMIN_GUIDE = f"""راهنمای پنل ادمین — {ADMIN_DOMAIN}
+════════════════════════════════════════════════════
+این بسته همان پنل ادمین است، ولی روی زیردامنهٔ خودش.
+
+چرا جدا؟ کوکی ورود ادمین SameSite=Strict است و فقط وقتی فرستاده
+می‌شود که صفحه و API روی یک دامنه باشند. پس این زیردامنه نسخهٔ خودش
+از پوشهٔ api را دارد — که به *همان* پایگاه دادهٔ پنل وصل می‌شود.
+داده دو نسخه نمی‌شود؛ فقط در ورودی دوم به همان داده باز می‌شود.
+
+
+گام ۱) زیردامنه بسازید
+   Websites & Domains ← Add Subdomain
+        Subdomain name : admin
+        Parent domain  : {SITE_DOMAIN}
+
+
+گام ۲) نسخهٔ PHP
+   روی {ADMIN_DOMAIN} ← PHP Settings ← ۸.۱ یا بالاتر
+   افزونه‌های pdo_mysql و mbstring روشن باشند.
+
+
+گام ۳) گواهی SSL
+   SSL/TLS Certificates ← Let's Encrypt ← {ADMIN_DOMAIN}
+   ⚠ بدون HTTPS کوکی ادمین ست نمی‌شود و ورود در حلقه می‌افتد.
+
+
+گام ۴) آپلود
+   محتویات این بسته را در httpdocs زیردامنهٔ admin بریزید.
+
+
+گام ۵) نصب
+   باز کنید:  https://{ADMIN_DOMAIN}/setup/
+
+   ⚠ *همان* اطلاعات پایگاه دادهٔ پنل را وارد کنید — نه یک دیتابیس تازه.
+     نصب‌کننده می‌بیند جدول‌ها از قبل هستند و دوباره نمی‌سازدشان، و چون
+     حساب ادمین وجود دارد حساب تازه‌ای هم نمی‌سازد. فقط فایل پیکربندی
+     این زیردامنه را می‌نویسد.
+
+   بعد پوشهٔ setup را پاک کنید.
+
+
+گام ۶) ورود
+   https://{ADMIN_DOMAIN}/
+   با همان نام کاربری و رمزی که از اول داشتید.
+
+
+نکته: صفحهٔ ادمین روی panel.talkora.ir/admin/ هم باقی می‌ماند و کار
+می‌کند. اگر می‌خواهید فقط یک راه ورود باشد، آن پوشه را از روی
+زیردامنهٔ پنل پاک کنید.
+"""
+
 EMAIL_GUIDE = f"""راهنمای ایمیل کاری با دامنهٔ خودتان
 ════════════════════════════════════════════════════
 هدف: آدرس‌هایی مثل  info@{SITE_DOMAIN}  و  admin@{SITE_DOMAIN}
@@ -590,8 +642,37 @@ def main() -> int:
     (admin_out / "index.html").write_text(
         (ROOT / "panel" / "admin" / "index.html").read_text(encoding="utf-8"), encoding="utf-8")
 
+    # ── بستهٔ سوم: پنل ادمین روی زیردامنهٔ خودش ────────────────
+    #
+    # چرا جدا، وقتی همان صفحه داخل بستهٔ پنل هم هست؟
+    #
+    # کوکی ادمین SameSite=Strict است و باید هم‌دامنه با صفحه‌ای باشد که
+    # صدایش می‌زند. اگر صفحهٔ ادمین روی admin.talkora.ir بنشیند و API را
+    # از panel.talkora.ir بخواند، مرورگر کوکی را نمی‌فرستد و ورود در
+    # حلقه می‌افتد. پس این زیردامنه نسخهٔ خودش از api را دارد که به
+    # *همان* پایگاه داده وصل می‌شود.
+    #
+    # نصب‌کننده هم همراهش می‌رود: روی این زیردامنه فقط فایل پیکربندی را
+    # می‌سازد. جدول‌ها از قبل هستند و دوباره ساخته نمی‌شوند، و چون
+    # admin_user کاربر دارد، حساب تازه‌ای هم نمی‌سازد.
+    admin_pkg = DIST / "admin"
+    admin_pkg.mkdir(parents=True)
+    (admin_pkg / "index.html").write_text(
+        (ROOT / "panel" / "admin" / "index.html").read_text(encoding="utf-8")
+        # صفحه یک پله بالاتر بود؛ اینجا خودش ریشه است
+        .replace('"../api/', '"api/')
+        .replace('"../fonts/', '"fonts/')
+        .replace('href="../"', f'href="{PANEL_URL}"'),
+        encoding="utf-8")
+    shutil.copytree(fonts, admin_pkg / "fonts")
+    shutil.copytree(panel_out / "api", admin_pkg / "api")
+    shutil.copytree(ROOT / "panel" / "setup", admin_pkg / "setup")
+    (admin_pkg / ".htaccess").write_text(PANEL_HTACCESS.replace(PANEL_DOMAIN, ADMIN_DOMAIN), encoding="utf-8")
+    (admin_pkg / "robots.txt").write_text(PANEL_ROBOTS, encoding="utf-8")
+    (admin_pkg / "راهنمای-ادمین.txt").write_text(ADMIN_GUIDE, encoding="utf-8")
+
     # ── بررسی‌ها ───────────────────────────────────────────────
-    bad = check_external(site_out) + check_external(panel_out)
+    bad = check_external(site_out) + check_external(panel_out) + check_external(admin_pkg)
     if bad:
         print("خطا: ارجاع به دامنهٔ خارجی:", file=sys.stderr)
         for b in bad:
@@ -661,7 +742,20 @@ def main() -> int:
         print("خطا: پنل مسیر #/signup را نمی‌شناسد.", file=sys.stderr)
         return 1
 
-    for pkg in (site_out, panel_out):
+    if not (admin_pkg / "api" / "admin.php").exists():
+        print("خطا: بستهٔ ادمین api ندارد و به هیچ پایگاه داده‌ای وصل نمی‌شود.", file=sys.stderr)
+        return 1
+
+    admin_html = (admin_pkg / "index.html").read_text(encoding="utf-8")
+    # روی زیردامنهٔ خودش، api و fonts کنار خود صفحه‌اند نه یک پله بالاتر
+    if '"../api/' in admin_html or '"../fonts/' in admin_html:
+        print("خطا: پنل ادمین زیردامنه هنوز به مسیر ../ اشاره می‌کند.", file=sys.stderr)
+        return 1
+    if 'api/admin.php' not in admin_html and 'base:"api/"' not in admin_html:
+        print("خطا: پنل ادمین زیردامنه به api وصل نیست.", file=sys.stderr)
+        return 1
+
+    for pkg in (site_out, panel_out, admin_pkg):
         if (pkg / "api" / "config.php").exists():
             print(f"خطا: config.php واقعی داخل {pkg.name} رفته است.", file=sys.stderr)
             return 1
@@ -669,10 +763,13 @@ def main() -> int:
     # ── زیپ‌ها ────────────────────────────────────────────────
     site_zip = ROOT / "talkora-site.zip"
     panel_zip = ROOT / "talkora-panel.zip"
+    admin_zip = ROOT / "talkora-admin.zip"
     zip_folder(site_out, site_zip)
     zip_folder(panel_out, panel_zip)
+    zip_folder(admin_pkg, admin_zip)
 
-    for label, folder, zf in (("سایت", site_out, site_zip), ("پنل", panel_out, panel_zip)):
+    for label, folder, zf in (("سایت", site_out, site_zip), ("پنل", panel_out, panel_zip),
+                              ("ادمین", admin_pkg, admin_zip)):
         total = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
         print(f"\n── بستهٔ {label}  →  {folder.relative_to(ROOT)}")
         for f in sorted(folder.rglob("*")):
@@ -682,6 +779,7 @@ def main() -> int:
 
     print(f"\nبستهٔ سایت را در httpdocs دامنهٔ {SITE_DOMAIN} بریزید.")
     print(f"بستهٔ پنل را در httpdocs زیردامنهٔ {PANEL_DOMAIN} بریزید (راهنمای-پنل.txt را بخوانید).")
+    print(f"بستهٔ ادمین را در httpdocs زیردامنهٔ {ADMIN_DOMAIN} بریزید (راهنمای-ادمین.txt را بخوانید).")
     return 0
 
 
