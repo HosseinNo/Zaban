@@ -10,10 +10,23 @@ CREATE TABLE IF NOT EXISTS app_user (
   institute_name    VARCHAR(160) NULL,
   role              VARCHAR(24)  NOT NULL DEFAULT 'student',
   status            VARCHAR(16)  NOT NULL DEFAULT 'active',
+  /*
+   * نام کاربری و رمز اختیاری‌اند.
+   *
+   * راه اصلی ورود همچنان شمارهٔ موبایل و کد یک‌بارمصرف است — چیزی که
+   * هر زبان‌آموزی دارد و فراموش نمی‌کند. رمز برای کسی است که هر روز
+   * وارد می‌شود و نمی‌خواهد هر بار منتظر پیامک بماند، و برای روزی که
+   * اعتبار پنل پیامک تمام شده باشد.
+   *
+   * NULL یعنی این کاربر هنوز رمز نساخته و فقط با پیامک وارد می‌شود.
+   */
+  username          VARCHAR(64)  NULL,
+  pass_hash         VARCHAR(255) NULL,
   phone_verified_at DATETIME     NULL,
   last_login_at     DATETIME     NULL,
   created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_user_phone (phone),
+  UNIQUE KEY uq_user_username (username),
   KEY ix_user_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
