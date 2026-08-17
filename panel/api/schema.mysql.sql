@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS otp_code (
   -- فقط HMAC کد ذخیره می‌شود؛ خود کد هیچ‌جا نوشته نمی‌شود
   code_hash   CHAR(64)     NOT NULL,
   -- فقط در «حالت پل» پر می‌شود: وقتی هنوز sms.ir راه نیفتاده و کد را
-  -- مدیر از پنل ادمین می‌خواند و به کاربر می‌گوید. حداکثر دو دقیقه
+  -- مدیر از پنل سوپرادمین می‌خواند و به کاربر می‌گوید. حداکثر دو دقیقه
   -- زنده می‌ماند و لحظهٔ مصرف‌شدن پاک می‌شود. در حالت پیامک واقعی
   -- همیشه NULL است.
   pending_code VARCHAR(8)  NULL,
@@ -259,11 +259,14 @@ CREATE TABLE IF NOT EXISTS submission (
 
 
 -- ═══════════════════════════════════════════════════════════════════
---  نسخهٔ ۳ — پنل ادمین تاکورا
+--  نسخهٔ ۳ — سوپرادمین پلتفرم (admin.talkora.ir)
 --
 --  این‌ها مال شما (صاحب محصول) است، نه مال آموزشگاه‌ها. برای همین
 --  institute_id ندارند و ورودشان با نام کاربری و رمز است، نه پیامک:
---  ادمین یک نفر است و شمارهٔ موبایلش نباید تنها کلید سامانه باشد.
+--  سوپرادمین یک نفر است (یا چند نفر تیم) و شمارهٔ موبایلش نباید تنها
+--  کلید سامانه باشد. این جدول‌ها را پنل superadmin/ می‌خواند —
+--  دسترسی‌اش به همهٔ آموزشگاه‌ها با همین حساب کنترل می‌شود، نه با
+--  membership معمولی.
 -- ═══════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS admin_user (
@@ -315,4 +318,34 @@ CREATE TABLE IF NOT EXISTS demo_lead (
   created_at DATETIME     NOT NULL,
   KEY ix_lead_status (status, created_at),
   KEY ix_lead_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ═══════════════════════════════════════════════════════════════════
+--  نسخهٔ ۴ — تعلیق آموزشگاه و ورود به‌جای کاربر (impersonation)
+--
+--  این بخش افزایشی است و روی یک نصب قبلی هم یک‌بار قابل اجراست.
+--  دو ستون تازه روی institute برای تعلیق مستأجر توسط سوپرادمین، و
+--  یک جدول تک‌مصرفی برای «ورود به‌جای کاربر»: سوپرادمین با دلیل
+--  اجباری یک تیکت می‌سازد، پنل آموزشگاه همان تیکت را مصرف و نشست
+--  عادی کاربر هدف را صادر می‌کند — بدون اینکه رمز یا کد ورود کاربر
+--  جایی رد و بدل شود. عمر تیکت کوتاه (۶۰ ثانیه) و تک‌مصرفی است.
+-- ═══════════════════════════════════════════════════════════════════
+
+ALTER TABLE institute ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'active';   -- active | suspended
+ALTER TABLE institute ADD COLUMN suspended_reason VARCHAR(255) NULL;
+
+CREATE TABLE IF NOT EXISTS impersonation_ticket (
+  id             CHAR(32)     NOT NULL PRIMARY KEY,
+  super_admin_id CHAR(32)     NOT NULL,
+  target_user_id CHAR(32)     NOT NULL,
+  institute_id   CHAR(32)     NOT NULL,
+  -- چرا این ورود لازم بود؛ در رویدادها هم نشان داده می‌شود، نه فقط اینجا
+  reason         VARCHAR(255) NOT NULL,
+  expires_at     DATETIME     NOT NULL,
+  consumed_at    DATETIME     NULL,
+  ip             VARCHAR(45)  NULL,
+  created_at     DATETIME     NOT NULL,
+  KEY ix_imp_target (target_user_id),
+  CONSTRAINT fk_imp_user FOREIGN KEY (target_user_id) REFERENCES app_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

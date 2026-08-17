@@ -46,7 +46,7 @@ function ctx(): array
     // عضویت فعال کاربر. اگر در چند آموزشگاه باشد، فعلاً اولی؛
     // جابه‌جایی بین آموزشگاه‌ها وقتی لازم شد اضافه می‌شود.
     $st = db()->prepare(
-        'SELECT m.institute_id, m.role, i.name, i.term_weeks, i.city, i.phone
+        'SELECT m.institute_id, m.role, i.name, i.term_weeks, i.city, i.phone, i.status, i.suspended_reason
            FROM membership m
            JOIN institute i ON i.id = m.institute_id
           WHERE m.user_id = ? AND m.status = ?
@@ -57,6 +57,19 @@ function ctx(): array
 
     if (!$m) {
         fail(403, 'no_institute', 'شما هنوز عضو هیچ آموزشگاهی نیستید. از مدیر آموزشگاه بخواهید با همین شماره دعوت‌تان کند.');
+    }
+
+    /*
+     * تعلیق آموزشگاه توسط سوپرادمین (superadmin/) دقیقاً همین‌جا اثر
+     * می‌کند — چون هر نقطهٔ پایانی کسب‌وکاری (bootstrap.php و هرچه از
+     * t_all/t_one/own_* استفاده کند) از ctx() می‌گذرد. اگر این بررسی
+     * اینجا نبود، تعلیق فقط یک پرچم تزئینی در پنل سوپرادمین بود.
+     */
+    if ((string)$m['status'] === 'suspended') {
+        $reason = trim((string)($m['suspended_reason'] ?? ''));
+        fail(403, 'institute_suspended',
+            'دسترسی این آموزشگاه موقتاً معلق شده' . ($reason !== '' ? ': ' . $reason : '.')
+          . ' برای رفع مشکل با پشتیبانی تماس بگیرید.');
     }
 
     $c = [

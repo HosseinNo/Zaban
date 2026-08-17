@@ -221,6 +221,7 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
 .tbl td{padding:11px 14px;border-block-end:1px solid var(--line);font-size:14px;vertical-align:middle}
 .tbl tbody tr:last-child td{border-block-end:none}
 .tbl tbody tr:hover{background:var(--surface-2)}
+.tbl tbody tr.click{cursor:pointer}
 .tbl-wrap{overflow-x:auto}
 .who{display:flex;align-items:center;gap:9px}
 .who .av{inline-size:30px;block-size:30px;border-radius:50%;background:var(--surface-3);
@@ -824,7 +825,7 @@ DB.payroll=[
 /* وضعیت زنده */
 var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        rec:{on:false,sec:0,done:false,timer:null},
-       grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null,
+       grade:{idx:0,scores:{},fb:{}},subDraft:"",theme:null,selStudentId:null,
        /* پیش‌فرض «ورود» است، نه «ثبت‌نام».
           سایت حالا دو در جدا دارد: دکمهٔ ورود به «/» می‌آید و دکمهٔ ثبت‌نام
           به «#/signup». اگر پیش‌فرض ثبت‌نام بماند، کسی که «ورود» زده روی
@@ -948,6 +949,7 @@ function reload(then){
   return apiCall("bootstrap.php").then(function(r){
     if(r&&r.ok){applyBootstrap(r);render();}
     else if(r&&r.error==="no_institute"){API.noWorkspace=true;render();}
+    else if(r&&r.error==="institute_suspended"){API.suspended=true;API.suspendedReason=r.message||API.suspendedReason;render();}
     if(then)then(r);
     return r;
   });
@@ -966,6 +968,8 @@ function act(file,body,okMsg,then){
 
 function applyUser(u){
   API.user=u;
+  API.suspended=!!u.instituteSuspended;
+  API.suspendedReason=u.suspendedReason||"";
   var r=roleRoute(u.role);
   S.role=r==="m"?"manager":r==="s"?"student":"teacher";
   DB.me[S.role]={name:u.name||"کاربر",role:ROLE_FA[u.role]||"کاربر"};
@@ -1251,7 +1255,76 @@ V["t/assignments"]=function(){
       </div></div>`;}).join("")}`;
 };
 
-V["t/grading"]=function(){
+V["t/grading"]=function(){return API.live?liveGrading():demoGrading();};
+
+/*
+ * صف واقعی: پاسخ‌هایی از DB.submissions که هنوز score ندارند — همان
+ * چیزی که bootstrap.php برمی‌گرداند، با aid/sid/id واقعی. روبریک نمایشی
+ * حذف شده چون بک‌اند فقط یک نمرهٔ عددی ذخیره می‌کند (assignments.php،
+ * action:grade)، نه شکست معیار به معیار؛ نشان‌دادن روبریکی که هیچ‌جا
+ * ذخیره نمی‌شود گمراه‌کننده بود.
+ */
+function liveGrading(){
+  var subs=DB.submissions.filter(function(x){return x.score==null;});
+  if(!subs.length){
+    return '<div class="card"><div class="empty"><b>صف تصحیح خالی است</b>'
+         + '<p>هیچ پاسخ تحویل‌داده‌شدهٔ بی‌نمره‌ای نمانده.</p></div></div>';
+  }
+  var i=Math.min(S.grade.idx,subs.length-1);
+  var sub=subs[i], s=stu(sub.sid), a=asg(sub.aid);
+  return h`
+  <div class="gbar">
+    <button class="btn btn--g btn--sm" data-act="g-prev" ${i===0?"disabled":""}>
+      <i class="chev chev--r"></i> قبلی</button>
+    <div class="mid">
+      <b>${esc(s?s.name:"—")}</b>
+      <span class="num">مورد ${fa(i+1)} از ${fa(subs.length)}</span>
+      <div class="gprog"><i style="width:${Math.round(i/subs.length*100)}%"></i></div>
+    </div>
+    <button class="btn btn--g btn--sm" data-act="g-next" ${i===subs.length-1?"disabled":""}>
+      بعدی <i class="chev"></i></button>
+  </div>
+
+  <div class="grader">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-h"><h3>${esc(a?a.title:"تکلیف")}</h3>
+          <div class="r">${sub.late?pill("با تأخیر","warn"):pill("به‌موقع","ok")}
+            <span class="pill p-mute num">${fa(sub.words)} کلمه</span></div></div>
+      </div>
+      ${sub.text?h`<div class="work">${String(sub.text).split("\n\n").map(function(p){
+        return '<p dir="auto">'+esc(p)+"</p>";}).join("")}</div>`
+        :'<p class="muted">متنی ثبت نشده.</p>'}
+      ${sub.fileName?h`<p class="muted" style="font-size:12.5px;margin-top:9px">
+        فایل ضمیمه: <a href="api/assignments.php?download=${esc(sub.id)}" target="_blank" rel="noopener">${esc(sub.fileName)}</a></p>`:""}
+      <p class="muted num" style="font-size:12.5px;margin-top:9px">تحویل: ${sub.at}</p>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-b">
+          <div class="fld" style="margin-bottom:6px">
+            <label for="gScore">نمره (از ${fa(a?a.max:20)})</label>
+            <input id="gScore" type="number" min="0" max="${a?a.max:20}" step="0.5" class="num"
+                   value="${sub.score!=null?fa(sub.score):""}">
+          </div>
+          <div class="fld" style="margin-bottom:6px">
+            <label for="fb">بازخورد</label>
+            <textarea id="fb" placeholder="چند جمله دربارهٔ کار…">${esc(sub.feedback||"")}</textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:13px;flex-wrap:wrap">
+            <button class="btn btn--p" style="flex:1" data-act="g-save" data-id="${esc(sub.id)}"
+                    ${S.busy?"disabled":""}>${S.busy?"در حال ثبت…":"ثبت و رفتن به بعدی"}</button>
+          </div>
+          <p class="muted" style="font-size:12px;margin-top:9px">
+            میان‌بر: <span class="num">Ctrl</span> + <span class="num">Enter</span></p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function demoGrading(){
   var subs=DB.submissions.filter(function(x){return x.aid==="a1";});
   var i=Math.min(S.grade.idx,subs.length-1);
   var sub=subs[i], s=stu(sub.sid), a=asg("a1");
@@ -1497,7 +1570,24 @@ V["s/grades"]=function(){
   </div>`;
 };
 
+/*
+ * بک‌اند مالی (فاکتور، قسط، درگاه پرداخت) هنوز نوشته نشده — نه اینجا و
+ * نه در هیچ نقطهٔ پایانی دیگر panel/api (هیچ ستون balance/invoice ای
+ * از سرور نمی‌آید). bootstrap.php هم عمداً DB.students[i].balance را
+ * صفر ثابت می‌گذارد، نه یک عدد واقعی. پس تا آن بک‌اند نوشته شود، این
+ * صفحه برای کاربر واقعی همان حالت صادقانهٔ «هنوز ساخته نشده» را نشان
+ * می‌دهد — نه دادهٔ نمایشی جعلی، نه کرش روی DB.students[0] که برای
+ * نقش زبان‌آموز همیشه خالی است (bootstrap.php آن را عمداً خالی می‌گذارد
+ * تا اطلاعات هم‌کلاسی‌ها لو نرود).
+ */
 V["s/payments"]=function(){
+  return API.live
+    ? '<div class="card"><div class="empty"><b>بخش مالی هنوز ساخته نشده</b>'
+      + '<p>فاکتور، قسط‌بندی و درگاه پرداخت در سند R تعریف شده‌اند ولی هنوز به بک‌اند وصل نیستند.</p></div></div>'
+    : demoSPayments();
+};
+
+function demoSPayments(){
   var me=DB.students[0];
   return h`
   <div class="card" style="margin-bottom:14px;border-color:var(--warn)">
@@ -1657,7 +1747,7 @@ V["m/students"]=function(){
       <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب</th><th>وضعیت</th></tr></thead>
       <tbody>${DB.students.map(function(s){
         var risk=s.att<80||s.grade<13;
-        return h`<tr>
+        return h`<tr class="click" data-act="open-student" data-id="${esc(s.id)}">
           <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
           <td class="num">AEF 2A</td>
           <td class="num ${s.att<80?"down":""}">${fa(s.att)}٪</td>
@@ -2131,6 +2221,26 @@ V["nows"]=function(){
   </div>`;
 };
 
+V["susp"]=function(){
+  return h`
+  <div class="auth-wrap">
+    <aside class="auth-aside">
+      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ت</span><span>تاکورا</span></div>
+      <h2>دسترسی موقتاً بسته است</h2>
+      <ul>
+        <li><i class="ck"></i><span>هیچ داده‌ای پاک نشده — فقط دسترسی این آموزشگاه موقتاً متوقف شده</span></li>
+        <li><i class="ck"></i><span>فقط تیم تاکورا می‌تواند این را برطرف کند</span></li>
+      </ul>
+    </aside>
+    <main class="auth-main"><div class="auth-box">
+      <h1 class="auth-h">دسترسی این آموزشگاه معلق شده</h1>
+      <p class="auth-p">${esc(API.suspendedReason)||"دلیلی برای تعلیق ثبت نشده."}</p>
+      <p class="auth-p" style="margin-top:14px">برای رفع تعلیق با پشتیبانی تاکورا تماس بگیرید.</p>
+      <button class="btn btn--q btn--b" style="margin-top:18px" data-act="logout">خروج</button>
+    </div></main>
+  </div>`;
+};
+
 /* ══════════ ورود و ثبت‌نام ══════════ */
 
 function authErr(msg){S.auth.err=msg;S.auth.busy=false;render();}
@@ -2240,7 +2350,7 @@ V["auth"]=function(){
         ${a.bridge?h`
         <p class="auth-p">کد پنج‌رقمی برای <span class="num" dir="ltr">${fa(a.phone)}</span> ساخته شد.</p>
         <div class="au-err" style="background:var(--warn-soft,#FFF6E5);color:var(--ink-2);border-color:#F0C674" role="status">
-          هنوز پیامک راه نیفتاده. کد را از مدیر آموزشگاه بگیرید — در پنل ادمین دیده می‌شود.
+          هنوز پیامک راه نیفتاده. کد را از مدیر آموزشگاه بگیرید — در پنل سوپرادمین دیده می‌شود.
           کد ${fa(Math.round((a.expires||300)/60))} دقیقه اعتبار دارد.
         </div>`
         :h`<p class="auth-p">کد پنج‌رقمی به <span class="num" dir="ltr">${fa(a.phone)}</span> پیامک شد.</p>`}
@@ -2587,8 +2697,43 @@ V["m/enrol"]=function(){
 };
 
 /* ══════════ پروندهٔ زبان‌آموز ══════════ */
+/*
+ * S.selStudentId از کلیک روی ردیف در m/students می‌آید (open-student).
+ * بدون این، هرکسی که این صفحه را باز می‌کرد همیشه DB.students[0] را
+ * می‌دید، نه زبان‌آموزی که واقعاً کلیک کرده بود.
+ */
 V["m/student"]=function(){
-  var s=DB.students[0];
+  var s=stu(S.selStudentId)||DB.students[0];
+  if(!s){
+    return '<div class="card"><div class="empty"><b>زبان‌آموزی انتخاب نشده</b>'
+         + '<p>از فهرست «زبان‌آموزان» روی یک نفر کلیک کنید.</p></div></div>';
+  }
+  /*
+   * ثبت‌نام‌ها، سابقهٔ مالی و یادداشت‌های داخلی هنوز هیچ نقطهٔ پایانی
+   * در panel/api ندارند — فقط سربرگ از دادهٔ واقعی زبان‌آموز پر می‌شود؛
+   * بقیه به‌جای دادهٔ نمایشی جعلی، حالت صادقانهٔ «ساخته نشده» است.
+   */
+  if(API.live){
+    return h`
+    <div class="crumb"><a href="#/m/students">زبان‌آموزان</a><i class="chev"></i><span>${esc(s.name)}</span></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-b" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <span class="av" style="inline-size:56px;block-size:56px;font-size:20px;border-radius:50%;
+          background:var(--surface-3);display:grid;place-items:center;font-weight:700">${initials(s.name)}</span>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:20px;font-weight:700">${esc(s.name)}</div>
+          <div class="metaline muted" style="font-size:13px;margin-top:4px">
+            ${s.cls?"<span>"+esc(s.cls)+"</span>":""}
+            ${s.phone?'<span class="num" dir="ltr">'+esc(s.phone)+"</span>":""}
+            <span class="num">حضور ${fa(s.att)}٪</span>
+            <span class="num">نمره ${fa(s.grade)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card"><div class="empty"><b>پروندهٔ کامل هنوز ساخته نشده</b>
+      <p>ثبت‌نام‌ها، سابقهٔ مالی، پیشرفت سطح و یادداشت‌های داخلی به بک‌اند وصل نیستند.</p></div></div>`;
+  }
   return h`
   <div class="crumb"><a href="#/m/students">زبان‌آموزان</a><i class="chev"></i><span>${esc(s.name)}</span></div>
   <div class="card" style="margin-bottom:14px">
@@ -2721,7 +2866,13 @@ V["m/payroll"]=function(){
     و جلسهٔ جبرانی به مدرسی که واقعاً تدریس کرده تعلق می‌گیرد.</p>`;
 };
 
+/* حقوق هم مثل پرداخت زبان‌آموز: بک‌اندش نوشته نشده، DB.payroll در حالت
+   زنده همیشه خالی است (applyBootstrap) — نه دادهٔ جعلی، نه کرش روی [0] */
 V["t/payroll"]=function(){
+  if(API.live){
+    return '<div class="card"><div class="empty"><b>بخش حقوق و دستمزد هنوز ساخته نشده</b>'
+         + '<p>محاسبهٔ ساعت تدریس و کسر غیبت هنوز به بک‌اند وصل نیست.</p></div></div>';
+  }
   var p=DB.payroll[0], t=DB.teachers[0];
   return h`
   <div class="grid g3" style="margin-bottom:16px">
@@ -3286,7 +3437,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
-var FULL={"auth":1,"nows":1};
+var FULL={"auth":1,"nows":1,"susp":1};
 
 function go(route){location.hash="#/"+route;}
 function render(){
@@ -3311,8 +3462,9 @@ function render(){
    */
   if(API.live){
     if(!API.user){ r="auth"; }
+    else if(API.suspended){ r="susp"; }
     else if(API.noWorkspace){ r="nows"; }
-    else if(r==="auth"||r==="nows"){ r=roleRoute(API.user.role); }
+    else if(r==="auth"||r==="nows"||r==="susp"){ r=roleRoute(API.user.role); }
     else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
     if("#/"+r!==location.hash){ location.replace("#/"+r); }
   }
@@ -3669,6 +3821,19 @@ document.addEventListener("click",function(e){
     toast("فایل صوتی ارسال شد ("+clock(S.rec.sec)+")");
   }
   else if(a==="g-next"||a==="g-save"){
+    if(API.live){
+      var subsL=DB.submissions.filter(function(x){return x.score==null;});
+      if(a==="g-save"){
+        var scRaw=enDigits(((el("gScore")||{}).value||"").trim());
+        if(scRaw===""||isNaN(+scRaw)){toast("نمره را وارد کنید");return;}
+        act("assignments.php",
+          {action:"grade",id:act.dataset.id,score:scRaw,feedback:(el("fb")||{}).value||""},
+          "نمره ثبت شد");
+        return;
+      }
+      if(S.grade.idx<subsL.length-1){S.grade.idx++;render();}
+      return;
+    }
     var subsN=DB.submissions.filter(function(x){return x.aid==="a1";});
     if(a==="g-save"){
       var sidS=subsN[S.grade.idx].sid;
@@ -3685,6 +3850,7 @@ document.addEventListener("click",function(e){
   else if(a==="upload-receipt"){toast("فیش آپلود شد و به صف تأیید مالی رفت.");}
   else if(a==="new-assignment"){toast("فرم ساخت تکلیف بر اساس نوع، در سند R تعریف شده است.");}
   else if(a==="go-teacher"){go("t");}
+  else if(a==="open-student"){S.selStudentId=act.dataset.id;go("m/student");}
   else if(a==="ob-do"){
     var k=act.dataset.k;
     if(k==="term"){go("m/term");return;}
@@ -4086,11 +4252,12 @@ function boot(){
       return withTimeout(apiCall("bootstrap.php"),8000).then(function(b){
         if(b&&b.ok){applyBootstrap(b);}
         else if(b&&b.error==="no_institute"){API.noWorkspace=true;}
+        else if(b&&b.error==="institute_suspended"){API.suspended=true;API.suspendedReason=b.message||API.suspendedReason;}
         else if(b){toast(b.message||"دریافت داده ناموفق بود");}
 
-        var want=API.noWorkspace?"nows":roleRoute(m.user.role);
+        var want=API.suspended?"susp":API.noWorkspace?"nows":roleRoute(m.user.role);
         var r=location.hash.replace(/^#\/?/,"");
-        if(!r||r==="auth"||r==="nows"||r.split("/")[0]!==want){
+        if(!r||r==="auth"||r==="nows"||r==="susp"||r.split("/")[0]!==want){
           location.hash="#/"+want;
         }
         finishBoot();

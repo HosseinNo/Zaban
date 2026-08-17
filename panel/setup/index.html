@@ -223,8 +223,11 @@ function viewDb(){
 function viewAdmin(){
   return h`
   <div class="note note--i">
-    این حساب برای <b>پنل ادمین محصول</b> است — جایی که قیمت‌ها، متن‌های سایت و
-    ایمیل مقصد را عوض می‌کنید. ربطی به حساب آموزشگاه‌ها ندارد؛ آن‌ها با پیامک وارد می‌شوند.
+    این حساب برای <b>پنل سوپرادمین پلتفرم</b> است — جایی که آموزشگاه‌ها، نقش کاربرها،
+    قیمت‌ها، متن‌های سایت و ایمیل مقصد را عوض می‌کنید. ربطی به حساب آموزشگاه‌ها ندارد؛
+    آن‌ها با پیامک وارد می‌شوند. این پنل روی زیردامنهٔ جدای <code>admin.talkora.ir</code>
+    بالا می‌آید — بستهٔ جداگانه‌ای دارد (talkora-admin.zip) که بعد از این نصب‌کننده
+    طبق راهنمای خودش آپلود می‌کنید؛ همین‌جا فقط حساب کاربری‌اش ساخته می‌شود.
   </div>
   <div class="card">
     <div class="card-h"><h2>۳ — حساب مدیر</h2></div>
@@ -250,7 +253,7 @@ function viewAdmin(){
         <div class="fld"><label for="adEmail">ایمیل دریافت درخواست دمو</label>
           <input id="adEmail" data-f="ad.email" type="email" dir="ltr" style="text-align:end"
                  placeholder="info@talkora.ir" value="${esc(S.ad.email)}">
-          <span class="hint">بعداً از پنل ادمین قابل تغییر است</span></div>
+          <span class="hint">بعداً از پنل سوپرادمین قابل تغییر است</span></div>
         <div class="fld"><label for="adPhone">تلفن نمایشی سایت</label>
           <input id="adPhone" data-f="ad.phone" type="tel" dir="ltr" style="text-align:end"
                  placeholder="اختیاری" value="${esc(S.ad.phone)}"></div>
@@ -281,18 +284,20 @@ function viewDone(){
         <li><b>پوشهٔ <code>setup</code> را پاک کنید.</b>
           در پلسک → File Manager، همین پوشه‌ای که این صفحه از آن باز شده.
           نصب‌کننده از حالا هر درخواستی را رد می‌کند، ولی نگه‌داشتنش دلیلی ندارد.</li>
-        <li><b>وارد پنل ادمین شوید</b> — <a href="../admin/">../admin/</a> با
-          ${d.username?h`نام کاربری <code>${esc(d.username)}</code>`:"همان حسابی که از قبل ساخته بودید"}.</li>
+        <li><b>بستهٔ پنل سوپرادمین را هم بالا بیاورید</b> — talkora-admin.zip را طبق
+          راهنمای خودش روی زیردامنهٔ <a href="https://admin.talkora.ir/" target="_blank" rel="noopener">admin.talkora.ir</a>
+          بریزید، بعد با ${d.username?h`نام کاربری <code>${esc(d.username)}</code>`:"همان حسابی که از قبل ساخته بودید"}
+          وارد شوید. جدول‌ها همین الان ساخته شدند؛ آنجا نصب‌کننده‌ای دوباره اجرا نمی‌شود.</li>
         <li><b>سربرگ «سلامت سامانه» را باز کنید.</b> هرچه قرمز بود همان‌جا نوشته چطور درست می‌شود.</li>
         <li><b>ورود را امتحان کنید</b> — <a href="../">صفحهٔ پنل آموزشگاه‌ها</a>، شمارهٔ موبایل خودتان.
-          کد در سربرگ «ورود و پیامک» پنل ادمین ظاهر می‌شود.</li>
+          کد در سربرگ «ورود و پیامک» پنل سوپرادمین ظاهر می‌شود.</li>
       </ol>
     </div>
   </div>
 
   <div class="note note--w">
     <b>پیامک هنوز روشن نیست.</b> سامانه در «حالت پل» است: همه‌چیز کار می‌کند،
-    ولی کد ورود به‌جای پیامک در پنل ادمین دیده می‌شود. وقتی قالب sms.ir تأیید شد،
+    ولی کد ورود به‌جای پیامک در پنل سوپرادمین دیده می‌شود. وقتی قالب sms.ir تأیید شد،
     کلید و شناسهٔ قالب را در سربرگ «ورود و پیامک» بگذارید و حالت را عوض کنید.
     نیازی به دست‌زدن به هیچ فایلی نیست.
   </div>`;
@@ -311,7 +316,7 @@ function viewInstalled(){
         (<code>private/talkora-config.php</code> یا <code>api/config.php</code>) را پاک کنید.
         این کار سامانه را تا پایان نصب تازه از کار می‌اندازد.</p>
       <div class="row" style="margin-block-start:16px">
-        <a class="btn btn--p" href="../admin/">پنل ادمین</a>
+        <a class="btn btn--p" href="https://admin.talkora.ir/" target="_blank" rel="noopener">پنل سوپرادمین</a>
         <a class="btn btn--g" href="../">پنل آموزشگاه‌ها</a>
       </div>
     </div>

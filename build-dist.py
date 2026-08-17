@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
-دو بستهٔ آمادهٔ آپلود می‌سازد، چون سایت و پنل روی دو دامنهٔ جدا بالا می‌آیند:
+سه بستهٔ آمادهٔ آپلود می‌سازد، چون سایت، پنل و سوپرادمین روی سه دامنهٔ
+جدا بالا می‌آیند:
 
-  dist/site/    →  httpdocs دامنهٔ اصلی      talkora.ir
-  dist/panel/   →  httpdocs زیردامنهٔ پنل     panel.talkora.ir
+  dist/site/    →  httpdocs دامنهٔ اصلی        talkora.ir
+  dist/panel/   →  httpdocs زیردامنهٔ پنل       panel.talkora.ir
+  dist/admin/   →  httpdocs زیردامنهٔ سوپرادمین admin.talkora.ir
 
-چرا جدا؟ پنل بک‌اند PHP و پایگاه داده دارد و سایت معرفی هیچ‌کدام را ندارد.
-با جداکردن‌شان، کوکی نشست فقط روی زیردامنهٔ پنل ست می‌شود، صفحهٔ فروش
-هیچ‌وقت به دیتابیس دست نمی‌زند، و اگر پنل خطا داد سایت پایین نمی‌آید.
+چرا جدا؟ پنل و سوپرادمین بک‌اند PHP و پایگاه داده دارند و سایت معرفی
+هیچ‌کدام را ندارد. با جداکردن‌شان، کوکی نشست فقط روی زیردامنهٔ خودش
+ست می‌شود، صفحهٔ فروش هیچ‌وقت به دیتابیس دست نمی‌زند، و اگر یکی خطا
+داد بقیه پایین نمی‌آیند. پنل و سوپرادمین هرکدام کوکی نشست جدای خودشان
+را دارند (tk_session در برابر tk_platform) و به یک پایگاه دادهٔ مشترک
+وصل می‌شوند — سوپرادمین دیتابیس یا جدول تازه نمی‌سازد، همان چیزی را
+می‌خواند و می‌نویسد که نصب‌کنندهٔ پنل ساخته.
 
 اجرا:  python3 build-dist.py
 """
@@ -22,11 +28,17 @@ DIST = ROOT / "dist"
 
 SITE_DOMAIN = "talkora.ir"
 PANEL_DOMAIN = "panel.talkora.ir"
+ADMIN_DOMAIN = "admin.talkora.ir"
 PANEL_URL = f"https://{PANEL_DOMAIN}/"
+ADMIN_URL = f"https://{ADMIN_DOMAIN}/"
 
-# تنها مقصد بیرونی مجاز: سایت به پنل لینک می‌دهد و برعکس.
-# هر ارجاع دیگری به دامنهٔ خارجی، ساخت را متوقف می‌کند — قاعدهٔ P.7
-ALLOWED_EXTERNAL = (f"https://{SITE_DOMAIN}", f"https://{PANEL_DOMAIN}", f"https://www.{SITE_DOMAIN}")
+# تنها مقصد بیرونی مجاز: سایت به پنل لینک می‌دهد، سوپرادمین به پنل
+# (لینک «ورود به‌جای کاربر») — و برعکس هیچ‌کدام. هر ارجاع دیگری به
+# دامنهٔ خارجی، ساخت را متوقف می‌کند — قاعدهٔ P.7
+ALLOWED_EXTERNAL = (
+    f"https://{SITE_DOMAIN}", f"https://{PANEL_DOMAIN}", f"https://www.{SITE_DOMAIN}",
+    f"https://{ADMIN_DOMAIN}",
+)
 
 # ─────────────────────────── تنظیمات وب‌سرور ───────────────────────────
 
@@ -95,8 +107,23 @@ PANEL_HTACCESS = f"""# تاکورا — پنل ({PANEL_DOMAIN})
 ErrorDocument 404 /index.html
 """
 
+ADMIN_HTACCESS = f"""# تاکورا — سوپرادمین پلتفرم ({ADMIN_DOMAIN})
+
+{_HTTPS_REDIRECT}
+<IfModule mod_headers.c>
+  # این پنل هرگز نباید داخل iframe جایی باز شود — حتی خود سایت
+  Header always set X-Frame-Options "DENY"
+  Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  <FilesMatch "^index\\.html$">
+    Header set Cache-Control "no-store"
+  </FilesMatch>
+</IfModule>
+{_COMMON_SECURITY}
+ErrorDocument 404 /index.html
+"""
+
 SITE_API_HTACCESS = """# فقط public.php از بیرون قابل صداکردن است
-<FilesMatch "^(_bootstrap|_admin|config|config\\.sample)\\.php$">
+<FilesMatch "^(_bootstrap|_settings|config|config\\.sample)\\.php$">
   Require all denied
 </FilesMatch>
 <FilesMatch "\\.(sql|md|log|bak|sample)$">
@@ -116,6 +143,11 @@ Sitemap: https://{SITE_DOMAIN}/sitemap.xml
 
 # پنل محتوای عمومی ندارد؛ ایندکس‌شدنش فقط صفحهٔ ورود را وارد گوگل می‌کند
 PANEL_ROBOTS = """User-agent: *
+Disallow: /
+"""
+
+# سوپرادمین از پنل هم حساس‌تر است — به‌هیچ‌وجه نباید ایندکس شود
+ADMIN_ROBOTS = """User-agent: *
 Disallow: /
 """
 
@@ -232,8 +264,11 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
         httpdocs/robots.txt
         httpdocs/fonts/
         httpdocs/api/
-        httpdocs/admin/
         httpdocs/setup/
+
+   ⚠ پنل سوپرادمین اینجا نیست. بستهٔ جداگانه‌ای است
+     (talkora-admin.zip، برای زیردامنهٔ {ADMIN_DOMAIN}) — راهنمای
+     خودش را دارد، چون نشستش عمداً از این پنل کاملاً جداست.
 
    ⚠ پوشهٔ  _نصب-آپلود-نکنید  را آپلود نکنید. فقط نسخهٔ پشتیبانِ
      دستیِ ساخت جدول‌هاست، برای وقتی که نصب‌کننده به هر دلیلی کار نکند.
@@ -253,8 +288,9 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
         را باید عوض کنید.
      ۲. پایگاه داده — چهار مقدار گام ۳. دکمهٔ «آزمایش اتصال» پیش از
         نصب می‌گوید درست است یا نه.
-     ۳. حساب مدیر — نام کاربری و رمز پنل ادمین. حداقل ۱۰ نویسه، و
-        جایی امن نگهش دارید؛ بازیابی خودکار ندارد.
+     ۳. حساب مدیر — نام کاربری و رمز پنل سوپرادمین. حداقل ۱۰ نویسه، و
+        جایی امن نگهش دارید؛ بازیابی خودکار ندارد. با همین حساب در گام ۷
+        وارد {ADMIN_DOMAIN} هم می‌شوید.
 
    بعد از زدن «نصب کن»:
      • ۲۰ جدول ساخته می‌شود
@@ -267,17 +303,20 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
      و هر درخواستی را رد می‌کند، ولی نگه‌داشتنش دلیلی ندارد.
 
 
-گام ۷) اولین ورود
-   https://{PANEL_DOMAIN}/admin/   ← با همان نام کاربری و رمز
+گام ۷) پنل سوپرادمین را هم بالا بیاورید
+   جدول‌ها همین الان با نصب‌کنندهٔ بالا ساخته شدند. حالا بستهٔ
+   talkora-admin.zip را طبق راهنمای خودش روی زیردامنهٔ {ADMIN_DOMAIN}
+   بریزید — همان چهار مقدار پایگاه داده را دوباره وارد می‌کنید،
+   ولی نصب‌کننده را دوباره اجرا نمی‌کنید؛ جدول‌ها از قبل هستند.
 
-   سربرگ «سلامت سامانه» را باز کنید. هرچه سبز نبود، توضیحش کنار
-   خودش نوشته شده.
+   بعد از آن، سربرگ «سلامت سامانه» در پنل سوپرادمین را باز کنید.
+   هرچه سبز نبود، توضیحش کنار خودش نوشته شده.
 
 
 گام ۸) پیامک — می‌شود بعداً
    سامانه بعد از نصب در «حالت پل» است: همه‌چیز کار می‌کند، ولی به‌جای
-   پیامک، کد ورود در سربرگ «ورود و پیامک» پنل ادمین دیده می‌شود و شما
-   آن را به کاربر می‌گویید.
+   پیامک، کد ورود در سربرگ «ورود و پیامک» پنل سوپرادمین دیده می‌شود و
+   شما آن را به کاربر می‌گویید.
 
    این عمدی است. تأیید قالب در sms.ir چند روز طول می‌کشد و بدون این
    حالت، سامانه در تمام آن روزها بلااستفاده بود — حتی خودتان هم
@@ -289,7 +328,7 @@ PANEL_GUIDE = f"""راهنمای بالا آوردن پنل — {PANEL_DOMAIN}
         کد ورود شما به تاکورا: #CODE#
         این کد تا ۲ دقیقه معتبر است.
 
-     بعد در پنل ادمین ← «ورود و پیامک»:
+     بعد در پنل سوپرادمین ← «ورود و پیامک»:
         کلید API، شناسهٔ عددی قالب، و نام پارامتر (اینجا CODE)
         و حالت را روی «با پیامک از sms.ir» بگذارید.
 
@@ -399,9 +438,9 @@ EMAIL_GUIDE = f"""راهنمای ایمیل کاری با دامنهٔ خودت�
    هر سه رایگان‌اند و نبودشان یعنی ایمیل‌تان اسپم حساب می‌شود.
 
 
-گام ۴) به پنل ادمین وصلش کنید
+گام ۴) به پنل سوپرادمین وصلش کنید
 
-   وارد  https://{PANEL_DOMAIN}/admin/  شوید
+   وارد  {ADMIN_URL}  شوید
    ← بخش «تماس و ایمیل»
    ← در «درخواست دموی رایگان به این آدرس برود» بنویسید:
         info@{SITE_DOMAIN}
@@ -439,7 +478,7 @@ EMAIL_GUIDE = f"""راهنمای ایمیل کاری با دامنهٔ خودت�
     گوگل سخت‌گیرترین است و بدون DKIM و DMARC رد می‌کند.
 
 هیچ‌کدام کار نکرد
-    درخواست‌های دمو با شکست ایمیل گم نمی‌شوند — همه در پنل ادمین،
+    درخواست‌های دمو با شکست ایمیل گم نمی‌شوند — همه در پنل سوپرادمین،
     بخش «درخواست‌های دمو» ثبت می‌شوند و ستون «ایمیل نرفت» نشان
     می‌دهد کدام‌ها ایمیل نشده‌اند. پس مشتری از دست نمی‌رود، فقط
     باید خودتان پنل را چک کنید تا ایمیل درست شود.
@@ -453,6 +492,115 @@ EMAIL_GUIDE = f"""راهنمای ایمیل کاری با دامنهٔ خودت�
 
 اگر بعداً ایمیل برایتان حیاتی شد — مثل رسید پرداخت — باید به SMTP
 با صف تبدیل شود. آن موقع سراغش می‌رویم.
+"""
+
+ADMIN_GUIDE = f"""راهنمای بالا آوردن پنل سوپرادمین — {ADMIN_DOMAIN}
+════════════════════════════════════════════════════
+این پنل مال شماست، نه مال آموزشگاه‌ها: کل پلتفرم را از اینجا اداره
+می‌کنید — آموزشگاه‌ها، نقش کاربرها، ورود به‌جای کاربر برای پشتیبانی،
+قیمت‌ها و متن‌های سایت، حالت پیامک، و سلامت سامانه.
+
+⚠ این پنل دیتابیس یا جدول تازه نمی‌سازد. باید *قبلش* بستهٔ پنل
+  ({PANEL_DOMAIN}) را نصب کرده باشید — همان نصب‌کننده هر ۲۰+ جدول را
+  می‌سازد، از جمله جدول‌های این پنل. اینجا فقط با همان پایگاه داده
+  از یک در دیگر وارد می‌شود.
+
+
+گام ۱) ساخت زیردامنه در پلسک
+   Websites & Domains ← Add Subdomain
+        Subdomain name : admin
+        Parent domain  : {SITE_DOMAIN}
+        Document root  : پیش‌فرض پلسک را دست نزنید
+   ← OK
+
+
+گام ۲) نسخهٔ PHP
+   روی زیردامنهٔ {ADMIN_DOMAIN} ← PHP Settings
+        PHP version : ۸.۱ یا بالاتر، افزونهٔ pdo_mysql فعال
+        اگر می‌خواهید «پیامک آزمایشی» از همین پنل هم کار کند، curl هم فعال باشد
+
+
+گام ۳) پایگاه داده — نسازید، همان پایگاه دادهٔ پنل را استفاده کنید
+   دیتابیس تازه‌ای لازم نیست. چهار مقداری که در نصب پنل
+   ({PANEL_DOMAIN}) استفاده کردید را همین‌جا هم لازم دارید:
+        db_host / db_name / db_user / db_pass
+
+   اگر این‌ها را یادداشت نکرده بودید، در پلسک:
+   Databases ← نام دیتابیس پنل ← Details
+
+
+گام ۴) آپلود
+   محتویات این بسته را در  httpdocs  زیردامنهٔ {ADMIN_DOMAIN} بریزید:
+        httpdocs/index.html
+        httpdocs/.htaccess
+        httpdocs/robots.txt
+        httpdocs/fonts/
+        httpdocs/api/
+
+   بعد  httpdocs/api/config.sample.php  را به  config.php  تغییر نام
+   دهید و با یک ویرایشگر متن پر کنید:
+        db_host / db_name / db_user / db_pass   ← دقیقاً مثل پنل
+        otp_pepper                              ← دقیقاً مثل پنل، حرف به حرف
+        admin_setup_key                          ← یک رشتهٔ تصادفی تازه (فقط برای حالت اضطراری گام ۶)
+
+   ⚠ اگر otp_pepper با پنل یکی نباشد، کدهایی که از بخش «ورود و پیامک»
+     این پنل می‌سازید هیچ‌وقت در پنل آموزشگاه تأیید نمی‌شوند — نه خطای
+     واضحی می‌دهد، فقط کد همیشه «اشتباه» اعلام می‌شود.
+
+   بهتر: config.php را در پوشهٔ private/ بالاتر از httpdocس همین
+   زیردامنه بگذارید با نام talkora-config.php — آن‌وقت از وب اصلاً
+   قابل خواندن نیست، حتی اگر پلسک .htaccess را نادیده بگیرد.
+
+
+گام ۵) گواهی SSL  ← قبل از اولین ورود
+   SSL/TLS Certificates ← Let's Encrypt ← {ADMIN_DOMAIN}
+   کوکی نشست این پنل (tk_platform) هم پرچم Secure دارد، درست مثل پنل.
+
+
+گام ۶) ورود
+   باز کنید:  {ADMIN_URL}
+
+   نصب‌کنندهٔ پنل (گام ۳ همان‌جا، «حساب مدیر») از قبل یک حساب در جدول
+   admin_user ساخته — همان دیتابیس مشترک است، پس همین‌جا هم همان
+   نام‌کاربری و رمز کار می‌کند. فرم ورود را می‌بینید، نه فرم ساخت حساب؛
+   با همان‌ها وارد شوید.
+
+   ⚠ فرم «ساخت حساب سوپرادمین» را فقط در یک حالت می‌بینید: دیتابیسی که
+   به آن وصل شده‌اید هنوز هیچ ردیف admin_user ندارد (مثلاً نصب‌کنندهٔ
+   پنل را دور زده‌اید، یا آن حساب را دستی از دیتابیس پاک کرده‌اید). آن
+   وقت admin_setup_key گام ۴ همان کلیدی است که وارد می‌کنید.
+
+
+گام ۷) بررسی
+   سربرگ «سلامت سامانه» را باز کنید:
+        پایگاه داده  باید «متصل — N جدول (مشترک با پنل آموزشگاه‌ها)» بگوید
+        کلید امضای کدها  باید سالم باشد — یعنی otp_pepper درست کپی شده
+
+   بعد سربرگ «آموزشگاه‌ها» را باز کنید. اگر آموزشگاهی از قبل در پنل
+   ثبت‌نام کرده، باید همین‌جا هم دیده شود — نشانهٔ اینکه واقعاً به
+   همان پایگاه داده وصل هستید، نه یک دیتابیس خالی تازه.
+
+
+════════════════════════════════════════════════════
+مشکلات رایج
+
+«سوپرادمین از قبل ساخته شده. از صفحهٔ ورود استفاده کنید»
+    طبیعی است — نصب‌کنندهٔ پنل همان حساب را ساخته. با نام‌کاربری و رمزی
+    که آنجا («حساب مدیر») ساختید وارد شوید؛ اگر همان‌ها را وارد کردید و
+    باز هم رد شد، db_host/db_name را با پنل مقایسه کنید — شاید به
+    دیتابیس دیگری وصل شده‌اید.
+
+سربرگ «آموزشگاه‌ها» همیشه خالی است ولی در پنل آموزشگاه‌ها داده هست
+    db_name (یا db_host) با پنل یکی نیست — دو دیتابیس جدا شده‌اید.
+
+کد ورودی که از این پنل می‌سازید در پنل آموزشگاه رد می‌شود
+    otp_pepper دو طرف یکی نیست. حرف‌به‌حرف با هم مقایسه کنید؛ یک
+    فاصلهٔ اضافه در کپی-پیست کافی است که خراب شود.
+
+لینک «ورود به‌جای کاربر» باز می‌شود ولی به صفحهٔ ورود پنل می‌رسد
+    تیکت ۶۰ ثانیه‌ای منقضی شده — دوباره از «ورود به‌جای کاربر» بسازید
+    و این‌بار سریع‌تر باز کنید. اگر بازهم همین شد، ساعت سرور این
+    زیردامنه با پنل هماهنگ نیست.
 """
 
 # ─────────────────────────── ساخت ───────────────────────────
@@ -493,8 +641,10 @@ def main() -> int:
     app_src = ROOT / "app" / "index.html"
     fonts = ROOT / "site" / "fonts"
     api_src = ROOT / "panel" / "api"
+    admin_src = ROOT / "superadmin" / "index.html"
+    admin_api_src = ROOT / "superadmin" / "api"
 
-    for p in (site_src, app_src, fonts, api_src):
+    for p in (site_src, app_src, fonts, api_src, admin_src, admin_api_src):
         if not p.exists():
             print(f"خطا: {p} پیدا نشد", file=sys.stderr)
             return 1
@@ -502,6 +652,12 @@ def main() -> int:
     # config.php واقعی نباید هرگز داخل بسته برود
     if (api_src / "config.php").exists():
         print("خطا: panel/api/config.php وجود دارد و ممکن است رمز واقعی داشته باشد.\n"
+              "      قبل از ساخت بسته پاکش کنید؛ فقط config.sample.php منتشر می‌شود.",
+              file=sys.stderr)
+        return 1
+
+    if (admin_api_src / "config.php").exists():
+        print("خطا: superadmin/api/config.php وجود دارد و ممکن است رمز واقعی داشته باشد.\n"
               "      قبل از ساخت بسته پاکش کنید؛ فقط config.sample.php منتشر می‌شود.",
               file=sys.stderr)
         return 1
@@ -534,7 +690,7 @@ def main() -> int:
     # بقیهٔ سایت هنوز HTML ایستاست؛ اگر PHP بمیرد صفحه سالم بالا می‌آید.
     site_api = site_out / "api"
     site_api.mkdir()
-    for f in ("_bootstrap.php", "_admin.php", "public.php", "config.sample.php"):
+    for f in ("_bootstrap.php", "_settings.php", "public.php", "config.sample.php"):
         shutil.copy2(api_src / f, site_api / f)
     (site_api / ".htaccess").write_text(SITE_API_HTACCESS, encoding="utf-8")
 
@@ -584,14 +740,23 @@ def main() -> int:
     (panel_out / "راهنمای-پنل.txt").write_text(PANEL_GUIDE, encoding="utf-8")
     (panel_out / "راهنمای-ایمیل.txt").write_text(EMAIL_GUIDE, encoding="utf-8")
 
-    # پنل ادمین محصول — مسیر جدا، نشست جدا، رمز جدا
-    admin_out = panel_out / "admin"
-    admin_out.mkdir()
-    (admin_out / "index.html").write_text(
-        (ROOT / "panel" / "admin" / "index.html").read_text(encoding="utf-8"), encoding="utf-8")
+    # ── بستهٔ سوپرادمین ───────────────────────────────────────
+    # مسیر جدا (زیردامنهٔ خودش، نه زیرپوشهٔ پنل)، نشست جدا (tk_platform)،
+    # رمز جدا (نام کاربری/رمز، نه پیامک). دیتابیس مشترک با پنل است —
+    # جدول تازه نمی‌سازد، فقط کدش را می‌خواند، پس اینجا _schema.php لازم
+    # نیست.
+    admin_out = DIST / "admin"
+    admin_out.mkdir(parents=True)
+
+    (admin_out / "index.html").write_text(admin_src.read_text(encoding="utf-8"), encoding="utf-8")
+    shutil.copytree(fonts, admin_out / "fonts")
+    copy_tree_filtered(admin_api_src, admin_out / "api", skip={"config.php"})
+    (admin_out / ".htaccess").write_text(ADMIN_HTACCESS, encoding="utf-8")
+    (admin_out / "robots.txt").write_text(ADMIN_ROBOTS, encoding="utf-8")
+    (admin_out / "راهنمای-سوپرادمین.txt").write_text(ADMIN_GUIDE, encoding="utf-8")
 
     # ── بررسی‌ها ───────────────────────────────────────────────
-    bad = check_external(site_out) + check_external(panel_out)
+    bad = check_external(site_out) + check_external(panel_out) + check_external(admin_out)
     if bad:
         print("خطا: ارجاع به دامنهٔ خارجی:", file=sys.stderr)
         for b in bad:
@@ -613,10 +778,6 @@ def main() -> int:
 
     if "../site/fonts/" in (panel_out / "index.html").read_text(encoding="utf-8"):
         print("خطا: پنل هنوز فونت را از دامنهٔ اصلی می‌خواند.", file=sys.stderr)
-        return 1
-
-    if not (panel_out / "admin" / "index.html").exists():
-        print("خطا: پنل ادمین در بسته نیست.", file=sys.stderr)
         return 1
 
     if not (panel_out / "setup" / "index.html").exists():
@@ -661,18 +822,41 @@ def main() -> int:
         print("خطا: پنل مسیر #/signup را نمی‌شناسد.", file=sys.stderr)
         return 1
 
-    for pkg in (site_out, panel_out):
+    # سوپرادمین باید به api/super.php وصل باشد، وگرنه هیچ درخواستی نمی‌رود
+    if "super.php" not in (admin_out / "index.html").read_text(encoding="utf-8"):
+        print("خطا: پنل سوپرادمین به api/super.php وصل نیست.", file=sys.stderr)
+        return 1
+
+    if not (admin_out / "api" / "super.php").exists():
+        print("خطا: api/super.php در بستهٔ سوپرادمین نیست.", file=sys.stderr)
+        return 1
+
+    if "../site/fonts/" in (admin_out / "index.html").read_text(encoding="utf-8"):
+        print("خطا: پنل سوپرادمین فونت را از دامنهٔ دیگری می‌خواند.", file=sys.stderr)
+        return 1
+
+    for pkg in (site_out, panel_out, admin_out):
         if (pkg / "api" / "config.php").exists():
             print(f"خطا: config.php واقعی داخل {pkg.name} رفته است.", file=sys.stderr)
+            return 1
+        if (pkg / "api" / "schema.mysql.sql").exists():
+            print(f"خطا: schema.mysql.sql داخل {pkg.name}/api مانده است.", file=sys.stderr)
             return 1
 
     # ── زیپ‌ها ────────────────────────────────────────────────
     site_zip = ROOT / "talkora-site.zip"
     panel_zip = ROOT / "talkora-panel.zip"
+    admin_zip = ROOT / "talkora-admin.zip"
     zip_folder(site_out, site_zip)
     zip_folder(panel_out, panel_zip)
+    zip_folder(admin_out, admin_zip)
 
-    for label, folder, zf in (("سایت", site_out, site_zip), ("پنل", panel_out, panel_zip)):
+    packages = (
+        ("سایت", site_out, site_zip),
+        ("پنل", panel_out, panel_zip),
+        ("سوپرادمین", admin_out, admin_zip),
+    )
+    for label, folder, zf in packages:
         total = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
         print(f"\n── بستهٔ {label}  →  {folder.relative_to(ROOT)}")
         for f in sorted(folder.rglob("*")):
@@ -682,6 +866,8 @@ def main() -> int:
 
     print(f"\nبستهٔ سایت را در httpdocs دامنهٔ {SITE_DOMAIN} بریزید.")
     print(f"بستهٔ پنل را در httpdocs زیردامنهٔ {PANEL_DOMAIN} بریزید (راهنمای-پنل.txt را بخوانید).")
+    print(f"بستهٔ سوپرادمین را در httpdocs زیردامنهٔ {ADMIN_DOMAIN} بریزید — بعد از پنل "
+          f"(راهنمای-سوپرادمین.txt را بخوانید).")
     return 0
 
 
