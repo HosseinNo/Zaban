@@ -139,16 +139,65 @@ function sms_send_verify(string $phone, string $code): array
                 'error' => 'کلید یا شناسهٔ قالب sms.ir تنظیم نشده'];
     }
 
+    /*
+     * ═══ چرا کد را با چند نام می‌فرستیم ═══
+     *
+     * sms.ir متغیر «#otp#» را فقط وقتی با کد جایگزین می‌کند که پارامتری
+     * *دقیقاً* به نام otp برایش آمده باشد. اگر نام نخواند، خطا نمی‌دهد:
+     * پیامک را می‌فرستد و «موفق» برمی‌گرداند، ولی متن قالب دست‌نخورده
+     * می‌ماند — کاربر پیامکی می‌گیرد که در آن نوشته «#otp#».
+     *
+     * این خرابی هیچ‌جا ثبت نمی‌شود و از سمت ما اصلاً دیده نمی‌شود. تنها
+     * کسی که می‌فهمد، کاربری است که نمی‌تواند وارد شود.
+     *
+     * پس به‌جای اینکه درست‌بودن یک تنظیم را شرط کارکردن سامانه کنیم،
+     * همان کد را با چند نام رایج می‌فرستیم. sms.ir هرکدام را که در قالب
+     * باشد جایگزین می‌کند و بقیه را نادیده می‌گیرد.
+     *
+     * اگر روزی این را نپذیرفت، پایین‌تر با همان یک نام تنظیم‌شده دوباره
+     * تلاش می‌کنیم — پس این «هوشمندی» نمی‌تواند چیزی را بشکند.
+     */
+    $names = [];
+    foreach ([$s['param'], 'otp', 'OTP', 'code', 'CODE', 'Code', 'token'] as $n) {
+        $n = trim((string)$n);
+        if ($n !== '' && !in_array($n, $names, true)) $names[] = $n;
+    }
+    $params = array_map(fn($n) => ['name' => $n, 'value' => $code], $names);
+
+    $res = sms_post($s, $phone, $params);
+
+    /*
+     * اگر با فهرست کامل رد شد، شاید sms.ir پارامتر اضافی را نمی‌پسندد.
+     * همان یک نامی که ادمین تنظیم کرده را تنها می‌فرستیم.
+     */
+    if (!$res['sent'] && count($params) > 1) {
+        error_log('sms.ir چند-نامی رد شد، تلاش دوباره با ' . $s['param']);
+        $res = sms_post($s, $phone, [['name' => $s['param'], 'value' => $code]]);
+    }
+    return $res;
+}
+
+/**
+ * یک درخواست به sms.ir.
+ *
+ * @param array $params فهرست ['name'=>..., 'value'=>...]
+ * @return array{sent:bool, messageId:?int, cost:?float, error:?string}
+ */
+function sms_post(array $s, string $phone, array $params): array
+{
     $payload = json_encode([
         'mobile'     => $phone,
         'templateId' => $s['template'],
-        'parameters' => [
-            // نام پارامتر باید دقیقاً با متغیر داخل قالب پنل sms.ir یکی باشد
-            ['name' => $s['param'], 'value' => $code],
-        ],
+        'parameters' => $params,
     ], JSON_UNESCAPED_UNICODE);
 
-    $ch = curl_init('https://api.sms.ir/v1/send/verify');
+    /*
+     * آدرس از پیکربندی خوانده می‌شود تا بتوان مسیر ارسال را بدون
+     * تماس با sms.ir آزمود. اگر تنظیم نشده باشد — یعنی همیشه، روی
+     * سرور واقعی — همان نقطهٔ پایانی خود sms.ir است.
+     */
+    $base = (string)(cfg()['smsir_base'] ?? 'https://api.sms.ir');
+    $ch = curl_init(rtrim($base, '/') . '/v1/send/verify');
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,
