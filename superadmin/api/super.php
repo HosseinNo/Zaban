@@ -187,7 +187,7 @@ case 'institutes.get':
  * onboard می‌کنید، نه اینکه صاحبش خودش ثبت‌نام کند.
  */
 case 'institutes.create':
-    require_super();
+    $a = require_super();
     $name  = s_in($in, 'name', 160);
     $phone = normalize_phone((string)($in['ownerPhone'] ?? ''));
     $owner = s_in($in, 'ownerName', 120);
@@ -212,7 +212,7 @@ case 'institutes.create':
     $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
        ->execute([new_id(), $iid, $uid, 'manager', 'active', now_utc()]);
 
-    audit('super.institute_created', null, ['institute' => $iid, 'name' => $name, 'ownerPhone' => $phone]);
+    audit('super.institute_created', $a['id'], ['institute' => $iid, 'name' => $name, 'ownerPhone' => $phone]);
     ok(['id' => $iid]);
 
 case 'institutes.suspend':
@@ -307,14 +307,18 @@ case 'membership.add':
     $role = s_in($in, 'role', 16);
     if (!in_array($role, PLATFORM_ROLES, true)) fail(400, 'invalid_role', 'نقش باید مدیر، مدرس یا زبان‌آموز باشد.');
 
-    $st = db()->prepare('SELECT id FROM membership WHERE institute_id = ? AND user_id = ?');
+    $st = db()->prepare('SELECT id, role FROM membership WHERE institute_id = ? AND user_id = ?');
     $st->execute([$inst['id'], $u['id']]);
-    $existing = $st->fetchColumn();
+    $existing = $st->fetch();
 
     if ($existing) {
+        if ((string)$existing['role'] === 'manager' && $role !== 'manager'
+            && is_last_active_manager($inst['id'], (string)$existing['id'])) {
+            fail(409, 'last_manager', 'این تنها مدیر فعال این آموزشگاه است؛ اول یک مدیر دیگر تعیین کنید.');
+        }
         db()->prepare("UPDATE membership SET role = ?, status = 'active' WHERE id = ?")
-            ->execute([$role, $existing]);
-        $mid = (string)$existing;
+            ->execute([$role, $existing['id']]);
+        $mid = (string)$existing['id'];
     } else {
         $mid = new_id();
         db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
@@ -555,7 +559,7 @@ case 'loginCodes':
     ]);
 
 case 'issueCode':
-    require_super();
+    $a = require_super();
     $phone = normalize_phone((string)($in['phone'] ?? ''));
     if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
 
@@ -574,7 +578,7 @@ case 'issueCode':
     ]);
 
     $sms = sms_send_verify($phone, $code);
-    audit('super.issued_code', null, ['phone' => $phone, 'bridge' => $bridge]);
+    audit('super.issued_code', $a['id'], ['phone' => $phone, 'bridge' => $bridge]);
 
     if (!$bridge && !$sms['sent']) {
         fail(502, 'sms_failed', 'ارسال پیامک ممکن نشد: ' . (string)($sms['error'] ?? ''));
@@ -582,7 +586,7 @@ case 'issueCode':
     ok(['phone' => $phone, 'code' => $bridge ? $code : null, 'expiresIn' => $ttl, 'bridge' => $bridge]);
 
 case 'smsTest':
-    require_super();
+    $a = require_super();
     $phone = normalize_phone((string)($in['phone'] ?? ''));
     if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
 
@@ -592,7 +596,7 @@ case 'smsTest':
     }
     $demo = str_pad((string)random_int(0, 99999), 5, '0', STR_PAD_LEFT);
     $res  = sms_send_verify($phone, $demo);
-    audit('super.sms_test', null, ['phone' => $phone, 'sent' => $res['sent'], 'error' => $res['error']]);
+    audit('super.sms_test', $a['id'], ['phone' => $phone, 'sent' => $res['sent'], 'error' => $res['error']]);
 
     if (!$res['sent']) {
         fail(502, 'sms_failed', 'sms.ir قبول نکرد: ' . (string)($res['error'] ?? 'خطای نامشخص'),

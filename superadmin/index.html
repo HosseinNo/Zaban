@@ -484,6 +484,7 @@ function viewInstituteDetail(){
               ? '<button class="btn btn--sm btn--g" data-a="memSuspend" data-id="'+m.membershipId+'">تعلیق</button>'
               : '<button class="btn btn--sm btn--g" data-a="memReactivate" data-id="'+m.membershipId+'">فعال‌سازی</button>'}
             <button class="btn btn--sm btn--p" data-a="impStart" data-user="${m.userId}" data-inst="${inst.id}" data-name="${esc(m.name)}">ورود به‌جای کاربر</button>
+            <button class="btn btn--sm btn--d" data-a="memRemove" data-id="${m.membershipId}">حذف عضویت</button>
           </td>
         </tr>`;}).join("")}
       </tbody></table></div>
@@ -567,6 +568,7 @@ function viewUserDetail(){
               ? '<button class="btn btn--sm btn--g" data-a="memSuspend" data-id="'+m.membershipId+'">تعلیق</button>'
               : '<button class="btn btn--sm btn--g" data-a="memReactivate" data-id="'+m.membershipId+'">فعال‌سازی</button>'}
             <button class="btn btn--sm btn--p" data-a="impStart" data-user="${u.id}" data-inst="${m.instituteId}" data-name="${esc(u.name)}">ورود به‌جای کاربر</button>
+            <button class="btn btn--sm btn--d" data-a="memRemove" data-id="${m.membershipId}">حذف عضویت</button>
           </td>
         </tr>`;}).join("")}
       </tbody></table></div>`}
@@ -1289,6 +1291,18 @@ document.addEventListener("click",function(e){
     call({action:a==="memSuspend"?"membership.suspend":"membership.reactivate",membershipId:mid}).then(function(r){
       if(!r.ok){toast(r.message||"انجام نشد");return;}
       toast("ثبت شد");
+      if(S.instDetail)doInstOpen(S.instDetail.institute.id);
+      else if(S.userDetail)doUserOpen(S.userDetail.user.id);
+    });
+    return;
+  }
+  if(a==="memRemove"){
+    var midR=b.dataset.id;
+    if(!confirm("این عضویت کاملاً از این آموزشگاه حذف می‌شود (نه موقت، بر خلاف تعلیق). ادامه می‌دهید؟"))return;
+    if(!API.live){toast("در نسخهٔ نمایشی اعمال نمی‌شود.");return;}
+    call({action:"membership.remove",membershipId:midR}).then(function(r){
+      if(!r.ok){toast(r.message||"انجام نشد");return;}
+      toast("عضویت حذف شد");
       if(S.instDetail)doInstOpen(S.instDetail.institute.id);
       else if(S.userDetail)doUserOpen(S.userDetail.user.id);
     });
