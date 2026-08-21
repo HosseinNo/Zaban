@@ -72,6 +72,11 @@ case 'start':
 
     if ($s['status'] === 'cancelled') fail(409, 'cancelled', 'این جلسه لغو شده.');
 
+    // مدرس فقط با مجوز صریح می‌تواند جلسهٔ میت را شروع کند؛ مدیر همیشه مجاز است
+    if ((string)$cl['provider'] === 'jitsi' && my_role() === 'teacher' && !can_host_meeting()) {
+        fail(403, 'meeting_not_allowed', 'اجازهٔ شروع جلسهٔ میت را ندارید. از مدیر آموزشگاه بخواهید فعالش کند.');
+    }
+
     // لینک: اگر مدرس لینک تازه داد همان، وگرنه لینک ثابت کلاس
     $url = join_url_in($in, 'joinUrl') ?? $s['join_url'] ?? $cl['join_url'];
     if ($cl['mode'] !== 'in_person' && !$url && $cl['provider'] !== 'bbb') {
@@ -97,6 +102,7 @@ case 'start':
     audit('session.started', my_id(), ['session' => $s['id'], 'class' => $cl['id']]);
     ok([
         'joinUrl'        => $url,
+        'provider'       => (string)$cl['provider'],
         'attendanceAuto' => attendance_auto((string)$cl['provider']),
         'roster'         => count($roster),
         'drafted'        => $made,

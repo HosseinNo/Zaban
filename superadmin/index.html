@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#070C14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F3E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131A17" media="(prefers-color-scheme: dark)">
 <title>تاکورا | سوپرادمین پلتفرم</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="same-origin">
@@ -26,44 +26,44 @@
 @font-face{font-family:"Dana";src:url("fonts/dana-bold.woff2") format("woff2");font-weight:700;font-display:swap}
 
 :root{
-  --paper:#F6F8FB; --surface:#FFFFFF; --surface-2:#F0F3F8; --surface-3:#E6EBF3;
-  --ink:#0B1220; --ink-2:#3D4C63; --ink-3:#5A6A85;
-  --line:#E2E8F0; --line-2:#CBD5E1;
-  --brand:#0F2A54; --brand-2:#2563C7; --brand-soft:#E9F0FB; --ring:rgba(37,99,199,.3);
-  --ok:#0A7048; --ok-soft:#E4F4EC;
-  --warn:#A65F00; --warn-soft:#FBF1E0;
-  --bad:#B42318; --bad-soft:#FCEAE8;
+  --paper:#F7F3E8; --surface:#FCFAF3; --surface-2:#F1EBDC; --surface-3:#E7E0CE;
+  --ink:#24352F; --ink-2:#46574F; --ink-3:#6B7C74;
+  --line:#DDE5DC; --line-2:#C6D2C6;
+  --brand:#2C5A4A; --brand-2:#3F7D68; --brand-soft:#C9EDE1; --brand-mid:#A9DDC9; --accent-ink:#8A6520; --ring:rgba(63,125,104,.3);
+  --ok:#1F7A52; --ok-soft:#DCF0E6;
+  --warn:#8A6520; --warn-soft:#F6EBD5;
+  --bad:#A83A2C; --bad-soft:#F7E3DF;
   --r1:9px; --r2:14px;
-  --sh:0 1px 2px rgba(11,18,32,.05),0 2px 8px rgba(11,18,32,.05);
-  --sh-l:0 22px 56px rgba(11,18,32,.18);
+  --sh:0 1px 2px rgba(36,53,47,.05),0 2px 8px rgba(36,53,47,.05);
+  --sh-l:0 22px 56px rgba(36,53,47,.18);
 }
 @media (prefers-color-scheme:dark){:root{
-  --paper:#070C14; --surface:#101825; --surface-2:#17202E; --surface-3:#1F2937;
-  --ink:#EEF3F9; --ink-2:#B9C6D6; --ink-3:#8496AC;
-  --line:#1F2937; --line-2:#2E3A4C;
-  --brand:#C9DDF7; --brand-2:#6BA0EA; --brand-soft:#13233A; --ring:rgba(107,160,234,.34);
-  --ok:#43C08C; --ok-soft:#0E2A20;
-  --warn:#DFA24A; --warn-soft:#2A200F;
-  --bad:#F0736A; --bad-soft:#2B1514;
+  --paper:#131A17; --surface:#1B2420; --surface-2:#222D28; --surface-3:#2B3832;
+  --ink:#ECF2EE; --ink-2:#BFCCC5; --ink-3:#8E9E96;
+  --line:#2B3832; --line-2:#3A4A42;
+  --brand:#C9EDE1; --brand-2:#A9DDC9; --brand-soft:#1E322A; --brand-mid:#6FAF95; --accent-ink:#E8C98F; --ring:rgba(169,221,201,.34);
+  --ok:#7FD1AC; --ok-soft:#17332A;
+  --warn:#E0B96A; --warn-soft:#2E2718;
+  --bad:#F0897E; --bad-soft:#34201D;
   --sh:0 1px 2px rgba(0,0,0,.45); --sh-l:0 22px 56px rgba(0,0,0,.62);
 }}
 :root[data-theme="dark"]{
-  --paper:#070C14; --surface:#101825; --surface-2:#17202E; --surface-3:#1F2937;
-  --ink:#EEF3F9; --ink-2:#B9C6D6; --ink-3:#8496AC;
-  --line:#1F2937; --line-2:#2E3A4C;
-  --brand:#C9DDF7; --brand-2:#6BA0EA; --brand-soft:#13233A; --ring:rgba(107,160,234,.34);
-  --ok:#43C08C; --ok-soft:#0E2A20;
-  --warn:#DFA24A; --warn-soft:#2A200F;
-  --bad:#F0736A; --bad-soft:#2B1514;
+  --paper:#131A17; --surface:#1B2420; --surface-2:#222D28; --surface-3:#2B3832;
+  --ink:#ECF2EE; --ink-2:#BFCCC5; --ink-3:#8E9E96;
+  --line:#2B3832; --line-2:#3A4A42;
+  --brand:#C9EDE1; --brand-2:#A9DDC9; --brand-soft:#1E322A; --brand-mid:#6FAF95; --accent-ink:#E8C98F; --ring:rgba(169,221,201,.34);
+  --ok:#7FD1AC; --ok-soft:#17332A;
+  --warn:#E0B96A; --warn-soft:#2E2718;
+  --bad:#F0897E; --bad-soft:#34201D;
   --sh:0 1px 2px rgba(0,0,0,.45); --sh-l:0 22px 56px rgba(0,0,0,.62);
 }
 :root[data-theme="light"]{
-  --paper:#F6F8FB; --surface:#FFFFFF; --surface-2:#F0F3F8; --surface-3:#E6EBF3;
-  --ink:#0B1220; --ink-2:#3D4C63; --ink-3:#5A6A85;
-  --line:#E2E8F0; --line-2:#CBD5E1;
-  --brand:#0F2A54; --brand-2:#2563C7; --brand-soft:#E9F0FB;
-  --ok:#0A7048; --ok-soft:#E4F4EC; --warn:#A65F00; --warn-soft:#FBF1E0;
-  --bad:#B42318; --bad-soft:#FCEAE8;
+  --paper:#F7F3E8; --surface:#FCFAF3; --surface-2:#F1EBDC; --surface-3:#E7E0CE;
+  --ink:#24352F; --ink-2:#46574F; --ink-3:#6B7C74;
+  --line:#DDE5DC; --line-2:#C6D2C6;
+  --brand:#2C5A4A; --brand-2:#3F7D68; --brand-soft:#C9EDE1; --brand-mid:#A9DDC9; --accent-ink:#8A6520;
+  --ok:#1F7A52; --ok-soft:#DCF0E6; --warn:#8A6520; --warn-soft:#F6EBD5;
+  --bad:#A83A2C; --bad-soft:#F7E3DF;
 }
 
 *{box-sizing:border-box}
@@ -85,7 +85,7 @@ a{color:var(--brand-2)}
 .brand i{inline-size:32px;block-size:32px;border-radius:9px;background:var(--brand);color:#fff;
          display:grid;place-content:center;font-size:16px;font-style:normal}
 :root[data-theme="dark"] .brand i,
-@media (prefers-color-scheme:dark){.brand i{color:#07111F}}
+@media (prefers-color-scheme:dark){.brand i{color:#131A17}}
 .brand small{display:block;font-weight:400;font-size:11.5px;color:var(--ink-3);line-height:1.4}
 nav{padding:10px 8px;flex:1;overflow:auto}
 nav button{display:flex;align-items:center;gap:9px;inline-size:100%;text-align:start;
@@ -458,10 +458,14 @@ function viewInstituteDetail(){
         <div><div class="muted" style="font-size:12.5px">تلفن</div><div class="num" dir="ltr">${esc(inst.phone||"—")}</div></div>
         <div><div class="muted" style="font-size:12.5px">ساخته‌شده</div><div class="num">${jDateTime(inst.createdAt)}</div></div>
       </div>
-      <div style="display:flex;gap:10px;margin-block-start:16px">
+      <div style="display:flex;gap:10px;margin-block-start:16px;flex-wrap:wrap">
         ${inst.status==="suspended"
           ? '<button class="btn btn--g" data-a="instReactivate" data-id="'+inst.id+'">رفع تعلیق</button>'
           : '<button class="btn btn--d" data-a="instSuspend" data-id="'+inst.id+'">تعلیق آموزشگاه</button>'}
+        <button class="btn btn--sm ${inst.jitsiEnabled?"btn--p":"btn--g"}" data-a="instJitsiToggle"
+                data-id="${inst.id}" data-on="${inst.jitsiEnabled?"0":"1"}">
+          جلسهٔ میت: ${inst.jitsiEnabled?"فعال":"غیرفعال"}
+        </button>
       </div>
     </div>
   </div>
@@ -469,7 +473,7 @@ function viewInstituteDetail(){
   <div class="card">
     <div class="card-h"><h3>اعضا</h3></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>نام</th><th>موبایل</th><th>نقش</th><th>وضعیت</th><th></th></tr></thead>
+      <thead><tr><th>نام</th><th>موبایل</th><th>نقش</th><th>وضعیت</th><th>میت</th><th></th></tr></thead>
       <tbody>${d.members.map(function(m){
         return h`<tr>
           <td><b>${esc(m.name)}</b></td>
@@ -479,6 +483,8 @@ function viewInstituteDetail(){
               return '<option value="'+r+'"'+(m.role===r?" selected":"")+'>'+ROLE_FA[r]+'</option>';}).join("")}
           </select></td>
           <td>${m.status==="active"?'<span class="pill p-ok">فعال</span>':'<span class="pill p-mute">غیرفعال</span>'}</td>
+          <td>${m.role==="student"?"—"
+            :'<button class="btn btn--sm '+(m.canHostMeeting?"btn--p":"btn--g")+'" data-a="memMeetingToggle" data-id="'+m.membershipId+'" data-on="'+(m.canHostMeeting?"0":"1")+'">'+(m.canHostMeeting?"فعال":"غیرفعال")+'</button>'}</td>
           <td style="white-space:nowrap">
             ${m.status==="active"
               ? '<button class="btn btn--sm btn--g" data-a="memSuspend" data-id="'+m.membershipId+'">تعلیق</button>'
@@ -1059,7 +1065,7 @@ function syncCodeTimer(){
       call({action:"loginCodes"}).then(function(r){
         if(!r.ok)return; S.codes=r.codes; if(S.view==="sms")render();
       });
-    },7000);
+    },5*60*1000);
   }else if((S.view!=="sms"||!API.live)&&codeTimer){
     clearInterval(codeTimer); codeTimer=null;
   }
@@ -1254,6 +1260,16 @@ document.addEventListener("click",function(e){
     }
     return;
   }
+  if(a==="instJitsiToggle"){
+    var jiid=b.dataset.id, jon=b.dataset.on==="1";
+    if(!API.live){toast("در نسخهٔ نمایشی اعمال نمی‌شود.");return;}
+    call({action:"institutes.setJitsiEnabled",id:jiid,on:jon}).then(function(r){
+      if(!r.ok){toast(r.message||"انجام نشد");return;}
+      toast(jon?"جلسهٔ میت برای این آموزشگاه فعال شد":"جلسهٔ میت برای این آموزشگاه غیرفعال شد");
+      doInstOpen(jiid);
+    });
+    return;
+  }
 
   if(a==="userSearch"){
     S.userQ=(el("userQ")||{}).value||""; doUserSearch();
@@ -1289,6 +1305,17 @@ document.addEventListener("click",function(e){
     var mid=b.dataset.id;
     if(!API.live){toast("در نسخهٔ نمایشی اعمال نمی‌شود.");return;}
     call({action:a==="memSuspend"?"membership.suspend":"membership.reactivate",membershipId:mid}).then(function(r){
+      if(!r.ok){toast(r.message||"انجام نشد");return;}
+      toast("ثبت شد");
+      if(S.instDetail)doInstOpen(S.instDetail.institute.id);
+      else if(S.userDetail)doUserOpen(S.userDetail.user.id);
+    });
+    return;
+  }
+  if(a==="memMeetingToggle"){
+    var mmid=b.dataset.id, mmon=b.dataset.on==="1";
+    if(!API.live){toast("در نسخهٔ نمایشی اعمال نمی‌شود.");return;}
+    call({action:"membership.setMeetingAccess",membershipId:mmid,on:mmon}).then(function(r){
       if(!r.ok){toast(r.message||"انجام نشد");return;}
       toast("ثبت شد");
       if(S.instDetail)doInstOpen(S.instDetail.institute.id);

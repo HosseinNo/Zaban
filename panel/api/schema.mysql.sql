@@ -362,3 +362,23 @@ CREATE TABLE IF NOT EXISTS impersonation_ticket (
   KEY ix_imp_target (target_user_id),
   CONSTRAINT fk_imp_user FOREIGN KEY (target_user_id) REFERENCES app_user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ═══════════════════════════════════════════════════════════════════
+--  نسخهٔ ۵ — پنل میت (Jitsi)
+--
+--  دسترسیِ «ساخت جلسهٔ میت» آبشاری است، دو سطح:
+--    ۱) institute.jitsi_enabled  — کلید اصلی سوپرادمین؛ کل آموزشگاه را
+--       روشن/خاموش می‌کند (همان الگوی status/suspended_reason بالا).
+--    ۲) membership.can_host_meeting — مجوز شخصی. مدیر از ابتدا دارد
+--       (چون خودش آموزشگاه را اداره می‌کند)، مدرس ندارد تا مدیر بدهد.
+--       سوپرادمین می‌تواند مجوز هرکسی — حتی مدیر — را هم بگیرد.
+--
+--  اتاق جیتسی نیازی به ستون تازه ندارد: از join_url موجود روی klass
+--  استفاده می‌کند، فقط این‌بار سرور خودش پرش می‌کند (talkora-{classId})
+--  نه اینکه مدیر تایپ کند.
+-- ═══════════════════════════════════════════════════════════════════
+
+ALTER TABLE institute  ADD COLUMN jitsi_enabled    TINYINT(1) NOT NULL DEFAULT 1;
+ALTER TABLE membership ADD COLUMN can_host_meeting TINYINT(1) NOT NULL DEFAULT 0;
+UPDATE membership SET can_host_meeting = 1 WHERE role = 'manager';

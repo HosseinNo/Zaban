@@ -46,7 +46,8 @@ function ctx(): array
     // عضویت فعال کاربر. اگر در چند آموزشگاه باشد، فعلاً اولی؛
     // جابه‌جایی بین آموزشگاه‌ها وقتی لازم شد اضافه می‌شود.
     $st = db()->prepare(
-        'SELECT m.institute_id, m.role, i.name, i.term_weeks, i.city, i.phone, i.status, i.suspended_reason
+        'SELECT m.institute_id, m.role, m.can_host_meeting,
+                i.name, i.term_weeks, i.city, i.phone, i.status, i.suspended_reason, i.jitsi_enabled
            FROM membership m
            JOIN institute i ON i.id = m.institute_id
           WHERE m.user_id = ? AND m.status = ?
@@ -73,15 +74,17 @@ function ctx(): array
     }
 
     $c = [
-        'user'         => $u,
-        'institute_id' => (string)$m['institute_id'],
-        'role'         => (string)$m['role'],
-        'institute'    => [
-            'id'        => (string)$m['institute_id'],
-            'name'      => (string)$m['name'],
-            'termWeeks' => (int)$m['term_weeks'],
-            'city'      => $m['city'],
-            'phone'     => $m['phone'],
+        'user'             => $u,
+        'institute_id'     => (string)$m['institute_id'],
+        'role'             => (string)$m['role'],
+        'can_host_meeting' => (bool)$m['can_host_meeting'],
+        'institute'        => [
+            'id'           => (string)$m['institute_id'],
+            'name'         => (string)$m['name'],
+            'termWeeks'    => (int)$m['term_weeks'],
+            'city'         => $m['city'],
+            'phone'        => $m['phone'],
+            'jitsiEnabled' => (bool)$m['jitsi_enabled'],
         ],
     ];
     return $c;
@@ -90,6 +93,51 @@ function ctx(): array
 function inst_id(): string { return ctx()['institute_id']; }
 function my_id(): string   { return (string)ctx()['user']['id']; }
 function my_role(): string { return ctx()['role']; }
+
+/**
+ * مجوز «ساخت/شروع جلسهٔ میت» — آبشاری: هم آموزشگاه باید فعالش کرده
+ * باشد (سوپرادمین)، هم خود عضویت باید مجوز داشته باشد (مدیر از ابتدا
+ * دارد، مدرس باید از مدیر بگیرد؛ سوپرادمین می‌تواند مجوز هرکسی را هم
+ * قطع کند — دقیقاً همین یک شرط دومی که آن را ممکن می‌کند).
+ */
+function can_host_meeting(): bool
+{
+    $c = ctx();
+    return $c['institute']['jitsiEnabled'] && $c['can_host_meeting'];
+}
+
+/* ─────────── جلسهٔ میت (Jitsi) ─────────── */
+
+/**
+ * دامنهٔ سرور جیتسی — پیش‌فرض سرور عمومی و رایگان meet.jit.si. از
+ * site_setting خوانده می‌شود تا اگر روزی سرور اختصاصی گرفتید، فقط از
+ * پنل سوپرادمین عوض شود، نه با ویرایش کد (همان الگوی sms_conf() در
+ * _sms.php برای خواندن مستقیم یک تنظیم بدون بارکردن کل _settings.php).
+ */
+function jitsi_domain(): string
+{
+    static $d = null;
+    if ($d !== null) return $d;
+    $d = 'meet.jit.si';
+    try {
+        $st = db()->query("SELECT svalue FROM site_setting WHERE skey = 'jitsi_domain'");
+        $v = trim((string)($st->fetchColumn() ?: ''));
+        if ($v !== '') $d = $v;
+    } catch (Throwable $e) {
+        error_log('jitsi_domain read failed: ' . $e->getMessage());
+    }
+    return $d;
+}
+
+/**
+ * آدرس اتاق یک کلاس — همیشه یکی، برای کل عمر کلاس. classId خودش یک
+ * شناسهٔ تصادفی ۳۲ کاراکتری است (new_id())، پس حدس‌زدنی نیست و نیازی
+ * به رمز یا HMAC تازه نیست.
+ */
+function jitsi_room_url(string $classId): string
+{
+    return 'https://' . jitsi_domain() . '/talkora-' . $classId;
+}
 
 function require_role(string ...$roles): void
 {

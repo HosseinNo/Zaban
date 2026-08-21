@@ -16,7 +16,22 @@ $action = s_in($in, 'action', 40);
 
 const DAY_PATTERNS = ['فرد', 'زوج', 'پنجشنبه', 'جمعه', 'فشرده'];
 const MODES        = ['in_person', 'online', 'hybrid'];
-const PROVIDERS    = ['bbb', 'meet', 'skyroom', 'custom'];
+const PROVIDERS    = ['bbb', 'meet', 'skyroom', 'custom', 'jitsi'];
+
+/**
+ * لینک جلسه برای ارائه‌دهندهٔ انتخاب‌شده — جیتسی خودش می‌سازد (مدیر
+ * تایپ نمی‌کند)، بقیه همان لینکی که کلاینت فرستاده.
+ */
+function class_join_url(string $classId, string $provider, ?string $clientUrl): ?string
+{
+    if ($provider === 'jitsi') {
+        if (!can_host_meeting()) {
+            fail(403, 'meeting_not_allowed', 'اجازهٔ ساخت جلسهٔ میت را ندارید. از مدیر آموزشگاه بخواهید فعالش کند.');
+        }
+        return jitsi_room_url($classId);
+    }
+    return $clientUrl;
+}
 
 switch ($action) {
 
@@ -31,7 +46,10 @@ case 'create':
 
     $term = t_one('SELECT id FROM term WHERE __I__ AND status = ? ORDER BY starts_on DESC LIMIT 1', ['active']);
 
-    $id = new_id();
+    $id       = new_id();
+    $provider = enum_in($in, 'provider', PROVIDERS, 'meet');
+    $joinUrl  = class_join_url($id, $provider, join_url_in($in, 'joinUrl'));
+
     db()->prepare(
         'INSERT INTO klass (id, institute_id, term_id, name, level, teacher_user_id, room_id,
                             day_pattern, start_time, duration_min, capacity, total_sessions,
@@ -46,8 +64,7 @@ case 'create':
         i_in($in, 'cap', 12, 1, 200),
         i_in($in, 'totalSessions', 20, 1, 60),
         enum_in($in, 'mode', MODES, 'in_person'),
-        enum_in($in, 'provider', PROVIDERS, 'meet'),
-        join_url_in($in, 'joinUrl'),
+        $provider, $joinUrl,
         i_in($in, 'price', 0, 0, 9999999999),
         'draft', now_utc(),
     ]);
@@ -68,6 +85,12 @@ case 'update':
         fail(409, 'capacity_below_enrolled', "ظرفیت را نمی‌شود کمتر از {$have} نفرِ ثبت‌نام‌شده گذاشت.");
     }
 
+    $provider = enum_in($in, 'provider', PROVIDERS, (string)$cl['provider']);
+    $joinUrl  = class_join_url(
+        (string)$cl['id'], $provider,
+        array_key_exists('joinUrl', $in) ? join_url_in($in, 'joinUrl') : $cl['join_url']
+    );
+
     db()->prepare(
         'UPDATE klass SET name=?, level=?, teacher_user_id=?, room_id=?, day_pattern=?, start_time=?,
                           duration_min=?, capacity=?, total_sessions=?, mode=?, provider=?, join_url=?, price=?
@@ -82,8 +105,7 @@ case 'update':
         $newCap,
         i_in($in, 'totalSessions', (int)$cl['total_sessions'], 1, 60),
         enum_in($in, 'mode', MODES, (string)$cl['mode']),
-        enum_in($in, 'provider', PROVIDERS, (string)$cl['provider']),
-        array_key_exists('joinUrl', $in) ? join_url_in($in, 'joinUrl') : $cl['join_url'],
+        $provider, $joinUrl,
         i_in($in, 'price', (int)$cl['price'], 0, 9999999999),
         $cl['id'], inst_id(),
     ]);

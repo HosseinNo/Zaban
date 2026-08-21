@@ -129,7 +129,7 @@ case 'institutes.list':
     $status = s_in($in, 'status', 16);
     $limit  = max(1, min(100, (int)($in['limit'] ?? 50)));
 
-    $sql = 'SELECT i.id, i.name, i.city, i.phone, i.term_weeks, i.status, i.suspended_reason, i.created_at,
+    $sql = 'SELECT i.id, i.name, i.city, i.phone, i.term_weeks, i.status, i.suspended_reason, i.created_at, i.jitsi_enabled,
                    (SELECT COUNT(*) FROM membership m WHERE m.institute_id = i.id AND m.status = "active") AS members,
                    (SELECT COUNT(*) FROM membership m WHERE m.institute_id = i.id AND m.status = "active" AND m.role = "manager")   AS managers,
                    (SELECT COUNT(*) FROM membership m WHERE m.institute_id = i.id AND m.status = "active" AND m.role = "teacher")   AS teachers,
@@ -152,6 +152,7 @@ case 'institutes.list':
         'id' => (string)$r['id'], 'name' => (string)$r['name'], 'city' => $r['city'], 'phone' => $r['phone'],
         'termWeeks' => (int)$r['term_weeks'], 'status' => (string)$r['status'],
         'suspendedReason' => $r['suspended_reason'], 'createdAt' => (string)$r['created_at'],
+        'jitsiEnabled' => (bool)$r['jitsi_enabled'],
         'members' => (int)$r['members'], 'managers' => (int)$r['managers'],
         'teachers' => (int)$r['teachers'], 'students' => (int)$r['students'],
     ], $st->fetchAll())]);
@@ -160,7 +161,7 @@ case 'institutes.get':
     require_super();
     $inst = require_institute(id_in($in, 'id', 'آموزشگاه'));
     $st = db()->prepare(
-        'SELECT m.id, m.role, m.status, m.hourly_rate, m.created_at, u.id AS user_id, u.full_name, u.phone
+        'SELECT m.id, m.role, m.status, m.hourly_rate, m.can_host_meeting, m.created_at, u.id AS user_id, u.full_name, u.phone
            FROM membership m JOIN app_user u ON u.id = m.user_id
           WHERE m.institute_id = ? ORDER BY FIELD(m.role,"manager","teacher","student"), m.created_at ASC'
     );
@@ -171,12 +172,14 @@ case 'institutes.get':
             'phone' => $inst['phone'], 'termWeeks' => (int)$inst['term_weeks'],
             'status' => (string)$inst['status'], 'suspendedReason' => $inst['suspended_reason'],
             'createdAt' => (string)$inst['created_at'],
+            'jitsiEnabled' => (bool)$inst['jitsi_enabled'],
         ],
         'members' => array_map(fn($r) => [
             'membershipId' => (string)$r['id'], 'userId' => (string)$r['user_id'],
             'name' => (string)$r['full_name'], 'phone' => (string)$r['phone'],
             'role' => (string)$r['role'], 'status' => (string)$r['status'],
             'hourlyRate' => (int)$r['hourly_rate'], 'since' => (string)$r['created_at'],
+            'canHostMeeting' => (bool)$r['can_host_meeting'],
         ], $st->fetchAll()),
     ]);
 
@@ -231,6 +234,19 @@ case 'institutes.reactivate':
     db()->prepare("UPDATE institute SET status = 'active', suspended_reason = NULL WHERE id = ?")
         ->execute([$inst['id']]);
     audit('super.institute_reactivated', $a['id'], ['institute' => $inst['id']]);
+    ok();
+
+/*
+ * کلید اصلی پنل میت برای یک آموزشگاه — کل قابلیت را روشن یا خاموش
+ * می‌کند، جدا از مجوز تک‌تک اعضا (membership.setMeetingAccess پایین‌تر).
+ * خاموش‌کردن این، فوراً جلوی ساخت جلسهٔ تازه را می‌گیرد، حتی برای مدیر.
+ */
+case 'institutes.setJitsiEnabled':
+    $a = require_super();
+    $inst = require_institute(id_in($in, 'id', 'آموزشگاه'));
+    $on = !empty($in['on']);
+    db()->prepare('UPDATE institute SET jitsi_enabled = ? WHERE id = ?')->execute([$on ? 1 : 0, $inst['id']]);
+    audit('super.institute_jitsi_changed', $a['id'], ['institute' => $inst['id'], 'on' => $on]);
     ok();
 
 /* ═════════════════════ کاربران و نقش‌ها ═════════════════════ */
@@ -339,6 +355,20 @@ case 'membership.setRole':
     db()->prepare('UPDATE membership SET role = ? WHERE id = ?')->execute([$role, $m['id']]);
     audit('super.membership_role_changed', $a['id'],
         ['membership' => $m['id'], 'institute' => $m['institute_id'], 'from' => $m['role'], 'to' => $role]);
+    ok();
+
+/*
+ * برخلاف institute.php (که مدیر فقط اجازهٔ مدرسِ خودش را عوض می‌کند)،
+ * این یکی هیچ محدودیتی به نقش ندارد — سوپرادمین می‌تواند حتی مجوز
+ * یک مدیر را هم بگیرد. همان چیزی که کاربر خواسته: «هرکسی لازم ندارد».
+ */
+case 'membership.setMeetingAccess':
+    $a = require_super();
+    $m = membership_with_context(id_in($in, 'membershipId', 'عضویت'));
+    $on = !empty($in['on']);
+    db()->prepare('UPDATE membership SET can_host_meeting = ? WHERE id = ?')->execute([$on ? 1 : 0, $m['id']]);
+    audit('super.membership_meeting_access_changed', $a['id'],
+        ['membership' => $m['id'], 'institute' => $m['institute_id'], 'on' => $on]);
     ok();
 
 case 'membership.suspend':

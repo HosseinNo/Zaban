@@ -66,20 +66,21 @@ case 'update':
 case 'members':
     require_role('manager');
     $members = t_all(
-        'SELECT m.id, m.user_id, m.role, m.status, m.hourly_rate, u.full_name, u.phone
+        'SELECT m.id, m.user_id, m.role, m.status, m.hourly_rate, m.can_host_meeting, u.full_name, u.phone
            FROM membership m JOIN app_user u ON u.id = m.user_id
           WHERE m.__I__ ORDER BY m.role, u.full_name'
     );
     $invites = t_all('SELECT id, phone, full_name, role, created_at FROM invite WHERE __I__ AND accepted_at IS NULL ORDER BY created_at DESC');
     ok([
         'members' => array_map(fn($m) => [
-            'id'     => (string)$m['id'],
-            'userId' => (string)$m['user_id'],
-            'name'   => (string)$m['full_name'],
-            'phone'  => (string)$m['phone'],
-            'role'   => (string)$m['role'],
-            'status' => (string)$m['status'],
-            'rate'   => (int)$m['hourly_rate'],
+            'id'             => (string)$m['id'],
+            'userId'         => (string)$m['user_id'],
+            'name'           => (string)$m['full_name'],
+            'phone'          => (string)$m['phone'],
+            'role'           => (string)$m['role'],
+            'status'         => (string)$m['status'],
+            'rate'           => (int)$m['hourly_rate'],
+            'canHostMeeting' => (bool)$m['can_host_meeting'],
         ], $members),
         'invites' => array_map(fn($i) => [
             'id'    => (string)$i['id'],
@@ -141,6 +142,26 @@ case 'setRate':
     $m = own('membership', s_in($in, 'id', 32), 'عضو');
     db()->prepare('UPDATE membership SET hourly_rate = ? WHERE id = ?')
         ->execute([i_in($in, 'rate', 0, 0, 999999999), $m['id']]);
+    ok();
+
+/*
+ * مدیر فقط می‌تواند دسترسیِ «ساخت جلسهٔ میت» را به مدرسِ خودِ آموزشگاه
+ * بدهد یا بگیرد — نه به خودش (که از ابتدا دارد) و نه به آموزشگاه دیگر.
+ * بستنِ کامل این قابلیت برای یک آموزشگاه، یا گرفتنِ آن از خودِ مدیر،
+ * فقط دست سوپرادمین است (super.php: membership.setMeetingAccess).
+ */
+case 'setMeetingAccess':
+    require_role('manager');
+    $m = own('membership', s_in($in, 'id', 32), 'عضو');
+    if ((string)$m['role'] !== 'teacher') {
+        fail(400, 'invalid_target', 'این دسترسی فقط برای مدرس‌ها قابل تغییر است.');
+    }
+    $on = !empty($in['on']);
+    if ($on && !ctx()['institute']['jitsiEnabled']) {
+        fail(409, 'meeting_disabled', 'قابلیت جلسهٔ میت برای آموزشگاه شما فعال نیست.');
+    }
+    db()->prepare('UPDATE membership SET can_host_meeting = ? WHERE id = ?')->execute([$on ? 1 : 0, $m['id']]);
+    audit('member.meeting_access_changed', my_id(), ['membership' => $m['id'], 'on' => $on]);
     ok();
 
 /* ─────────── سالن‌ها ─────────── */
