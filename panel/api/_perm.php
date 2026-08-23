@@ -332,6 +332,51 @@ function user_scope_sql(string $scope, string $col = 'm.user_id'): array
     }
 }
 
+/**
+ * مجوزی که روی دادهٔ یک کاربر مشخص اعمال می‌شود.
+ *
+ * ═══ چرا این تابع لازم شد ═══
+ *
+ * require_perm() تنها می‌پرسد «آیا این مجوز را دارد؟» و این برای
+ * مجوزهایی که روی شخص دیگری اعمال می‌شوند کافی نیست. آزمون هم‌ارزی
+ * فاز ۳ دقیقاً همین را گرفت: زبان‌آموز مجوز attendance.view را دارد
+ * (با محدودهٔ own)، پس require_perm تنهایی پاس می‌شد و می‌توانست
+ * تاریخچهٔ حضور زبان‌آموز دیگری را ببیند — چیزی که پیش از تبدیل ممکن
+ * نبود. مجوز بدون محدوده، مجوز نیست.
+ *
+ * ضمناً یک شکاف قدیمی را هم می‌بندد: پیش از این، مدرس با
+ * require_role('manager','teacher') می‌توانست حضور و غیاب *هر*
+ * زبان‌آموز آموزشگاه را ببیند، نه فقط زبان‌آموزان کلاس خودش.
+ */
+function require_perm_on_user(string $perm, string $subjectUserId): void
+{
+    require_perm($perm);
+
+    $ac = active_context();
+    if ($subjectUserId === $ac['user_id']) return;      // دادهٔ خودش، همیشه
+
+    $scope = perm_scope($perm) ?? 'own';
+
+    if ($scope === 'own') {
+        fail(403, 'out_of_scope', 'شما فقط به اطلاعات خودتان دسترسی دارید.');
+    }
+
+    if ($scope === 'own_classes' || $scope === 'assigned_students') {
+        $st = db()->prepare(
+            'SELECT 1 FROM enrolment e
+               JOIN klass k ON k.id = e.class_id
+              WHERE e.student_user_id = ? AND k.teacher_user_id = ?
+                AND e.status = ? AND e.institute_id = ? LIMIT 1'
+        );
+        $st->execute([$subjectUserId, $ac['user_id'], 'active', $ac['institute_id']]);
+        if (!$st->fetchColumn()) {
+            fail(403, 'out_of_scope', 'این زبان‌آموز در کلاس‌های شما نیست.');
+        }
+    }
+
+    // institute و بالاتر: شرط آموزشگاه را خود t_sql() می‌بندد
+}
+
 /* ═════════════════════ تفکیک وظایف ═════════════════════ */
 
 /**

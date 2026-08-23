@@ -12,6 +12,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_perm.php';
 
 require_post();
 $in     = body_json();
@@ -21,7 +22,7 @@ switch ($action) {
 
 /* ─────────── راه‌اندازی: ترم و کلاس‌ها را از صفر می‌سازد ─────────── */
 case 'setup':
-    require_role('manager');
+    require_perm('institute.edit');
 
     $termName  = s_in($in, 'termName', 80) ?: 'ترم جاری';
     $termStart = date_in($in, 'termStart', gmdate('Y-m-d'));
@@ -53,7 +54,7 @@ case 'setup':
 
 /* ─────────── تنظیمات ─────────── */
 case 'update':
-    require_role('manager');
+    require_perm('institute.edit');
     $name = s_in($in, 'name', 160);
     if ($name === '') fail(400, 'invalid', 'نام آموزشگاه را وارد کنید.');
     db()->prepare('UPDATE institute SET name = ?, city = ?, phone = ?, term_weeks = ? WHERE id = ?')
@@ -64,7 +65,7 @@ case 'update':
 
 /* ─────────── اعضا ─────────── */
 case 'members':
-    require_role('manager');
+    require_perm('member.view');
     $members = t_all(
         'SELECT m.id, m.user_id, m.role, m.status, m.hourly_rate, m.can_host_meeting, u.full_name, u.phone
            FROM membership m JOIN app_user u ON u.id = m.user_id
@@ -92,7 +93,7 @@ case 'members':
 
 /* ─────────── دعوت ─────────── */
 case 'invite':
-    require_role('manager');
+    require_perm('member.invite');
     $phone = normalize_phone(s_in($in, 'phone', 20));
     $name  = s_in($in, 'fullName', 120);
     $role  = enum_in($in, 'role', ['teacher', 'student'], 'student');
@@ -127,7 +128,7 @@ case 'invite':
 
 /* ─────────── حذف عضو ─────────── */
 case 'removeMember':
-    require_role('manager');
+    require_perm('member.remove');
     $m = own('membership', s_in($in, 'id', 32), 'عضو');
     if ((string)$m['user_id'] === my_id()) {
         fail(400, 'self', 'خودتان را نمی‌توانید حذف کنید.');
@@ -138,7 +139,7 @@ case 'removeMember':
     ok();
 
 case 'setRate':
-    require_role('manager');
+    require_perm('member.edit');
     $m = own('membership', s_in($in, 'id', 32), 'عضو');
     db()->prepare('UPDATE membership SET hourly_rate = ? WHERE id = ?')
         ->execute([i_in($in, 'rate', 0, 0, 999999999), $m['id']]);
@@ -151,7 +152,7 @@ case 'setRate':
  * فقط دست سوپرادمین است (super.php: membership.setMeetingAccess).
  */
 case 'setMeetingAccess':
-    require_role('manager');
+    require_perm('member.grant');
     $m = own('membership', s_in($in, 'id', 32), 'عضو');
     if ((string)$m['role'] !== 'teacher') {
         fail(400, 'invalid_target', 'این دسترسی فقط برای مدرس‌ها قابل تغییر است.');
@@ -166,7 +167,7 @@ case 'setMeetingAccess':
 
 /* ─────────── سالن‌ها ─────────── */
 case 'addRoom':
-    require_role('manager');
+    require_perm('room.manage');
     $n = s_in($in, 'name', 80);
     if ($n === '') fail(400, 'invalid', 'نام کلاس را وارد کنید.');
     $id = new_id();
@@ -175,7 +176,7 @@ case 'addRoom':
     ok(['id' => $id]);
 
 case 'deleteRoom':
-    require_role('manager');
+    require_perm('room.manage');
     $r = own('room', s_in($in, 'id', 32), 'کلاس');
     $used = t_one('SELECT id FROM klass WHERE __I__ AND room_id = ?', [$r['id']]);
     if ($used) fail(409, 'in_use', 'این کلاس در برنامهٔ درسی استفاده شده. اول کلاس‌ها را جابه‌جا کنید.');

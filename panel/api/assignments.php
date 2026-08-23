@@ -13,6 +13,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_perm.php';
 
 const ALLOWED_EXT  = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'mp3', 'm4a', 'ogg', 'wav', 'webm', 'docx', 'txt'];
 const MAX_UPLOAD   = 8 * 1024 * 1024;   // ۸ مگابایت
@@ -33,7 +34,7 @@ switch ($action) {
 
 /* ─────────── ساخت ─────────── */
 case 'create':
-    require_role('manager', 'teacher');
+    require_perm('assignment.create');
     $cl = own_class(s_in($in, 'classId', 32));
 
     $title = s_in($in, 'title', 200);
@@ -56,14 +57,14 @@ case 'create':
     ok(['id' => $id]);
 
 case 'close':
-    require_role('manager', 'teacher');
+    require_perm('assignment.edit');
     $a = own('assignment', s_in($in, 'id', 32), 'تکلیف');
     own_class((string)$a['class_id']);
     db()->prepare('UPDATE assignment SET status = ? WHERE id = ? AND institute_id = ?')->execute(['closed', $a['id'], inst_id()]);
     ok();
 
 case 'delete':
-    require_role('manager', 'teacher');
+    require_perm('assignment.delete');
     $a = own('assignment', s_in($in, 'id', 32), 'تکلیف');
     own_class((string)$a['class_id']);
     $n = (int)(t_one('SELECT COUNT(*) AS n FROM submission WHERE __I__ AND assignment_id = ?', [$a['id']])['n'] ?? 0);
@@ -73,7 +74,7 @@ case 'delete':
 
 /* ─────────── ارسال پاسخ ─────────── */
 case 'submit':
-    require_role('student');
+    require_perm('assignment.submit');
     $a  = own('assignment', s_in($in, 'id', 32), 'تکلیف');
     own_class((string)$a['class_id']);   // ثبت‌نام بودن را بررسی می‌کند
 
@@ -110,7 +111,7 @@ case 'submit':
 
 /* ─────────── تصحیح ─────────── */
 case 'grade':
-    require_role('manager', 'teacher');
+    require_perm('assignment.grade');
     $sub = own('submission', s_in($in, 'id', 32), 'پاسخ');
     $a   = own('assignment', (string)$sub['assignment_id'], 'تکلیف');
     own_class((string)$a['class_id']);
@@ -131,9 +132,13 @@ case 'grade':
 
 /* ─────────── صف تصحیح ─────────── */
 case 'queue':
-    require_role('manager', 'teacher');
-    $where = my_role() === 'teacher' ? ' AND k.teacher_user_id = ?' : '';
-    $args  = my_role() === 'teacher' ? [my_id()] : [];
+    require_perm('assignment.grade');
+    /*
+     * محدوده از مجوز می‌آید، نه از نام نقش. پیش از این نوشته بود
+     * «اگر مدرس است فیلتر بزن، وگرنه نه» — که یعنی هر نقش سفارشیِ
+     * تازه‌ای که مجوز تصحیح بگیرد، بی‌فیلتر کل صف آموزشگاه را می‌دید.
+     */
+    [$where, $args] = class_scope_sql(perm_scope('assignment.grade') ?? 'own', 'k');
     $rows  = t_all(
         "SELECT s.id, s.submitted_at, s.is_late, s.body_text, s.file_name,
                 a.title, a.type, a.max_score, u.full_name, k.name AS class_name
@@ -218,11 +223,11 @@ function download_submission(string $id): never
     $sub = own('submission', $id, 'پاسخ');
     $a   = own('assignment', (string)$sub['assignment_id'], 'تکلیف');
 
-    // زبان‌آموز فقط فایل خودش؛ مدرس و مدیر از طریق own_class بررسی می‌شوند
-    if (my_role() === 'student') {
+    // محدودهٔ own یعنی فقط فایل خودش؛ گشادتر از آن، از راه own_class بررسی می‌شود
+    if ((perm_scope('assignment.view') ?? 'own') === 'own') {
         if ((string)$sub['student_user_id'] !== my_id()) fail(403, 'forbidden', 'این پاسخ شما نیست.');
     } else {
-        own_class((string)$a['class_id']);
+        own_class((string)$a['class_id'], 'assignment.view');
     }
 
     if (empty($sub['file_path'])) fail(404, 'no_file', 'فایلی ثبت نشده.');

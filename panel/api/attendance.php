@@ -15,6 +15,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_perm.php';
 
 require_post();
 $in     = body_json();
@@ -60,7 +61,7 @@ case 'get':
 
 /* ─────────── ثبت ─────────── */
 case 'save':
-    require_role('manager', 'teacher');
+    require_perm('attendance.write');
     $s  = own('class_session', s_in($in, 'id', 32), 'جلسه');
     $cl = own_class((string)$s['class_id']);
 
@@ -110,7 +111,7 @@ case 'save':
 /* ─────────── تاریخچهٔ یک زبان‌آموز ─────────── */
 case 'student':
     $uid = s_in($in, 'studentId', 32) ?: my_id();
-    if ($uid !== my_id()) require_role('manager', 'teacher');
+    require_perm_on_user('attendance.view', $uid);
 
     $rows = t_all(
         'SELECT a.status, a.marked_at, s.session_date, s.seq, k.name AS class_name

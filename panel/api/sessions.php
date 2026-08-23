@@ -20,6 +20,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_perm.php';
 
 require_post();
 $in     = body_json();
@@ -66,14 +67,20 @@ case 'list':
 
 /* ─────────── شروع جلسه ─────────── */
 case 'start':
-    require_role('manager', 'teacher');
+    require_perm('session.start_meeting');
     $s  = own('class_session', s_in($in, 'id', 32), 'جلسه');
     $cl = own_class((string)$s['class_id']);
 
     if ($s['status'] === 'cancelled') fail(409, 'cancelled', 'این جلسه لغو شده.');
 
-    // مدرس فقط با مجوز صریح می‌تواند جلسهٔ میت را شروع کند؛ مدیر همیشه مجاز است
-    if ((string)$cl['provider'] === 'jitsi' && my_role() === 'teacher' && !can_host_meeting()) {
+    /*
+     * جلسهٔ میت مجوز صریح می‌خواهد، مگر برای کسی که محدوده‌اش کل
+     * آموزشگاه است (مدیر). همان قاعدهٔ قبلی، ولی بر پایهٔ محدوده تا
+     * نقش سفارشی هم درست بیفتد.
+     */
+    if ((string)$cl['provider'] === 'jitsi'
+        && scope_rank(perm_scope('session.start_meeting') ?? 'own') < scope_rank('institute')
+        && !can_host_meeting()) {
         fail(403, 'meeting_not_allowed', 'اجازهٔ شروع جلسهٔ میت را ندارید. از مدیر آموزشگاه بخواهید فعالش کند.');
     }
 
@@ -110,7 +117,7 @@ case 'start':
 
 /* ─────────── پایان جلسه ─────────── */
 case 'end':
-    require_role('manager', 'teacher');
+    require_perm('session.edit');
     $s  = own('class_session', s_in($in, 'id', 32), 'جلسه');
     own_class((string)$s['class_id']);
     db()->prepare('UPDATE class_session SET status = ?, ended_at = ? WHERE id = ? AND institute_id = ?')
@@ -119,7 +126,7 @@ case 'end':
     ok();
 
 case 'cancel':
-    require_role('manager', 'teacher');
+    require_perm('session.edit');
     $s = own('class_session', s_in($in, 'id', 32), 'جلسه');
     own_class((string)$s['class_id']);
     db()->prepare('UPDATE class_session SET status = ?, note = ? WHERE id = ? AND institute_id = ?')
@@ -152,16 +159,13 @@ case 'join':
 /* ─────────── جلسه‌های امروز، برای پیشخوان ─────────── */
 case 'today':
     $today = gmdate('Y-m-d');
-    $where = '';
-    $args  = [$today];
-    $role  = my_role();
-    if ($role === 'teacher') {
-        $where = ' AND k.teacher_user_id = ?';
-        $args[] = my_id();
-    } elseif ($role === 'student') {
-        $where = ' AND k.id IN (SELECT class_id FROM enrolment WHERE student_user_id = ? AND status = ?)';
-        $args[] = my_id(); $args[] = 'active';
-    }
+    /*
+     * محدوده از مجوز می‌آید، نه از نام نقش. شکل قبلی برای هر نقشی جز
+     * مدرس و زبان‌آموز هیچ فیلتری نمی‌گذاشت — یعنی اولین نقش سفارشی،
+     * جلسه‌های کل آموزشگاه را می‌دید.
+     */
+    [$where, $scopeArgs] = class_scope_sql(perm_scope('session.view') ?? 'own', 'k');
+    $args = array_merge([$today], $scopeArgs);
     $rows = t_all(
         "SELECT s.*, k.name AS class_name, k.provider, k.mode, k.join_url AS class_url
            FROM class_session s JOIN klass k ON k.id = s.class_id

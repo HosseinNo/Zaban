@@ -240,18 +240,35 @@ function own(string $table, string $id, string $what = 'مورد'): array
 }
 
 /** کلاسی که کاربر فعلی حق دیدنش را دارد */
-function own_class(string $id): array
+/**
+ * دروازهٔ مالکیت کلاس.
+ *
+ * پیش از نسخهٔ ۶ بر پایهٔ نام نقش تصمیم می‌گرفت. حالا محدودهٔ مجوز را
+ * می‌خواند، که برای سه نقش سیستمی دقیقاً همان نتیجه را می‌دهد
+ * (مدیر=institute، مدرس=own_classes، زبان‌آموز=own) ولی برای نقش
+ * سفارشی هم درست کار می‌کند — پیش از این هر نقش تازه به شاخهٔ
+ * زبان‌آموز می‌افتاد و دنبال ثبت‌نامی می‌گشت که هرگز نداشت.
+ *
+ * $perm مجوزی است که این دسترسی زیر سایهٔ آن انجام می‌شود؛ پیش‌فرض
+ * class.view یعنی «اجازهٔ دست‌زدن به این کلاس را دارم؟».
+ */
+function own_class(string $id, string $perm = 'class.view'): array
 {
     $c = own('klass', $id, 'کلاس');
-    $role = my_role();
-    if ($role === 'manager') return $c;
-    if ($role === 'teacher') {
+
+    $scope = perm_scope($perm) ?? 'own';
+
+    // آموزشگاه و بالاتر: شرط مستأجر را own() بسته، همین کافی است
+    if (scope_rank($scope) >= scope_rank('institute')) return $c;
+
+    if ($scope === 'own_classes' || $scope === 'assigned_students') {
         if ((string)$c['teacher_user_id'] !== my_id()) {
             fail(403, 'forbidden', 'این کلاس شما نیست.');
         }
         return $c;
     }
-    // زبان‌آموز فقط کلاسی که در آن ثبت‌نام کرده
+
+    // own — باید ثبت‌نام فعال داشته باشد
     $st = db()->prepare('SELECT 1 FROM enrolment WHERE class_id = ? AND student_user_id = ? AND status = ?');
     $st->execute([$id, my_id(), 'active']);
     if (!$st->fetchColumn()) fail(403, 'forbidden', 'شما در این کلاس ثبت‌نام نیستید.');

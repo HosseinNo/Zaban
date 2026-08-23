@@ -9,6 +9,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_ctx.php';
+require __DIR__ . '/_perm.php';
 
 require_post();
 $in     = body_json();
@@ -36,7 +37,7 @@ function class_join_url(string $classId, string $provider, ?string $clientUrl): 
 switch ($action) {
 
 case 'create':
-    require_role('manager');
+    require_perm('class.create');
     $name = s_in($in, 'name', 160);
     if ($name === '') fail(400, 'invalid', 'نام کلاس را وارد کنید.');
 
@@ -72,7 +73,7 @@ case 'create':
     ok(['id' => $id]);
 
 case 'update':
-    require_role('manager');
+    require_perm('class.edit');
     $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
 
     $teacherId = array_key_exists('teacherId', $in) ? member_or_null($in, 'teacherId', 'teacher') : $cl['teacher_user_id'];
@@ -114,7 +115,7 @@ case 'update':
 
 /* ─────────── انتشار: جلسه‌ها ساخته می‌شوند ─────────── */
 case 'publish':
-    require_role('manager');
+    require_perm('class.edit');
     $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
 
     if (empty($cl['teacher_user_id'])) {
@@ -138,7 +139,7 @@ case 'publish':
     ok(['sessions' => $made]);
 
 case 'delete':
-    require_role('manager');
+    require_perm('class.delete');
     $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
     $n = (int)(t_one('SELECT COUNT(*) AS n FROM enrolment WHERE __I__ AND class_id = ? AND status = ?', [$cl['id'], 'active'])['n'] ?? 0);
     if ($n > 0) {
@@ -149,14 +150,14 @@ case 'delete':
     ok();
 
 case 'close':
-    require_role('manager');
+    require_perm('class.edit');
     $cl = own('klass', s_in($in, 'id', 32), 'کلاس');
     db()->prepare('UPDATE klass SET status = ? WHERE id = ? AND institute_id = ?')->execute(['closed', $cl['id'], inst_id()]);
     ok();
 
 /* ─────────── ثبت‌نام و حذف زبان‌آموز ─────────── */
 case 'enrol':
-    require_role('manager');
+    require_perm('enrolment.create');
     $cl  = own('klass', s_in($in, 'classId', 32), 'کلاس');
     $uid = s_in($in, 'studentId', 32);
 
@@ -177,7 +178,7 @@ case 'enrol':
     ok();
 
 case 'withdraw':
-    require_role('manager');
+    require_perm('enrolment.delete');
     $cl = own('klass', s_in($in, 'classId', 32), 'کلاس');
     // ردیف می‌ماند و فقط وضعیتش عوض می‌شود؛ حضور و نمرهٔ گذشته نباید گم شود
     db()->prepare('UPDATE enrolment SET status = ? WHERE class_id = ? AND student_user_id = ? AND institute_id = ?')
