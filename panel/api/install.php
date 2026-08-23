@@ -430,8 +430,20 @@ case 'run':
         if ((int)$dup->fetchColumn() > 0) {
             ins_fail(409, 'dup_user', 'این نام کاربری از قبل هست. یکی دیگر انتخاب کنید.');
         }
+        /*
+         * این حساب مالک پلتفرم است — نه یک نقش، بلکه تنها حساب محافظت‌شدهٔ
+         * کل سامانه. اینجا ساخته می‌شود و هیچ‌جای دیگری نه: پنل راهی برای
+         * ساخت مالک دوم ندارد و ایندکس یکتای owner_lock هم اجازه‌اش را
+         * نمی‌دهد.
+         *
+         * چرا اینجا و نه در اسکیما: اسکیما پیش از این نقطه اجرا می‌شود و
+         * آن موقع جدول admin_user هنوز خالی است، پس UPDATE پایان اسکیما
+         * (که برای پایگاه دادهٔ موجود نوشته شده) روی نصب تازه هیچ ردیفی
+         * را نمی‌گیرد.
+         */
         $pdo->prepare(
-            'INSERT INTO admin_user (id, username, pass_hash, full_name, status, created_at) VALUES (?,?,?,?,?,?)'
+            'INSERT INTO admin_user (id, username, pass_hash, full_name, status, is_platform_owner, created_at)
+             VALUES (?,?,?,?,?,1,?)'
         )->execute([
             bin2hex(random_bytes(16)), $user, password_hash($pass, PASSWORD_DEFAULT),
             mb_substr(trim((string)($in['fullName'] ?? '')), 0, 120), 'active', gmdate('Y-m-d H:i:s'),

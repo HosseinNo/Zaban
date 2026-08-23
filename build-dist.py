@@ -629,6 +629,57 @@ def check_external(folder: pathlib.Path) -> list:
     return bad
 
 
+def check_permissions(root: pathlib.Path) -> list:
+    """
+    یکپارچگی داده‌های پایهٔ دسترسی را می‌سنجد.
+
+    این خطاها وگرنه فقط موقع نصب واقعی معلوم می‌شوند — یک کلید مجوز
+    تایپی یعنی نصب نیمه‌تمام با خطای کلید خارجی. مهم‌تر از همه، بند
+    آخر: مجوز سطح پلتفرم هرگز نباید به نقشی بچسبد، چون تنها راه
+    رسیدن به سطح مالک همین است.
+    """
+    sql_file = root / "panel" / "api" / "schema.mysql.sql"
+    php_file = root / "panel" / "api" / "_perm.php"
+    if not sql_file.exists() or not php_file.exists():
+        return []                      # هنوز نسخهٔ ۶ اعمال نشده
+
+    sql = sql_file.read_text(encoding="utf-8")
+    bad = []
+
+    m = re.search(r"INSERT INTO permission .*?VALUES\s*(.*?);", sql, re.S)
+    if not m:
+        return ["کاتالوگ مجوزها در اسکیما نیست"]
+    perms = {
+        g[0]: int(g[1])
+        for g in re.findall(r"\('([a-z0-9_.]+)',\s*'[a-z]+',\s*'[^']*',\s*(\d),", m.group(1))
+    }
+
+    roles = set()
+    mr = re.search(r"INSERT INTO role \(.*?VALUES\s*(.*?);", sql, re.S)
+    if mr:
+        roles = set(re.findall(r"\('(r_[a-z_]+)'", mr.group(1)))
+
+    known_scopes = set()
+    ms = re.search(r"PERM_SCOPES = \[(.*?)\]", php_file.read_text(encoding="utf-8"))
+    if ms:
+        known_scopes = {s.strip().strip("'") for s in ms.group(1).split(",")}
+
+    for blk in re.finditer(r"INSERT INTO role_permission .*?VALUES(.*?);", sql, re.S):
+        for role, perm, scope in re.findall(
+            r"\('(r_[a-z_]+)',\s*'([a-z0-9_.]+)',\s*\d,\s*'([a-z_]+)'\)", blk.group(1)
+        ):
+            if role not in roles:
+                bad.append(f"نقش ناشناخته در role_permission: {role}")
+            if perm not in perms:
+                bad.append(f"مجوز ناشناخته در role_permission: {perm} (نقش {role})")
+            elif perms[perm] == 1:
+                bad.append(f"مجوز سطح پلتفرم به نقش چسبیده — دیوار مالک شکسته: {perm} → {role}")
+            if known_scopes and scope not in known_scopes:
+                bad.append(f"محدودهٔ ناشناخته برای موتور: {scope} ({perm})")
+
+    return bad
+
+
 def zip_folder(folder: pathlib.Path, out: pathlib.Path) -> None:
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for f in sorted(folder.rglob("*")):
@@ -756,6 +807,13 @@ def main() -> int:
     (admin_out / "راهنمای-سوپرادمین.txt").write_text(ADMIN_GUIDE, encoding="utf-8")
 
     # ── بررسی‌ها ───────────────────────────────────────────────
+    perm_problems = check_permissions(ROOT)
+    if perm_problems:
+        print("خطا: داده‌های پایهٔ دسترسی ناسازگارند:", file=sys.stderr)
+        for p in perm_problems:
+            print("   ", p, file=sys.stderr)
+        return 1
+
     bad = check_external(site_out) + check_external(panel_out) + check_external(admin_out)
     if bad:
         print("خطا: ارجاع به دامنهٔ خارجی:", file=sys.stderr)
