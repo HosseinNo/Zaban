@@ -38,6 +38,24 @@ function s_in(array $in, string $key, int $max = 200, string $default = ''): str
     return mb_substr($v, 0, $max);
 }
 
+/**
+ * عدد ورودی، با سقف و کف. ارقام فارسی هم پذیرفته می‌شوند چون کاربر
+ * این پنل با صفحه‌کلید فارسی تایپ می‌کند و «۱۴» را عدد نمی‌دانستیم.
+ */
+function i_in(array $in, string $key, int $default = 0, int $min = 0, int $max = 100000000): int
+{
+    $raw = trim(en_digits((string)($in[$key] ?? '')));
+    if ($raw === '' || !is_numeric($raw)) return $default;
+    return max($min, min($max, (int)$raw));
+}
+
+/** یکی از مقدارهای مجاز، وگرنه پیش‌فرض — بدون خطا، چون ورودی رابط است */
+function enum_in(array $in, string $key, array $allowed, string $default): string
+{
+    $v = trim((string)($in[$key] ?? ''));
+    return in_array($v, $allowed, true) ? $v : $default;
+}
+
 function id_in(array $in, string $key, string $what = 'شناسه'): string
 {
     $v = trim((string)($in[$key] ?? ''));

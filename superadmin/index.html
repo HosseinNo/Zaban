@@ -299,6 +299,7 @@ var NAV=[
   {g:"پلتفرم"},
   {v:"institutes",t:"آموزشگاه‌ها"},
   {v:"users",t:"کاربران و نقش‌ها"},
+  {v:"access",t:"نقش‌ها و مجوزها"},
   {v:"leads",t:"درخواست‌های دمو"},
   {g:"سایت"},
   {v:"pricing",t:"قیمت‌ها"},
@@ -750,10 +751,15 @@ function viewLeads(){
         <td>${esc(l.institute||"—")}${l.students?'<br><span class="muted">'+esc(l.students)+'</span>':""}</td>
         <td class="num">${jDateTime(l.at)}</td>
         <td><span class="pill p-${LEAD_CLS[l.status]||"mute"}">${LEAD_FA[l.status]||l.status}</span></td>
-        <td><select data-lead="${l.id}" style="padding:5px;border-radius:7px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)">
+        <td>
+          <select data-lead="${l.id}" style="padding:5px;border-radius:7px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)">
           ${["new","contacted","won","lost"].map(function(k){
             return '<option value="'+k+'"'+(l.status===k?" selected":"")+'>'+LEAD_FA[k]+'</option>';}).join("")}
-        </select></td></tr>`;}).join("")}
+          </select>
+          ${l.instituteId
+            ? '<div class="muted" style="margin-block-start:6px;font-size:12px">آموزشگاه ساخته شده'+(l.trialDays?' · '+fa(l.trialDays)+' روز':"")+'</div>'
+            : '<button class="btn btn--p btn--sm" style="margin-block-start:6px" data-a="demoApprove" data-id="'+l.id+'">تأیید و ساخت آموزشگاه</button>'}
+        </td></tr>`;}).join("")}
     </tbody></table></div></div>`;
 }
 
@@ -894,7 +900,83 @@ function viewAccount(){
   </div>`;
 }
 
-var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,
+
+/* ── نقش‌ها و مجوزها ──
+ *
+ * ماتریس دسترسی: هر ستون یک نقش، هر ردیف یک مجوز. مجوزهای سطح پلتفرم
+ * هم نشان داده می‌شوند ولی قفل‌اند — دیدنشان اشکالی ندارد، چسباندنشان
+ * به نقش را دیتابیس رد می‌کند. نشان‌دادن و قفل‌کردن، از پنهان‌کردن
+ * صادقانه‌تر است: مالک می‌بیند چه چیزهایی هست و چرا در دسترس نیست.
+ */
+var SCOPE_FA={own:"خودش",assigned_students:"زبان‌آموزان خودش",own_classes:"کلاس‌های خودش",
+              branch:"شعبه",institute:"کل آموزشگاه",platform:"کل پلتفرم"};
+
+function viewAccess(){
+  var d=S.access;
+  if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
+
+  var groups={},order=[];
+  d.permissions.forEach(function(p){
+    if(!groups[p.group]){groups[p.group]=[];order.push(p.group);}
+    groups[p.group].push(p);
+  });
+  var roles=d.roles;
+  var sel=S.accessRole||roles[0].id;
+  var role=roles.filter(function(r){return r.id===sel;})[0]||roles[0];
+  var locked=role.system&&role.key==="manager";
+
+  return h`
+  <div class="card" style="margin-block-end:16px">
+    <div class="card-h"><h3>نقش‌ها</h3>
+      <button class="btn btn--p btn--sm" data-a="roleNew">نقش تازه</button></div>
+    <div class="card-b">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${roles.map(function(r){
+          return '<button class="btn btn--'+(r.id===sel?"p":"g")+' btn--sm" data-a="roleSel" data-id="'+r.id+'">'+
+                 esc(r.name)+'<span class="muted" style="margin-inline-start:6px">'+fa(r.users)+'</span></button>';
+        }).join("")}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h3>${esc(role.name)}${role.system?' <span class="pill p-info">سیستمی</span>':""}</h3>
+      <div style="display:flex;gap:8px">
+        ${locked?"":'<button class="btn btn--p btn--sm" data-a="roleSave" data-id="'+role.id+'">ذخیرهٔ بسته</button>'}
+        ${role.system?"":'<button class="btn btn--g btn--sm" data-a="roleDel" data-id="'+role.id+'">حذف نقش</button>'}
+      </div>
+    </div>
+    <div class="card-b">
+      ${role.desc?'<p class="muted" style="margin-block-end:12px">'+esc(role.desc)+'</p>':""}
+      ${locked?'<div class="note note--i">بستهٔ مدیر آموزشگاه ثابت است — او همه‌کارهٔ آموزشگاه خودش است و هر مجوز تازه‌ای خودبه‌خود به او می‌رسد.</div>':""}
+      <div class="tbl-wrap"><table id="permMatrix"><tbody>
+      ${order.map(function(g){
+        return '<tr class="grp"><td colspan="3"><b>'+esc(g)+'</b></td></tr>'+
+        groups[g].map(function(p){
+          var has=Object.prototype.hasOwnProperty.call(role.perms,p.key);
+          var sc=role.perms[p.key]||role.scope;
+          if(p.platform){
+            return '<tr><td style="opacity:.55">'+esc(p.label)+'</td>'+
+                   '<td colspan="2"><span class="pill p-mute">فقط مالک پلتفرم</span></td></tr>';
+          }
+          return '<tr><td>'+esc(p.label)+
+                 (p.write?' <span class="pill p-warn" style="font-size:10px">نوشتنی</span>':"")+'</td>'+
+                 '<td style="width:60px"><input type="checkbox" data-perm="'+p.key+'"'+(has?" checked":"")+
+                 (locked?" disabled":"")+'></td>'+
+                 '<td style="width:170px"><select data-scope="'+p.key+'"'+(locked?" disabled":"")+
+                 ' style="padding:4px;border-radius:7px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px">'+
+                 (d.scopes||[]).map(function(x){
+                   return '<option value="'+x+'"'+(sc===x?" selected":"")+'>'+(SCOPE_FA[x]||x)+'</option>';}).join("")+
+                 '</select></td></tr>';
+        }).join("");
+      }).join("")}
+      </tbody></table></div>
+    </div>
+  </div>`;
+}
+
+var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,access:viewAccess,
            pricing:viewPricing,contact:viewContact,content:viewContent,trust:viewTrust,
            sms:viewSms,health:viewHealth,events:viewEvents,account:viewAccount};
 
@@ -1010,6 +1092,7 @@ function need(view){
   if(view==="dash"&&!S.stats)      return call({action:"stats"}).then(function(r){if(r.ok)S.stats=r.stats;});
   if(view==="institutes"&&!S.institutes&&!S.instDetail) return doInstSearch();
   if(view==="leads"&&!S.leads)     return call({action:"leads"}).then(function(r){if(r.ok)S.leads=r;});
+  if(view==="access"&&!S.access)   return call({action:"access.catalogue"}).then(function(r){if(r.ok)S.access=r;});
   if(view==="events"&&!S.events)   return call({action:"recent"}).then(function(r){if(r.ok)S.events=r.events;});
   if(view==="health"&&!S.health)   return call({action:"diagnostics"}).then(function(r){if(r.ok)S.health=r.checks;});
   if(view==="sms"){
@@ -1105,6 +1188,67 @@ document.addEventListener("click",function(e){
   var b=e.target.closest("[data-a]");
   if(!b)return;
   var a=b.dataset.a;
+
+  /* ── نقش‌ها و مجوزها ── */
+  if(a==="roleSel"){S.accessRole=b.dataset.id;render();return;}
+
+  if(a==="roleNew"){
+    var nm=prompt("نام نقش تازه (مثلاً: مسئول مالی)");
+    if(!nm||!nm.trim())return;
+    var ky=prompt("کلید انگلیسی نقش (مثلاً: financial_manager)");
+    if(!ky||!ky.trim())return;
+    call({action:"roles.create",name:nm.trim(),key:ky.trim(),scope:"institute"})
+      .then(function(r){
+        if(!r.ok){toast(r.message||"ساخته نشد");return;}
+        S.access=null;S.accessRole=r.id;
+        need("access").then(render);
+      });
+    return;
+  }
+
+  if(a==="roleDel"){
+    if(!confirm("این نقش حذف شود؟ اگر به کسی داده شده باشد، حذف نمی‌شود."))return;
+    call({action:"roles.delete",id:b.dataset.id}).then(function(r){
+      if(!r.ok){toast(r.message||"حذف نشد");return;}
+      S.access=null;S.accessRole=null;need("access").then(render);
+    });
+    return;
+  }
+
+  /*
+   * بستهٔ مجوز یک‌جا فرستاده می‌شود، نه تیک‌به‌تیک. اگر هر تیک یک
+   * درخواست بود، نیمه‌کاره‌ماندن وسط کار یعنی نقشی با دسترسی‌ای که
+   * مالک هرگز قصدش را نداشته.
+   */
+  if(a==="roleSave"){
+    var perms={};
+    document.querySelectorAll("#permMatrix input[data-perm]").forEach(function(cb){
+      if(!cb.checked)return;
+      var k=cb.dataset.perm;
+      var sc=document.querySelector('#permMatrix select[data-scope="'+k+'"]');
+      perms[k]=sc?sc.value:"own";
+    });
+    call({action:"roles.setPerms",id:b.dataset.id,perms:perms}).then(function(r){
+      if(!r.ok){toast(r.message||"ذخیره نشد");return;}
+      toast("بستهٔ نقش ذخیره شد — "+fa(r.count)+" مجوز");
+      S.access=null;need("access").then(render);
+    });
+    return;
+  }
+
+  /* ── تأیید درخواست دمو ── */
+  if(a==="demoApprove"){
+    var dv=prompt("دورهٔ آزمایشی چند روز باشد؟","14");
+    if(dv===null)return;
+    var dn=parseInt(String(dv).replace(/[۰-۹]/g,function(c){return "۰۱۲۳۴۵۶۷۸۹".indexOf(c);}),10);
+    if(!dn||dn<1){toast("عدد معتبر وارد کنید");return;}
+    call({action:"demo.approve",id:b.dataset.id,days:dn}).then(function(r){
+      if(!r.ok){toast(r.message||"انجام نشد");return;}
+      toast("آموزشگاه دمو ساخته شد — "+fa(dn)+" روز");
+      S.leads=null;need("leads").then(render);
+    });
+    return;
+  }
 
   if(a==="theme"){
     var root=document.documentElement, cur=root.getAttribute("data-theme");

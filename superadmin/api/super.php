@@ -15,6 +15,19 @@ declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_super.php';
 require __DIR__ . '/_platform_ctx.php';
+
+/* محدوده‌های مجاز — همان فهرست PERM_SCOPES موتور پنل، به همان ترتیب */
+const PLATFORM_SCOPES = ['own', 'assigned_students', 'own_classes', 'branch', 'institute', 'platform'];
+
+/** یک نقش را می‌آورد یا با پیام روشن شکست می‌خورد */
+function role_row(string $id): array
+{
+    $st = db()->prepare('SELECT * FROM role WHERE id = ?');
+    $st->execute([$id]);
+    $r = $st->fetch();
+    if (!$r) fail(404, 'not_found', 'این نقش پیدا نشد.');
+    return $r;
+}
 require __DIR__ . '/_settings.php';
 require __DIR__ . '/_sms.php';
 
@@ -516,6 +529,7 @@ case 'leads':
             'email' => $r['email'], 'institute' => $r['institute'], 'students' => $r['students'],
             'note' => $r['note'], 'status' => (string)$r['status'], 'adminNote' => $r['admin_note'],
             'mailed' => (bool)$r['mailed'], 'at' => (string)$r['created_at'],
+            'instituteId' => $r['institute_id'], 'trialDays' => $r['trial_days'] !== null ? (int)$r['trial_days'] : null,
         ], $st->fetchAll()),
     ]);
 
@@ -698,6 +712,368 @@ case 'testMail':
     audit('super.test_mail', $a['id'], ['to' => $to, 'sent' => $sent]);
     if (!$sent) fail(502, 'mail_failed', 'ارسال ناموفق بود.');
     ok(['sent' => true]);
+
+/* ═════════════════════ نقش‌ها و مجوزها ═════════════════════ */
+
+/*
+ * کاتالوگ کامل: هر مجوز با گروه و برچسبش، و هر نقش با بستهٔ خودش.
+ * رابط ماتریس دسترسی را از همین می‌سازد.
+ *
+ * مجوزهای سطح پلتفرم هم برمی‌گردند ولی با پرچم خودشان، تا رابط
+ * بتواند نشانشان بدهد و هم‌زمان قفلشان کند — دیدنشان اشکالی ندارد،
+ * چسباندنشان به نقش را دیتابیس رد می‌کند.
+ */
+case 'access.catalogue':
+    require_owner();
+
+    $perms = [];
+    foreach (db()->query('SELECT * FROM permission ORDER BY group_key, sort_order')->fetchAll() as $r) {
+        $perms[] = [
+            'key'      => (string)$r['perm_key'],
+            'group'    => (string)$r['group_key'],
+            'label'    => (string)$r['label_fa'],
+            'platform' => (bool)$r['is_platform'],
+            'write'    => (bool)$r['is_write'],
+        ];
+    }
+
+    $roles = [];
+    foreach (db()->query(
+        'SELECT r.*, (SELECT COUNT(*) FROM membership m WHERE m.role_id = r.id AND m.status = \'active\') AS n_users
+           FROM role r ORDER BY r.is_system DESC, r.name_fa')->fetchAll() as $r) {
+        $rid = (string)$r['id'];
+        $rp  = db()->prepare('SELECT perm_key, scope FROM role_permission WHERE role_id = ?');
+        $rp->execute([$rid]);
+        $bundle = [];
+        foreach ($rp->fetchAll() as $x) $bundle[(string)$x['perm_key']] = (string)$x['scope'];
+
+        $roles[] = [
+            'id'        => $rid,
+            'key'       => (string)$r['role_key'],
+            'name'      => (string)$r['name_fa'],
+            'desc'      => $r['description'],
+            'scope'     => (string)$r['default_scope'],
+            'system'    => (bool)$r['is_system'],
+            'instituteId' => (string)$r['institute_id'],
+            'users'     => (int)$r['n_users'],
+            'perms'     => $bundle,
+        ];
+    }
+
+    ok(['permissions' => $perms, 'roles' => $roles, 'scopes' => PLATFORM_SCOPES]);
+
+case 'roles.create':
+    $a    = require_owner();
+    $name = s_in($in, 'name', 80);
+    $key  = strtolower(preg_replace('/[^a-z0-9_]/i', '', s_in($in, 'key', 32)));
+    if ($name === '' || $key === '') fail(400, 'invalid', 'نام و کلید نقش را وارد کنید.');
+
+    $scope = enum_in($in, 'scope', PLATFORM_SCOPES, 'own');
+    $iid   = s_in($in, 'instituteId', 32);   // خالی = نقش سیستمی، در دسترس همه
+
+    $dup = db()->prepare('SELECT 1 FROM role WHERE institute_id = ? AND role_key = ?');
+    $dup->execute([$iid, $key]);
+    if ($dup->fetchColumn()) fail(409, 'dup', 'نقشی با این کلید از قبل هست.');
+
+    $id = new_id();
+    db()->prepare(
+        'INSERT INTO role (id, institute_id, role_key, name_fa, description, default_scope, is_system, created_by, created_at)
+         VALUES (?,?,?,?,?,?,0,?,?)'
+    )->execute([$id, $iid, $key, $name, s_in($in, 'desc', 255) ?: null, $scope, $a['id'], now_utc()]);
+
+    audit('role.created', $a['id'], ['role' => $id, 'key' => $key, 'name' => $name]);
+    ok(['id' => $id]);
+
+case 'roles.update':
+    $a = require_owner();
+    $r = role_row(id_in($in, 'id', 'نقش'));
+    if ($r['is_system']) fail(403, 'system_role', 'نقش‌های سیستمی قابل تغییر نام نیستند.');
+
+    $name = s_in($in, 'name', 80);
+    if ($name === '') fail(400, 'invalid', 'نام نقش را وارد کنید.');
+
+    db()->prepare('UPDATE role SET name_fa = ?, description = ?, default_scope = ? WHERE id = ?')
+        ->execute([$name, s_in($in, 'desc', 255) ?: null,
+                   enum_in($in, 'scope', PLATFORM_SCOPES, (string)$r['default_scope']), $r['id']]);
+    audit('role.updated', $a['id'], ['role' => $r['id']]);
+    ok();
+
+case 'roles.delete':
+    $a = require_owner();
+    $r = role_row(id_in($in, 'id', 'نقش'));
+    if ($r['is_system']) fail(403, 'system_role', 'نقش‌های سیستمی حذف نمی‌شوند.');
+
+    $st = db()->prepare('SELECT COUNT(*) FROM membership WHERE role_id = ? AND status = ?');
+    $st->execute([$r['id'], 'active']);
+    $n = (int)$st->fetchColumn();
+    if ($n > 0) {
+        fail(409, 'in_use', "این نقش هنوز به {$n} نفر داده شده. اول نقششان را عوض کنید.");
+    }
+
+    db()->prepare('DELETE FROM role WHERE id = ?')->execute([$r['id']]);
+    audit('role.deleted', $a['id'], ['role' => $r['id'], 'key' => $r['role_key']]);
+    ok();
+
+/*
+ * بستهٔ مجوزهای یک نقش، یک‌جا نوشته می‌شود نه ردیف‌به‌ردیف — تا حالت
+ * نیمه‌کاره پیش نیاید اگر وسط کار چیزی بشکند.
+ *
+ * مجوز سطح پلتفرم را دیتابیس با کلید خارجی مرکب رد می‌کند؛ اینجا هم
+ * پیش از تلاش فیلترش می‌کنیم تا پیام خطای روشن بدهیم به‌جای خطای SQL.
+ */
+case 'roles.setPerms':
+    $a = require_owner();
+    $r = role_row(id_in($in, 'id', 'نقش'));
+    if ($r['is_system'] && (string)$r['role_key'] === 'manager') {
+        fail(403, 'system_role', 'بستهٔ مدیر آموزشگاه ثابت است — او همه‌کارهٔ آموزشگاه خودش است.');
+    }
+
+    $want = (array)($in['perms'] ?? []);   // { perm_key: scope }
+
+    $plat = [];
+    foreach (db()->query('SELECT perm_key FROM permission WHERE is_platform = 1')->fetchAll() as $x) {
+        $plat[(string)$x['perm_key']] = true;
+    }
+
+    $rows = [];
+    foreach ($want as $k => $scope) {
+        $k = (string)$k;
+        if (isset($plat[$k])) {
+            fail(403, 'platform_perm', 'مجوز سطح پلتفرم به هیچ نقشی داده نمی‌شود: ' . $k);
+        }
+        if (!in_array($scope, PLATFORM_SCOPES, true)) $scope = 'own';
+        $rows[] = [$k, $scope];
+    }
+
+    $db = db();
+    $db->beginTransaction();
+    try {
+        $db->prepare('DELETE FROM role_permission WHERE role_id = ?')->execute([$r['id']]);
+        $ins = $db->prepare('INSERT INTO role_permission (role_id, perm_key, is_platform, scope) VALUES (?,?,0,?)');
+        foreach ($rows as [$k, $sc]) $ins->execute([$r['id'], $k, $sc]);
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        fail(400, 'bad_perm', 'یکی از مجوزها معتبر نیست: ' . $e->getMessage());
+    }
+
+    audit('role.perms_set', $a['id'], ['role' => $r['id'], 'count' => count($rows)]);
+    ok(['count' => count($rows)]);
+
+/* ═════════════════════ دسترسی یک کاربر ═════════════════════ */
+
+/*
+ * همه‌چیزِ یک کاربر در یک پاسخ: عضویت‌هایش در همهٔ آموزشگاه‌ها، و
+ * اعطا/سلب‌های موردی‌اش. صفحهٔ «کاربران و دسترسی» از همین ساخته می‌شود.
+ */
+case 'user.access':
+    require_owner();
+    $u = require_platform_user(id_in($in, 'userId', 'کاربر'));
+
+    $st = db()->prepare(
+        'SELECT m.id, m.institute_id, m.role_id, m.role, m.status, m.expires_at, m.hourly_rate,
+                i.name AS institute_name, i.plan, r.name_fa AS role_name, r.role_key
+           FROM membership m
+           JOIN institute i ON i.id = m.institute_id
+           LEFT JOIN role r ON r.id = m.role_id
+          WHERE m.user_id = ? ORDER BY i.name'
+    );
+    $st->execute([$u['id']]);
+    $memberships = array_map(fn($r) => [
+        'id'         => (string)$r['id'],
+        'instituteId'=> (string)$r['institute_id'],
+        'institute'  => (string)$r['institute_name'],
+        'roleId'     => (string)($r['role_id'] ?? ''),
+        'role'       => (string)($r['role_name'] ?? $r['role']),
+        'roleKey'    => (string)($r['role_key'] ?? $r['role']),
+        'status'     => (string)$r['status'],
+        'expiresAt'  => $r['expires_at'] !== null ? (string)$r['expires_at'] : null,
+        'rate'       => (int)$r['hourly_rate'],
+        'plan'       => (string)$r['plan'],
+    ], $st->fetchAll());
+
+    $st = db()->prepare(
+        'SELECT up.*, i.name AS institute_name, p.label_fa
+           FROM user_permission up
+           JOIN institute i ON i.id = up.institute_id
+           LEFT JOIN permission p ON p.perm_key = up.perm_key
+          WHERE up.user_id = ? ORDER BY i.name, up.perm_key'
+    );
+    $st->execute([$u['id']]);
+    $overrides = array_map(fn($r) => [
+        'id'          => (string)$r['id'],
+        'instituteId' => (string)$r['institute_id'],
+        'institute'   => (string)$r['institute_name'],
+        'perm'        => (string)$r['perm_key'],
+        'label'       => (string)($r['label_fa'] ?? $r['perm_key']),
+        'effect'      => (string)$r['effect'],
+        'scope'       => $r['scope'],
+        'expiresAt'   => $r['expires_at'] !== null ? (string)$r['expires_at'] : null,
+        'reason'      => $r['reason'],
+    ], $st->fetchAll());
+
+    ok([
+        'user' => [
+            'id' => (string)$u['id'], 'name' => (string)$u['full_name'],
+            'phone' => (string)$u['phone'], 'status' => (string)$u['status'],
+        ],
+        'memberships' => $memberships,
+        'overrides'   => $overrides,
+    ]);
+
+/*
+ * اعطا یا سلب موردی. effect=clear یعنی برداشتن استثنا و بازگشت به
+ * بستهٔ نقش.
+ *
+ * سلب همیشه بر اعطا مقدم است — این قاعده در موتور اعمال می‌شود، نه
+ * اینجا؛ اینجا فقط ردیف نوشته می‌شود.
+ */
+case 'user.permSet':
+    $a    = require_owner();
+    $u    = require_platform_user(id_in($in, 'userId', 'کاربر'));
+    $inst = require_institute(id_in($in, 'instituteId', 'آموزشگاه'));
+    $perm = s_in($in, 'perm', 64);
+    $eff  = enum_in($in, 'effect', ['allow', 'deny', 'clear'], 'clear');
+
+    $pr = db()->prepare('SELECT is_platform FROM permission WHERE perm_key = ?');
+    $pr->execute([$perm]);
+    $isPlat = $pr->fetchColumn();
+    if ($isPlat === false) fail(404, 'no_perm', 'چنین مجوزی وجود ندارد.');
+    if ((int)$isPlat === 1) {
+        fail(403, 'platform_perm', 'مجوز سطح پلتفرم به هیچ کاربری داده نمی‌شود.');
+    }
+
+    if ($eff === 'clear') {
+        db()->prepare('DELETE FROM user_permission WHERE institute_id = ? AND user_id = ? AND perm_key = ?')
+            ->execute([$inst['id'], $u['id'], $perm]);
+        audit('access.override_cleared', $a['id'], ['user' => $u['id'], 'perm' => $perm, 'institute' => $inst['id']]);
+        ok();
+    }
+
+    $days  = i_in($in, 'days', 0, 0, 3650);
+    $until = $days > 0 ? now_utc($days * 86400) : null;
+    $scope = $eff === 'allow' ? enum_in($in, 'scope', PLATFORM_SCOPES, 'own') : null;
+
+    db()->prepare(
+        'INSERT INTO user_permission (id, institute_id, user_id, perm_key, is_platform, effect, scope, expires_at, granted_by, reason, created_at)
+         VALUES (?,?,?,?,0,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE effect = VALUES(effect), scope = VALUES(scope),
+                                 expires_at = VALUES(expires_at), granted_by = VALUES(granted_by),
+                                 reason = VALUES(reason), created_at = VALUES(created_at)'
+    )->execute([new_id(), $inst['id'], $u['id'], $perm, $eff, $scope, $until,
+                $a['id'], s_in($in, 'reason', 255) ?: null, now_utc()]);
+
+    audit('access.override_set', $a['id'], [
+        'user' => $u['id'], 'institute' => $inst['id'], 'perm' => $perm,
+        'effect' => $eff, 'scope' => $scope, 'until' => $until,
+    ]);
+    ok();
+
+/* ═════════════════════ چرخهٔ دمو ═════════════════════ */
+
+/*
+ * تأیید درخواست دمو: آموزشگاه ساخته می‌شود، کاربر (یا حساب تازه با
+ * همان شماره) عضویت مدیرِ زمان‌دار می‌گیرد، و درخواست به هر دو وصل
+ * می‌شود.
+ *
+ * پیش‌فرض ۱۴ روز است چون سایت همین را تبلیغ می‌کند، ولی مالک هنگام
+ * تأیید می‌تواند عوضش کند.
+ */
+case 'demo.approve':
+    $a  = require_owner();
+    $id = id_in($in, 'id', 'درخواست');
+
+    $st = db()->prepare('SELECT * FROM demo_lead WHERE id = ?');
+    $st->execute([$id]);
+    $lead = $st->fetch();
+    if (!$lead) fail(404, 'not_found', 'این درخواست پیدا نشد.');
+    if ($lead['institute_id'] !== null) fail(409, 'already', 'برای این درخواست از قبل آموزشگاه ساخته شده.');
+
+    $days  = i_in($in, 'days', 14, 1, 365);
+    $until = now_utc($days * 86400);
+    $phone = normalize_phone((string)$lead['phone']);
+    if ($phone === null) fail(400, 'bad_phone', 'شمارهٔ این درخواست معتبر نیست.');
+
+    $db = db();
+    $db->beginTransaction();
+    try {
+        // کاربر: اگر با این شماره هست همان، وگرنه تازه
+        $uq = $db->prepare('SELECT id FROM app_user WHERE phone = ?');
+        $uq->execute([$phone]);
+        $uid = $uq->fetchColumn();
+        if (!$uid) {
+            $uid = new_id();
+            $db->prepare('INSERT INTO app_user (id, phone, full_name, role, status, created_at) VALUES (?,?,?,?,?,?)')
+               ->execute([$uid, $phone, (string)$lead['name'], 'manager', 'active', now_utc()]);
+        }
+
+        $iid = new_id();
+        $db->prepare(
+            'INSERT INTO institute (id, name, owner_user_id, phone, term_weeks, plan, trial_ends_at, created_at)
+             VALUES (?,?,?,?,?,?,?,?)'
+        )->execute([$iid, (string)($lead['institute'] ?: $lead['name']), $uid, $phone, 12, 'trial', $until, now_utc()]);
+
+        $db->prepare(
+            'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, expires_at, granted_by, granted_reason, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?)'
+        )->execute([new_id(), $iid, $uid, 'manager', 'r_manager', 'active', $until,
+                    $a['id'], 'دورهٔ آزمایشی ' . $days . ' روزه', now_utc()]);
+
+        $db->prepare(
+            'UPDATE demo_lead SET status = ?, institute_id = ?, user_id = ?, trial_days = ?, approved_by = ?, approved_at = ?
+              WHERE id = ?'
+        )->execute(['won', $iid, $uid, $days, $a['id'], now_utc(), $id]);
+
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        fail(500, 'provision_failed', 'ساخت آموزشگاه دمو انجام نشد: ' . $e->getMessage());
+    }
+
+    audit('demo.approved', $a['id'], ['lead' => $id, 'institute' => $iid, 'user' => $uid, 'days' => $days]);
+    ok(['instituteId' => $iid, 'userId' => $uid, 'until' => $until]);
+
+/* تمدید، تبدیل به مشتری دائم، یا بازگرداندن از فقط-خواندنی */
+case 'demo.extend':
+    $a    = require_owner();
+    $inst = require_institute(id_in($in, 'instituteId', 'آموزشگاه'));
+    $days = i_in($in, 'days', 14, 1, 365);
+    $until = now_utc($days * 86400);
+
+    db()->prepare('UPDATE institute SET plan = ?, trial_ends_at = ? WHERE id = ?')
+        ->execute(['trial', $until, $inst['id']]);
+    db()->prepare('UPDATE membership SET expires_at = ? WHERE institute_id = ? AND expires_at IS NOT NULL')
+        ->execute([$until, $inst['id']]);
+
+    audit('demo.extended', $a['id'], ['institute' => $inst['id'], 'days' => $days, 'until' => $until]);
+    ok(['until' => $until]);
+
+case 'demo.convert':
+    $a    = require_owner();
+    $inst = require_institute(id_in($in, 'instituteId', 'آموزشگاه'));
+
+    db()->prepare('UPDATE institute SET plan = ?, trial_ends_at = NULL WHERE id = ?')
+        ->execute(['active', $inst['id']]);
+    db()->prepare('UPDATE membership SET expires_at = NULL WHERE institute_id = ?')
+        ->execute([$inst['id']]);
+
+    audit('demo.converted', $a['id'], ['institute' => $inst['id']]);
+    ok();
+
+/*
+ * انقضای دموهایی که وقتشان رسیده.
+ *
+ * به‌جای cron که روی هاست اشتراکی همیشه در دسترس نیست، هر بار که مالک
+ * پنل را باز می‌کند اجرا می‌شود. دقتش ثانیه‌ای نیست ولی برای این کار
+ * کافی است، و مهم‌تر: وابسته به چیزی نیست که ممکن است تنظیم نشود.
+ */
+case 'demo.sweep':
+    $a = require_owner();
+    $n = db()->prepare('UPDATE institute SET plan = ? WHERE plan = ? AND trial_ends_at IS NOT NULL AND trial_ends_at <= ?');
+    $n->execute(['readonly', 'trial', now_utc()]);
+    $c = $n->rowCount();
+    if ($c > 0) audit('demo.expired', $a['id'], ['count' => $c]);
+    ok(['expired' => $c]);
 
 default:
     fail(400, 'unknown_action', 'درخواست نامشخص.');

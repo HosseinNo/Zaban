@@ -66,7 +66,7 @@ function current_super(): ?array
     if ($token === '' || !preg_match('/^[a-f0-9]{64}$/', $token)) return null;
 
     $st = db()->prepare(
-        'SELECT a.id, a.username, a.full_name, a.status
+        'SELECT a.id, a.username, a.full_name, a.status, a.is_platform_owner
            FROM admin_session s JOIN admin_user a ON a.id = s.admin_id
           WHERE s.token_hash = ? AND s.expires_at > ? AND s.revoked_at IS NULL'
     );
@@ -83,6 +83,23 @@ function require_super(): array
 {
     $a = current_super();
     if (!$a) fail(401, 'unauthenticated', 'ابتدا وارد شوید.');
+    return $a;
+}
+
+/**
+ * کارهایی که فقط مالک پلتفرم می‌تواند بکند.
+ *
+ * ساخت نقش، اعطای مجوز، تعلیق آموزشگاه و تنظیمات پلتفرم از این دروازه
+ * می‌گذرند. امروز عملاً همهٔ ادمین‌ها مالک‌اند چون فقط یکی وجود دارد،
+ * ولی اگر روزی ادمین کمکی اضافه شود، این مرز از قبل کشیده شده — نه
+ * اینکه آن روز باید سی نقطه را پیدا و محافظت کرد.
+ */
+function require_owner(): array
+{
+    $a = require_super();
+    if ((int)($a['is_platform_owner'] ?? 0) !== 1) {
+        fail(403, 'owner_only', 'این کار فقط از عهدهٔ مالک پلتفرم برمی‌آید.');
+    }
     return $a;
 }
 
