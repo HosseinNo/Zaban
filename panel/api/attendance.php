@@ -14,8 +14,8 @@
  */
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
-require __DIR__ . '/_ctx.php';
-require __DIR__ . '/_perm.php';
+require_once __DIR__ . '/_ctx.php';
+require_once __DIR__ . '/_perm.php';
 
 require_post();
 $in     = body_json();

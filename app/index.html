@@ -1017,6 +1017,17 @@ function applyBootstrap(d){
   API.data=d;
   S.role=roleRoute(d.role)==="m"?"manager":roleRoute(d.role)==="s"?"student":"teacher";
 
+  /*
+   * مجوزهای مؤثر و فهرست نقش‌ها از سرور می‌آیند. منو از روی همین‌ها
+   * ساخته می‌شود، نه از روی نام نقش — وگرنه اولین نقش سفارشی که مالک
+   * می‌سازد، رابطی خالی می‌گیرد.
+   */
+  S.perms=d.permissions||null;
+  S.scopes=d.scopes||{};
+  S.contexts=d.contexts||[];
+  S.multiRole=!!d.multiRole;
+  S.readonly=!!d.readonly;
+
   DB.me[S.role]={name:d.me.name,role:d.me.role};
   DB.institute={
     name:d.institute.name||"آموزشگاه",
@@ -1079,6 +1090,13 @@ function reload(then){
   return apiCall("bootstrap.php").then(function(r){
     if(r&&r.ok){applyBootstrap(r);render();}
     else if(r&&r.error==="no_institute"){API.noWorkspace=true;render();}
+    /*
+     * کاربر چند نقش دارد و هنوز انتخاب نکرده. این خطا نیست — سرور
+     * عمداً نمی‌خواهد به‌جای کاربر تصمیم بگیرد، چون نقش فعال دامنهٔ دید
+     * را عوض می‌کند و حدس‌زدنش یعنی نشان‌دادن دادهٔ اشتباه.
+     */
+    else if(r&&r.error==="need_context"){API.pickContext=r.options||[];render();}
+    else if(r&&r.error==="membership_expired"){API.expired=true;API.expiredReason=r.message||"";render();}
     else if(r&&r.error==="institute_suspended"){API.suspended=true;API.suspendedReason=r.message||API.suspendedReason;render();}
     if(then)then(r);
     return r;
@@ -1111,42 +1129,42 @@ var NAV={
  teacher:[
   {g:"روزانه"},
   {r:"t",t:"امروز",i:"home"},
-  {r:"t/classes",t:"کلاس‌های من",i:"book"},
+  {r:"t/classes",t:"کلاس‌های من",i:"book",perm:"class.view"},
   {r:"t/tools",t:"ابزار حین کلاس",i:"cog"},
-  {r:"t/assignments",t:"تکالیف",i:"file",badge:2},
-  {r:"t/grading",t:"صف تصحیح",i:"check",badge:6},
+  {r:"t/assignments",t:"تکالیف",i:"file",badge:2,perm:"assignment.view"},
+  {r:"t/grading",t:"صف تصحیح",i:"check",badge:6,perm:"assignment.grade"},
   {g:"آموزشی"},
-  {r:"t/gradebook",t:"دفتر نمره",i:"grid"},
-  {r:"t/payroll",t:"کارکرد و حقوق من",i:"wallet"},
+  {r:"t/gradebook",t:"دفتر نمره",i:"grid",perm:"assignment.grade"},
+  {r:"t/payroll",t:"کارکرد و حقوق من",i:"wallet",perm:"finance.payout.view"},
   {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"}
  ],
  student:[
   {g:"یادگیری"},
   {r:"s",t:"خانه",i:"home"},
-  {r:"s/classes",t:"کلاس‌های من",i:"book"},
-  {r:"s/assignments",t:"تکالیف",i:"file",badge:2},
+  {r:"s/classes",t:"کلاس‌های من",i:"book",perm:"class.view"},
+  {r:"s/assignments",t:"تکالیف",i:"file",badge:2,perm:"assignment.view"},
   {r:"s/exams",t:"آزمون‌ها",i:"check",badge:1},
   {r:"s/grades",t:"نمرات و پیشرفت",i:"chart"},
   {g:"مالی و اداری"},
-  {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1},
+  {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1,perm:"finance.tuition.view"},
   {r:"s/schedule",t:"برنامهٔ کلاسی",i:"cal"},
   {r:"s/certificates",t:"مدارک",i:"award"}
  ],
  manager:[
   {g:"روزانه"},
   {r:"m",t:"پیشخوان",i:"home"},
-  {r:"m/live",t:"کلاس‌های در حال برگزاری",i:"video",badge:1},
-  {r:"m/enrol",t:"ثبت‌نام زبان‌آموز",i:"users"},
-  {r:"m/students",t:"زبان‌آموزان",i:"users"},
+  {r:"m/live",t:"کلاس‌های در حال برگزاری",i:"video",badge:1,perm:"session.view"},
+  {r:"m/enrol",t:"ثبت‌نام زبان‌آموز",i:"users",perm:"enrolment.create"},
+  {r:"m/students",t:"زبان‌آموزان",i:"users",perm:"member.view"},
   {g:"آموزشی"},
-  {r:"m/term",t:"ترم‌ساز",i:"cal"},
-  {r:"m/classes",t:"کلاس‌ها",i:"book"},
+  {r:"m/term",t:"ترم‌ساز",i:"cal",perm:"term.view"},
+  {r:"m/classes",t:"کلاس‌ها",i:"book",perm:"class.view"},
   {g:"کسب‌وکار"},
-  {r:"m/finance",t:"مالی",i:"wallet"},
-  {r:"m/books",t:"فروش کتاب",i:"book"},
-  {r:"m/payroll",t:"حقوق مدرسان",i:"wallet"},
-  {r:"m/reports",t:"گزارش‌ها",i:"chart"},
-  {r:"m/settings",t:"تنظیمات",i:"cog"}
+  {r:"m/finance",t:"مالی",i:"wallet",perm:"finance.tuition.view"},
+  {r:"m/books",t:"فروش کتاب",i:"book",perm:"shop.manage"},
+  {r:"m/payroll",t:"حقوق مدرسان",i:"wallet",perm:"finance.payout.view"},
+  {r:"m/reports",t:"گزارش‌ها",i:"chart",perm:"report.view"},
+  {r:"m/settings",t:"تنظیمات",i:"cog",perm:"institute.edit"}
  ]
 };
 
@@ -1167,8 +1185,25 @@ var ICONS={
 };
 function icon(n,sz){return '<svg class="ico" width="'+(sz||18)+'" height="'+(sz||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[n]||"")+'</svg>';}
 
+/*
+ * آیا این مورد منو باید دیده شود؟ در حالت نمایشی همه دیده می‌شوند؛
+ * در حالت زنده فقط اگر مجوزش را داشته باشد. موردی که perm ندارد همیشه
+ * دیده می‌شود (مثل «خانه»).
+ */
+function navVisible(it){
+  if(!it.perm)return true;
+  if(!API.live||!S.perms)return true;
+  return S.perms.indexOf(it.perm)>=0;
+}
+
 function renderNav(){
-  var items=NAV[S.role],out="";
+  var items=(NAV[S.role]||[]).filter(navVisible),out="";
+  // سرگروهی که همهٔ زیرمجموعه‌اش پنهان شده، خودش هم نباید بماند
+  items=items.filter(function(it,i){
+    if(!it.g)return true;
+    for(var j=i+1;j<items.length;j++){if(items[j].g)break;if(!items[j].g)return true;}
+    return false;
+  });
   items.forEach(function(it){
     if(it.g){out+='<div class="nav-grp">'+it.g+'</div>';return;}
     var on=(S.route===it.r)?" on":"";
@@ -1180,8 +1215,57 @@ function renderNav(){
   el("meBtn").innerHTML='<span class="av">'+initials(m.name)+'</span>'+
     '<span class="nm"><b>'+esc(m.name)+'</b><span>'+esc(m.role)+'</span></span>'+
     '<i class="chev"></i>';
-  Array.prototype.forEach.call(el("roleSw").children,function(b){
-    b.classList.toggle("on",b.dataset.role===S.role);});
+  renderContextSwitch();
+}
+
+/*
+ * در حالت نمایشی، سه دکمهٔ ثابت که فقط بین نماها می‌پرند — برای نشان‌دادن
+ * محصول. در حالت زنده، نقش‌های واقعی همین کاربر؛ و اگر فقط یکی دارد،
+ * انتخابگر اصلاً نشان داده نمی‌شود چون چیزی برای انتخاب نیست.
+ */
+function renderContextSwitch(){
+  var sw=el("roleSw");
+  if(!sw)return;
+
+  if(!API.live){
+    Array.prototype.forEach.call(sw.children,function(b){
+      b.classList.toggle("on",b.dataset.role===S.role);});
+    sw.style.display="";
+    return;
+  }
+
+  if(!S.multiRole||!S.contexts.length){sw.style.display="none";return;}
+
+  sw.style.display="";
+  var act=(S.contexts.filter(function(c){return c.active;})[0])||null;
+  sw.innerHTML=S.contexts.map(function(c){
+    var on=(act&&c.membershipId===act.membershipId)?" class=\"on\"":"";
+    var label=S.contexts.length>1&&hasManyInstitutes()
+      ? c.role+" · "+c.institute : c.role;
+    return '<button data-ctx="'+esc(c.membershipId)+'"'+on+'>'+esc(label)+'</button>';
+  }).join("");
+}
+
+function hasManyInstitutes(){
+  var seen={},n=0;
+  S.contexts.forEach(function(c){if(!seen[c.instituteId]){seen[c.instituteId]=1;n++;}});
+  return n>1;
+}
+
+/* تعویض واقعی: سرور زمینه را عوض می‌کند، بعد پنل از نو بار می‌شود */
+function switchContext(mid){
+  if(S.busy)return;
+  S.busy=true;
+  fetch(API.base+"context.php",{method:"POST",credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:"switch",membershipId:mid})})
+   .then(function(r){return r.json();})
+   .then(function(j){
+     S.busy=false;
+     if(!j.ok){toast(j.message||"نقش عوض نشد");return;}
+     location.reload();          // پنل کامل با زمینهٔ تازه از نو ساخته می‌شود
+   })
+   .catch(function(){S.busy=false;toast("ارتباط با سرور برقرار نشد");});
 }
 
 /* ══════════ اجزای مشترک ══════════ */
@@ -2376,6 +2460,39 @@ V["susp"]=function(){
       <h1 class="auth-h">دسترسی این آموزشگاه معلق شده</h1>
       <p class="auth-p">${esc(API.suspendedReason)||"دلیلی برای تعلیق ثبت نشده."}</p>
       <p class="auth-p" style="margin-top:14px">برای رفع تعلیق با پشتیبانی تاکورا تماس بگیرید.</p>
+      <button class="btn btn--q btn--b" style="margin-top:18px" data-act="logout">خروج</button>
+    </div></main>
+  </div>`;
+};
+
+/*
+ * انتخاب نقش — وقتی کاربر چند نقش دارد و نشست هنوز نمی‌داند با کدام
+ * وارد شده. سرور عمداً به‌جای او تصمیم نمی‌گیرد.
+ */
+V["pick"]=function(){
+  var opts=API.pickContext||[];
+  var many=(function(){var seen={},n=0;opts.forEach(function(c){if(!seen[c.instituteId]){seen[c.instituteId]=1;n++;}});return n>1;})();
+  return `
+  <div class="auth-wrap">
+    <aside class="auth-side">
+      <div class="brand" style="border:none;padding:0"><span class="brand-mark">ت</span><span>تاکورا</span></div>
+      <h2>با کدام نقش وارد می‌شوید؟</h2>
+      <ul>
+        <li><i class="ck"></i><span>هر وقت خواستید، از نوار بالا عوضش کنید</span></li>
+        <li><i class="ck"></i><span>هر نقش، پیشخوان و دسترسی خودش را دارد</span></li>
+      </ul>
+    </aside>
+    <main class="auth-main"><div class="auth-box">
+      <h1 class="auth-h">انتخاب نقش</h1>
+      <p class="auth-p">شما در ${fa(opts.length)} نقش عضو هستید.</p>
+      <div style="display:grid;gap:10px;margin-top:20px">
+        ${opts.map(function(c){
+          return '<button class="btn btn--g btn--b" style="justify-content:space-between;text-align:start" data-ctx="'+esc(c.membershipId)+'">'+
+                 '<span><b>'+esc(c.role)+'</b>'+(many?'<span style="display:block;font-size:12.5px;color:var(--ink-3)">'+esc(c.institute)+'</span>':'')+'</span>'+
+                 (c.readonly?'<span class="pill mute">فقط خواندنی</span>':'')+
+                 '</button>';
+        }).join("")}
+      </div>
       <button class="btn btn--q btn--b" style="margin-top:18px" data-act="logout">خروج</button>
     </div></main>
   </div>`;
@@ -3763,7 +3880,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
-var FULL={"auth":1,"nows":1,"susp":1,"meet":1};
+var FULL={"auth":1,"nows":1,"susp":1,"meet":1,"pick":1};
 
 function go(route){location.hash="#/"+route;}
 function render(){
@@ -3792,9 +3909,10 @@ function render(){
    */
   if(API.live){
     if(!API.user){ r="auth"; }
+    else if(API.pickContext){ r="pick"; }
     else if(API.suspended){ r="susp"; }
     else if(API.noWorkspace){ r="nows"; }
-    else if(r==="auth"||r==="nows"||r==="susp"){ r=roleRoute(API.user.role); }
+    else if(r==="auth"||r==="nows"||r==="susp"||r==="pick"){ r=roleRoute(API.user.role); }
     else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
     if("#/"+r!==location.hash){ location.replace("#/"+r); }
   }
@@ -3852,7 +3970,11 @@ document.addEventListener("click",function(e){
   var navBtn=t.closest("[data-nav]");
   if(navBtn){e.preventDefault();go(navBtn.dataset.nav);return;}
 
-  var roleBtn=t.closest("#roleSw button");
+  // هم انتخابگر نوار بالا، هم دکمه‌های صفحهٔ انتخاب نقش
+  var ctxBtn=t.closest("[data-ctx]");
+  if(ctxBtn){switchContext(ctxBtn.dataset.ctx);return;}
+
+  var roleBtn=t.closest("#roleSw button[data-role]");
   if(roleBtn){var r=roleBtn.dataset.role;
     go(r==="student"?"s":r==="manager"?"m":"t");return;}
 

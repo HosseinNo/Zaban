@@ -22,6 +22,9 @@
 
 declare(strict_types=1);
 
+// ctx() روی active_context() می‌نشیند، پس موتور باید پیش از آن باشد
+require_once __DIR__ . '/_perm.php';
+
 if (realpath(__FILE__) === realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''))) {
     http_response_code(404);
     exit;
@@ -43,17 +46,23 @@ function ctx(): array
 
     $u = require_user();
 
-    // عضویت فعال کاربر. اگر در چند آموزشگاه باشد، فعلاً اولی؛
-    // جابه‌جایی بین آموزشگاه‌ها وقتی لازم شد اضافه می‌شود.
+    /*
+     * آموزشگاه و نقش از زمینهٔ فعالِ نشست می‌آیند، نه از «اولین عضویت».
+     * پیش از چند-نقشی این دو یکی بودند؛ حالا نه. اگر اینجا هنوز اولی
+     * را برمی‌داشتیم، کاربری که به نقش دیگری سوییچ کرده بود همچنان
+     * دادهٔ نقش اول را می‌دید.
+     */
+    $ac = active_context();
+
     $st = db()->prepare(
         'SELECT m.institute_id, m.role, m.can_host_meeting,
                 i.name, i.term_weeks, i.city, i.phone, i.status, i.suspended_reason, i.jitsi_enabled
            FROM membership m
            JOIN institute i ON i.id = m.institute_id
-          WHERE m.user_id = ? AND m.status = ?
-          ORDER BY m.created_at ASC LIMIT 1'
+          WHERE m.user_id = ? AND m.institute_id = ? AND m.role_id = ? AND m.status = ?
+          LIMIT 1'
     );
-    $st->execute([$u['id'], 'active']);
+    $st->execute([$u['id'], $ac['institute_id'], $ac['role_id'], 'active']);
     $m = $st->fetch();
 
     if (!$m) {

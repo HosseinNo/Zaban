@@ -12,7 +12,7 @@
  */
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
-require __DIR__ . '/_ctx.php';
+require_once __DIR__ . '/_ctx.php';
 
 $c    = ctx();
 $role = $c['role'];
@@ -292,8 +292,28 @@ if ($role === 'manager') {
 
 $roleFa = ['manager' => 'مدیر آموزشگاه', 'teacher' => 'مدرس', 'student' => 'زبان‌آموز'];
 
+/*
+ * مجوزهای مؤثر و فهرست نقش‌ها به رابط داده می‌شوند تا منو و صفحه‌ها از
+ * روی مجوز ساخته شوند، نه از روی نام نقش. تا وقتی فرانت بنویسد «اگر
+ * مدیر است این را نشان بده»، ساخت نقش سفارشی یعنی رابطی که برایش خالی
+ * می‌ماند.
+ *
+ * contexts فقط وقتی بیش از یکی است که کاربر واقعاً چند نقش دارد؛ رابط
+ * انتخابگر را در همان حالت نشان می‌دهد.
+ */
+$ac       = active_context();
+$contexts = array_map(function ($o) use ($ac) {
+    $o['active'] = ($o['instituteId'] === $ac['institute_id'] && $o['roleId'] === $ac['role_id']);
+    return $o;
+}, context_options());
+
 ok([
     'role' => $role,
+    'permissions' => array_keys(effective_perms()),
+    'scopes'      => effective_perms(),
+    'contexts'    => $contexts,
+    'multiRole'   => count($contexts) > 1,
+    'readonly'    => is_readonly_institute(),
     'me'   => [
         'id'    => (string)$me['id'],
         'name'  => (string)$me['full_name'],

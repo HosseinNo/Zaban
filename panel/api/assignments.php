@@ -12,8 +12,8 @@
  */
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
-require __DIR__ . '/_ctx.php';
-require __DIR__ . '/_perm.php';
+require_once __DIR__ . '/_ctx.php';
+require_once __DIR__ . '/_perm.php';
 
 const ALLOWED_EXT  = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'mp3', 'm4a', 'ogg', 'wav', 'webm', 'docx', 'txt'];
 const MAX_UPLOAD   = 8 * 1024 * 1024;   // ۸ مگابایت

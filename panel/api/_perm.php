@@ -67,13 +67,60 @@ function widest_scope(?string $a, ?string $b): string
 /* ═════════════════════ زمینهٔ فعال ═════════════════════ */
 
 /**
+ * همهٔ عضویت‌های فعال و معتبر کاربر — ورودی انتخابگر زمینه.
+ *
+ * @return list<array{membership_id:string,institute_id:string,institute_name:string,
+ *                    role_id:string,role_key:string,role_name:string,expires_at:?string}>
+ */
+function my_memberships(): array
+{
+    static $ms = null;
+    if ($ms !== null) return $ms;
+
+    $u = require_user();
+    $st = db()->prepare(
+        'SELECT m.id AS membership_id, m.institute_id, m.role_id, m.role, m.expires_at,
+                i.name AS institute_name, i.status AS institute_status, i.plan,
+                r.name_fa AS role_name, r.role_key
+           FROM membership m
+           JOIN institute i ON i.id = m.institute_id
+           LEFT JOIN role r ON r.id = m.role_id
+          WHERE m.user_id = ? AND m.status = ?
+            AND (m.expires_at IS NULL OR m.expires_at > ?)
+            AND i.status <> ?
+          ORDER BY i.name, r.name_fa'
+    );
+    $st->execute([$u['id'], 'active', now_utc(), 'suspended']);
+
+    $ms = array_map(fn($r) => [
+        'membership_id'   => (string)$r['membership_id'],
+        'institute_id'    => (string)$r['institute_id'],
+        'institute_name'  => (string)$r['institute_name'],
+        'role_id'         => (string)($r['role_id'] ?? ('r_' . $r['role'])),
+        'role_key'        => (string)($r['role_key'] ?? $r['role']),
+        'role_name'       => (string)($r['role_name'] ?? $r['role']),
+        'plan'            => (string)($r['plan'] ?? 'active'),
+        'expires_at'      => $r['expires_at'] !== null ? (string)$r['expires_at'] : null,
+    ], $st->fetchAll());
+
+    return $ms;
+}
+
+/**
  * زمینهٔ فعال: کاربر، آموزشگاه، و نقشی که همین حالا با آن کار می‌کند.
  *
- * در این فاز از ctx() موجود ساخته می‌شود چون قید تک‌نقشی هنوز سر جایش
- * است و هر کاربر در هر آموزشگاه دقیقاً یک عضویت دارد. در فاز ۴ که
- * چند-نقشی فعال شود، منبع این اطلاعات ستون‌های active_* روی
- * session_token خواهد بود — امضای تابع همان می‌ماند تا کد صدازننده
- * دست نخورد.
+ * ═══ چرا سمت سرور ═══
+ *
+ * منبع این اطلاعات ستون‌های active_* روی session_token است، نه چیزی که
+ * مرورگر می‌فرستد. اگر بررسی دسترسی می‌پرسید «آیا این کاربر *جایی* نقش
+ * مدرس دارد؟» به‌جای «آیا نقش *فعالش* مدرس است؟»، کسی که در نمای
+ * زبان‌آموز نشسته می‌توانست با یک درخواست دستی دادهٔ مدرس را بخواند.
+ *
+ * ═══ وقتی زمینه نیست ═══
+ *
+ * یک عضویت → خودکار همان. چند عضویت → ۴۰۹ تا رابط انتخابگر را نشان
+ * دهد. هیچ عضویت → ۴۰۳. نشست‌های بازِ پیش از این تغییر ستون خالی
+ * دارند و از همین مسیر بی‌دردسر پر می‌شوند؛ کسی بیرون انداخته نمی‌شود.
  *
  * @return array{user_id:string, institute_id:string, role_id:string, role_key:string, plan:string}
  */
@@ -82,51 +129,95 @@ function active_context(): array
     static $ac = null;
     if ($ac !== null) return $ac;
 
-    $c = ctx();
+    $u    = require_user();
+    $list = my_memberships();
 
-    $st = db()->prepare(
-        'SELECT m.role_id, m.role, m.expires_at, i.plan
-           FROM membership m
-           JOIN institute i ON i.id = m.institute_id
-          WHERE m.institute_id = ? AND m.user_id = ? AND m.status = ?
-          LIMIT 1'
-    );
-    $st->execute([$c['institute_id'], $c['user']['id'], 'active']);
-    $m = $st->fetch();
-
-    /*
-     * اگر ctx() عضویت پیدا کرده ولی اینجا نه، یعنی داده ناسازگار است.
-     * به‌جای ادامه‌دادن با زمینهٔ نصفه، صریح شکست می‌خوریم.
-     */
-    if (!$m) {
-        fail(403, 'no_membership', 'عضویت شما در این آموزشگاه پیدا نشد.');
+    if (!$list) {
+        fail(403, 'no_membership',
+            'شما عضو هیچ آموزشگاه فعالی نیستید. از مدیر آموزشگاه بخواهید با همین شماره دعوت‌تان کند.');
     }
 
-    // عضویت زمان‌دار که تاریخش گذشته، زمینه را باطل می‌کند — نه اینکه
-    // دسترسی کمتری بدهد. این همان چیزی است که پایان دمو را اعمال می‌کند.
-    if ($m['expires_at'] !== null && (string)$m['expires_at'] <= now_utc()) {
-        fail(403, 'membership_expired',
-            'دورهٔ دسترسی شما به این آموزشگاه تمام شده. برای تمدید با پشتیبانی تماس بگیرید.');
+    // زمینهٔ ذخیره‌شده روی نشست
+    $tok = $_COOKIE[SESSION_COOKIE] ?? '';
+    $sel = null;
+    if ($tok !== '' && preg_match('/^[a-f0-9]{64}$/', $tok)) {
+        $st = db()->prepare(
+            'SELECT active_institute_id, active_role_id FROM session_token WHERE token_hash = ?'
+        );
+        $st->execute([hash('sha256', $tok)]);
+        $row = $st->fetch();
+        if ($row && $row['active_institute_id'] !== null) {
+            foreach ($list as $m) {
+                if ($m['institute_id'] === (string)$row['active_institute_id']
+                    && $m['role_id'] === (string)$row['active_role_id']) {
+                    $sel = $m;
+                    break;
+                }
+            }
+            /*
+             * زمینهٔ ذخیره‌شده دیگر معتبر نیست — عضویت برداشته شده،
+             * منقضی شده، یا آموزشگاه معلق. پاکش می‌کنیم و مثل حالت
+             * بی‌زمینه رفتار می‌کنیم، نه اینکه کاربر را با خطا برانیم.
+             */
+            if ($sel === null) context_clear();
+        }
     }
 
-    /*
-     * role_id پس از مهاجرت همیشه پر است. اگر به هر دلیلی نبود، از روی
-     * ستون قدیمی role بازسازی می‌شود تا نبود یک ردیف، کل درخواست را
-     * نشکند. این پل تا پایان فاز ۳ می‌ماند.
-     */
-    $roleId = (string)($m['role_id'] ?? '');
-    if ($roleId === '') {
-        $roleId = 'r_' . (string)$m['role'];
+    if ($sel === null) {
+        if (count($list) === 1) {
+            $sel = $list[0];
+            context_set($sel['institute_id'], $sel['role_id']);
+        } else {
+            fail(409, 'need_context', 'نقش خود را انتخاب کنید.', ['options' => context_options()]);
+        }
     }
 
     $ac = [
-        'user_id'      => (string)$c['user']['id'],
-        'institute_id' => (string)$c['institute_id'],
-        'role_id'      => $roleId,
-        'role_key'     => (string)$m['role'],
-        'plan'         => (string)($m['plan'] ?? 'active'),
+        'user_id'      => (string)$u['id'],
+        'institute_id' => $sel['institute_id'],
+        'role_id'      => $sel['role_id'],
+        'role_key'     => $sel['role_key'],
+        'plan'         => $sel['plan'],
     ];
     return $ac;
+}
+
+/** زمینه را روی نشست جاری می‌نویسد */
+function context_set(string $instituteId, string $roleId): void
+{
+    $tok = $_COOKIE[SESSION_COOKIE] ?? '';
+    if ($tok === '' || !preg_match('/^[a-f0-9]{64}$/', $tok)) return;
+
+    db()->prepare(
+        'UPDATE session_token SET active_institute_id = ?, active_role_id = ?, context_set_at = ?
+          WHERE token_hash = ?'
+    )->execute([$instituteId, $roleId, now_utc(), hash('sha256', $tok)]);
+}
+
+function context_clear(): void
+{
+    $tok = $_COOKIE[SESSION_COOKIE] ?? '';
+    if ($tok === '' || !preg_match('/^[a-f0-9]{64}$/', $tok)) return;
+
+    db()->prepare(
+        'UPDATE session_token SET active_institute_id = NULL, active_role_id = NULL, context_set_at = NULL
+          WHERE token_hash = ?'
+    )->execute([hash('sha256', $tok)]);
+}
+
+/** گزینه‌های انتخابگر، به شکلی که رابط می‌خواهد */
+function context_options(): array
+{
+    return array_map(fn($m) => [
+        'membershipId' => $m['membership_id'],
+        'instituteId'  => $m['institute_id'],
+        'institute'    => $m['institute_name'],
+        'roleId'       => $m['role_id'],
+        'role'         => $m['role_name'],
+        'roleKey'      => $m['role_key'],
+        'expiresAt'    => $m['expires_at'],
+        'readonly'     => $m['plan'] === 'readonly',
+    ], my_memberships());
 }
 
 function is_readonly_institute(): bool
