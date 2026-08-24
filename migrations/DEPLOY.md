@@ -37,6 +37,20 @@ SELECT COUNT(*) FROM membership WHERE role_id IS NULL;   -- باید ۰ باشد
 
 ---
 
+## گام ۱.۵ — مهاجرت ۰۰۸ (ترمیم)
+
+اگر پایگاه دادهٔ زنده پیش از «نسخهٔ ۴» ساخته شده باشد، ستون‌های
+`institute.status` و `institute.suspended_reason` را ندارد و پنل
+سوپرادمین روی `institutes.list` و `stats` خطای ۵۰۰ می‌دهد. برای بررسی:
+
+```sql
+SHOW COLUMNS FROM institute LIKE 'status';
+```
+
+اگر خالی بود، `migrations/008-repair-institute-status.sql` را اجرا کنید.
+
+---
+
 ## گام ۲ — مهاجرت ۰۰۷
 
 محتوای `migrations/007-multi-role.sql` را بچسبانید و **Go**.
