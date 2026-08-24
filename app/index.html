@@ -485,6 +485,25 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
 .su-done.ok{background:var(--ok-soft);color:var(--ok)}
 .su-done.wait{background:var(--surface-2);color:var(--ink-3)}
 
+/* ───── کد پیوستن و صف درخواست ───── */
+.join-code{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:var(--r2);
+  background:var(--brand-soft);border:1px solid var(--line-2)}
+.join-code b{font-size:26px;font-weight:800;letter-spacing:6px;
+  font-variant-numeric:tabular-nums;flex:1;user-select:all}
+.req-list{display:flex;flex-direction:column}
+.req{display:flex;gap:13px;padding:15px 16px;border-block-end:1px solid var(--line);
+  align-items:flex-start;flex-wrap:wrap}
+.req:last-child{border-block-end:none}
+.req-b{flex:1;min-inline-size:180px;display:flex;flex-direction:column;gap:3px}
+.req-b b{font-size:14.5px}
+.req-b small{font-size:12.5px;color:var(--ink-3)}
+.req-msg{font-size:13px;line-height:1.85;color:var(--ink-2);margin-top:5px;
+  padding:8px 11px;border-radius:var(--r1);background:var(--surface-2)}
+.req-a{display:flex;flex-direction:column;gap:7px;align-items:flex-end;min-inline-size:150px}
+.req-a select{padding:7px 10px;min-block-size:36px;font:inherit;color:inherit;
+  border:1.5px solid var(--line-2);border-radius:var(--r1);background:var(--paper)}
+@media (max-width:560px){.req-a{align-items:stretch;inline-size:100%}}
+
 /* ───── ویزارد ───── */
 .wiz{display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-block-end:2px}
 .wstep{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:100px;
@@ -1019,6 +1038,7 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
           به «#/signup». اگر پیش‌فرض ثبت‌نام بماند، کسی که «ورود» زده روی
           فرمی می‌افتد که نام آموزشگاه می‌خواهد. */
        auth:{step:1,mode:"pass",phone:"",inst:"",name:"",user:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,wantPass:false,newPass:"",p1:"",p2:"",newInst:false},
+       join:{loaded:false,busy:false,code:null,reqs:[]},
        su:{step:1,path:"",code:"",codeInst:null,insts:null,instQ:"",instId:"",instName:"",
            role:"student",msg:"",fnFa:"",lnFa:"",fnEn:"",lnEn:"",nid:"",by:"",bm:"",bd:"",
            gender:"",email:"",city:"",phone:"",p1:"",p2:"",err:"",busy:false,
@@ -1222,6 +1242,7 @@ var NAV={
   {r:"m/live",t:"کلاس‌های در حال برگزاری",i:"video",badge:1,perm:"session.view"},
   {r:"m/enrol",t:"ثبت‌نام زبان‌آموز",i:"users",perm:"enrolment.create"},
   {r:"m/students",t:"زبان‌آموزان",i:"users",perm:"member.view"},
+  {r:"m/join",t:"پیوستن و درخواست‌ها",i:"users",perm:"member.approve"},
   {g:"آموزشی"},
   {r:"m/term",t:"ترم‌ساز",i:"cal",perm:"term.view"},
   {r:"m/classes",t:"کلاس‌ها",i:"book",perm:"class.view"},
@@ -2035,6 +2056,136 @@ V["m/students"]=function(){
           <td class="num ${s.balance?"down":""}">${s.balance?money(s.balance):"تسویه"}</td>
           <td>${risk?pill("در معرض ریزش","warn"):pill("عادی","ok")}</td></tr>`;}).join("")}
       </tbody></table></div>
+  </div>`;
+};
+
+/* ══════════ پیوستن: کد و صف درخواست ══════════
+ *
+ * دو راه ورود به آموزشگاه، در یک صفحه، چون مدیر بین‌شان انتخاب
+ * می‌کند و باید هر دو را کنار هم ببیند:
+ *
+ *   کد پیوستن — سریع و بی‌واسطه. برای ترمی که سی نفر با هم می‌آیند
+ *   تنها راه عملی است؛ صف یعنی مدیر سی بار روی «تأیید» بزند.
+ *
+ *   صف درخواست — کنترل کامل. برای وقتی که کد لو رفته یا آموزشگاه
+ *   می‌خواهد هرکس را جدا ببیند.
+ *
+ * داده وقتی گرفته می‌شود که صفحه باز شود، نه در bootstrap: مدیر
+ * ممکن است ماه‌ها به این صفحه نیاید و bootstrap در هر بارگذاری پنل
+ * اجرا می‌شود.
+ */
+
+function joinLoad(force){
+  if(S.join.busy)return;
+  if(S.join.loaded&&!force)return;
+  S.join.busy=true;
+  Promise.all([
+    apiCall("institute.php",{action:"joinCode"}),
+    apiCall("institute.php",{action:"requests",status:"pending"})
+  ]).then(function(r){
+    S.join.busy=false; S.join.loaded=true;
+    if(r[0]&&r[0].ok)S.join.code=r[0];
+    if(r[1]&&r[1].ok)S.join.reqs=r[1].requests||[];
+    if(S.route==="m/join")render();
+  });
+}
+
+/** «۲۲ تیر ۱۳۷۲» یا خط تیره */
+function joinAge(iso){
+  var j=parseISO(iso);
+  if(!j)return "";
+  var now=toJalali(new Date().getFullYear(),new Date().getMonth()+1,new Date().getDate());
+  var yrs=now[0]-j.y-((now[1]<j.m||(now[1]===j.m&&now[2]<j.d))?1:0);
+  return fa(yrs)+" ساله";
+}
+
+V["m/join"]=function(){
+  if(!API.live)return notBuilt();
+  joinLoad(false);
+  var c=S.join.code||{}, qs=S.join.reqs||[];
+
+  return h`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>کد پیوستن</h3>
+      <div class="r">${c.active?pill("فعال","ok"):pill("خاموش","mute")}</div></div>
+    <div style="padding:16px">
+      <p class="muted" style="font-size:13.5px;line-height:1.95;margin-bottom:14px">
+        کد را به زبان‌آموزان یا مدرسان بدهید. هرکس آن را در صفحهٔ ثبت‌نام وارد کند،
+        بی‌درنگ و بدون تأیید شما عضو می‌شود. اگر کد جایی لو رفت، بچرخانیدش —
+        همان لحظه کد قبلی از کار می‌افتد.</p>
+
+      ${c.code?h`
+      <div class="join-code">
+        <b class="num" dir="ltr" id="jcCode">${esc(c.code)}</b>
+        <button class="btn btn--g btn--sm" data-act="jc-copy">رونوشت</button>
+      </div>`
+      :h`<div class="empty" style="padding:18px"><b>هنوز کدی نساخته‌اید</b>
+          <p>یک کد بسازید تا ثبت‌نام گروهی ممکن شود.</p></div>`}
+
+      <div class="su-grid" style="margin-top:14px">
+        <div class="fld"><label for="jcRole">تازه‌واردها با چه نقشی عضو شوند؟</label>
+          <select id="jcRole">
+            <option value="student" ${c.role!=="teacher"?"selected":""}>زبان‌آموز</option>
+            <option value="teacher" ${c.role==="teacher"?"selected":""}>مدرس</option>
+          </select>
+          <span class="hint">${c.role==="teacher"
+            ?"مراقب باشید: هرکه کد را داشته باشد دسترسی مدرس می‌گیرد."
+            :"برای ثبت‌نام گروهی سر ترم."}</span>
+        </div>
+        <div class="fld"><label>وضعیت</label>
+          <label class="au-opt" style="min-block-size:42px;align-items:center">
+            <input type="checkbox" id="jcActive" ${c.active?"checked":""}>
+            <span>کد فعال باشد</span></label>
+        </div>
+      </div>
+
+      <div class="r" style="gap:8px;margin-top:6px">
+        <button class="btn btn--p btn--sm" data-act="jc-save" ${S.join.busy?"disabled":""}>
+          ${S.join.busy?"…":"ذخیره"}</button>
+        ${c.code?h`<button class="btn btn--g btn--sm" data-act="jc-rotate">چرخاندن کد</button>`
+                :h`<button class="btn btn--g btn--sm" data-act="jc-rotate">ساخت کد</button>`}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>درخواست‌های پیوستن</h3>
+      <div class="r">
+        ${qs.length?pill(fa(qs.length)+" در انتظار","warn"):pill("خالی","mute")}
+        <button class="btn btn--g btn--sm" data-act="jc-refresh">تازه‌سازی</button></div></div>
+
+    ${qs.length===0?h`
+      <div class="empty" style="padding:26px"><b>صف خالی است</b>
+        <p>کسانی که آموزشگاه شما را از فهرست انتخاب کنند، اینجا منتظر می‌مانند.
+           ${(S.join.code||{}).requests===false
+             ?"الان پذیرش درخواست خاموش است."
+             :"می‌توانید به‌جایش کد پیوستن بدهید تا بی‌درنگ عضو شوند."}</p></div>`
+    :h`<div class="req-list">${qs.map(function(q){
+      return h`<div class="req">
+        <span class="av">${initials(q.name)}</span>
+        <div class="req-b">
+          <b>${esc(q.name)}</b>
+          <small class="num" dir="ltr">${fa(q.phone)}</small>
+          ${(function(){
+            /* اگر نه شهری هست نه تاریخ تولدی، اصلاً <small> ننویس —
+               وگرنه یک خط خالی زیر شماره می‌ماند و ردیف کج به نظر می‌رسد */
+            var bits=[q.city?esc(q.city):"", q.birthDate?joinAge(q.birthDate):""].filter(Boolean);
+            return bits.length?"<small>"+bits.join(" · ")+"</small>":"";
+          })()}
+          ${q.message?h`<p class="req-msg">${esc(q.message)}</p>`:""}
+        </div>
+        <div class="req-a">
+          <span class="muted" style="font-size:12px">خواسته: ${SU_ROLES[q.role]||"—"}</span>
+          <select data-req-role="${esc(q.id)}" aria-label="نقش">
+            <option value="student" ${q.role!=="teacher"?"selected":""}>زبان‌آموز</option>
+            <option value="teacher" ${q.role==="teacher"?"selected":""}>مدرس</option>
+          </select>
+          <div class="r" style="gap:6px">
+            <button class="btn btn--p btn--sm" data-act="jr-ok" data-id="${esc(q.id)}">تأیید</button>
+            <button class="btn btn--g btn--sm" data-act="jr-no" data-id="${esc(q.id)}">رد</button>
+          </div>
+        </div>
+      </div>`;}).join("")}</div>`}
   </div>`;
 };
 
@@ -4199,7 +4350,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m":"پیشخوان","m/live":"کلاس‌های در حال برگزاری","m/students":"زبان‌آموزان",
  "m/student":"پروندهٔ زبان‌آموز","m/classes":"کلاس‌ها","m/finance":"مالی",
  "m/reports":"گزارش‌ها","m/settings":"تنظیمات","m/term":"ترم‌ساز",
- "m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
+ "m/join":"پیوستن و درخواست‌ها","m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
 var FULL={"auth":1,"signup":1,"nows":1,"susp":1,"meet":1,"pick":1};
@@ -4376,6 +4527,70 @@ document.addEventListener("click",function(e){
   if(!act)return;
   var a=act.dataset.act;
 
+
+
+  /* ── کد پیوستن و صف درخواست ── */
+  if(a==="jc-refresh"){ joinLoad(true); toast("تازه‌سازی شد"); return; }
+  if(a==="jc-copy"){
+    var t=(S.join.code||{}).code||"";
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){toast("کد رونوشت شد");},
+                                           function(){toast("رونوشت نشد — دستی بردارید");});
+    }else{
+      /* بدون HTTPS، clipboard در دسترس نیست. انتخاب متن دست‌کم یک
+         ctrl+c را ممکن می‌کند به‌جای اینکه دکمه بی‌صدا کاری نکند. */
+      var n=el("jcCode");
+      if(n&&window.getSelection){
+        var rg=document.createRange(); rg.selectNodeContents(n);
+        var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rg);
+        toast("کد انتخاب شد — با Ctrl+C بردارید");
+      }
+    }
+    return;
+  }
+  if(a==="jc-save"||a==="jc-rotate"){
+    if(S.join.busy)return;
+    var body={action:"joinCodeSet",
+              role:((el("jcRole")||{}).value)||"student",
+              active:(el("jcActive")||{}).checked!==false};
+    /* چرخاندن یعنی کد تازه، پس باید فعال هم باشد — وگرنه مدیر کدی
+       می‌سازد که هیچ‌کس نمی‌تواند با آن عضو شود و دلیلش را نمی‌فهمد. */
+    if(a==="jc-rotate"){ body.rotate=true; body.active=true; }
+    S.join.busy=true; render();
+    apiCall("institute.php",body).then(function(r){
+      S.join.busy=false;
+      if(!r.ok){toast(r.message||"ذخیره نشد");render();return;}
+      S.join.code={code:r.code,role:r.role,active:r.active,
+                   requests:(S.join.code||{}).requests};
+      render();
+      toast(a==="jc-rotate"?"کد تازه ساخته شد؛ کد قبلی از کار افتاد":"ذخیره شد");
+    });
+    return;
+  }
+  if(a==="jr-ok"||a==="jr-no"){
+    if(S.join.busy)return;
+    var rid=act.dataset.id;
+    var sel2=document.querySelector('[data-req-role="'+rid+'"]');
+    var body2=a==="jr-ok"
+      ? {action:"approveRequest",id:rid,role:(sel2&&sel2.value)||"student"}
+      : {action:"declineRequest",id:rid};
+    S.join.busy=true; render();
+    apiCall("institute.php",body2).then(function(r){
+      S.join.busy=false;
+      if(!r.ok){toast(r.message||"انجام نشد");render();return;}
+      /* از صف برداشته می‌شود، بعد صف از سرور تازه می‌شود. برداشتنِ
+         محلی برای این است که ردیف همان لحظه برود؛ تازه‌سازی برای این
+         که اگر مدیر دیگری هم‌زمان چیزی را بررسی کرده، دیده شود. */
+      S.join.reqs=(S.join.reqs||[]).filter(function(q){return q.id!==rid;});
+      render();
+      toast(a==="jr-ok"
+        ? "عضو شد — "+(SU_ROLES[r.role]||"کاربر")
+        : "درخواست رد شد");
+      joinLoad(true);
+      reload();
+    });
+    return;
+  }
 
   /* ── ثبت‌نام ── */
   if(a==="su-path"){

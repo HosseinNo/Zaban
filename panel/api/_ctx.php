@@ -236,7 +236,8 @@ function own(string $table, string $id, string $what = 'مورد'): array
     if ($id === '' || !preg_match('/^[a-f0-9]{32}$/', $id)) {
         fail(404, 'not_found', "$what پیدا نشد.");
     }
-    $allowed = ['klass', 'class_session', 'assignment', 'submission', 'enrolment', 'room', 'term', 'membership'];
+    $allowed = ['klass', 'class_session', 'assignment', 'submission', 'enrolment', 'room', 'term',
+                'membership', 'join_request'];
     if (!in_array($table, $allowed, true)) {
         error_log("own() روی جدول غیرمجاز: $table");
         fail(500, 'server_error', 'خطای داخلی.');

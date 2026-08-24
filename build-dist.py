@@ -646,13 +646,18 @@ def check_permissions(root: pathlib.Path) -> list:
     sql = sql_file.read_text(encoding="utf-8")
     bad = []
 
-    m = re.search(r"INSERT INTO permission .*?VALUES\s*(.*?);", sql, re.S)
-    if not m:
+    # همهٔ بلوک‌ها، نه فقط اولی: کاتالوگ در یک INSERT شروع می‌شود ولی
+    # هر نسخهٔ بعدی چند مجوز تازه در بلوک جدا اضافه می‌کند. با
+    # re.search فقط بلوک اول دیده می‌شد و مجوزهای تازه «ناشناخته»
+    # اعلام می‌شدند — خطایی که ساخت را می‌خواباند بی‌آنکه چیزی خراب باشد.
+    perms = {}
+    for blk in re.finditer(r"INSERT INTO permission .*?VALUES\s*(.*?);", sql, re.S):
+        for g in re.findall(
+            r"\('([a-z0-9_.]+)',\s*'[a-z]+',\s*'[^']*',\s*(\d),", blk.group(1)
+        ):
+            perms[g[0]] = int(g[1])
+    if not perms:
         return ["کاتالوگ مجوزها در اسکیما نیست"]
-    perms = {
-        g[0]: int(g[1])
-        for g in re.findall(r"\('([a-z0-9_.]+)',\s*'[a-z]+',\s*'[^']*',\s*(\d),", m.group(1))
-    }
 
     roles = set()
     mr = re.search(r"INSERT INTO role \(.*?VALUES\s*(.*?);", sql, re.S)
@@ -721,15 +726,22 @@ def main() -> int:
     site_out.mkdir(parents=True)
 
     site_html = site_src.read_text(encoding="utf-8")
-    # لینک‌های ورود به زیردامنهٔ پنل می‌روند، نه به یک لنگر خالی
-    site_html, n_links = re.subn(r'href="#login"', f'href="{PANEL_URL}"', site_html)
-    if n_links == 0:
-        print("هشدار: هیچ لینک #login در سایت پیدا نشد؛ دکمهٔ ورود بررسی شود.", file=sys.stderr)
 
-    # ثبت‌نام یک قدم جلوتر می‌رود: صفحهٔ ورودِ پنل، ولی روی حالت ساخت آموزشگاه
-    site_html, n_signup = re.subn(r'href="#signup"', f'href="{PANEL_URL}#/signup"', site_html)
-    if n_signup == 0:
-        print("هشدار: هیچ لینک #signup در سایت پیدا نشد؛ دکمهٔ ثبت‌نام بررسی شود.", file=sys.stderr)
+    # لینک‌های ورود و ثبت‌نام به زیردامنهٔ پنل می‌روند، نه به لنگر خالی.
+    #
+    # لنگرِ کوتاه (#login) برای وقتی است که سایت را محلی باز می‌کنید؛
+    # اینجا به نشانی واقعی تبدیل می‌شود. ولی جاهایی نشانی کامل از قبل
+    # در HTML نوشته شده و آنجا چیزی برای جایگزینی نیست — که درست است،
+    # نه نشانهٔ خرابی. هشدار فقط وقتی معنا دارد که *هیچ‌کدام* نباشد،
+    # وگرنه هر ساخت دو هشدار همیشگی می‌دهد و هشدارِ همیشگی دیده نمی‌شود.
+    for anchor, target, what in (
+        ("#login",  PANEL_URL,                 "ورود"),
+        ("#signup", f"{PANEL_URL}#/signup",    "ثبت‌نام"),
+    ):
+        site_html, n = re.subn(f'href="{anchor}"', f'href="{target}"', site_html)
+        if n == 0 and target not in site_html:
+            print(f"هشدار: نه لینک {anchor} در سایت هست نه نشانی کامل؛ "
+                  f"دکمهٔ {what} بررسی شود.", file=sys.stderr)
     (site_out / "index.html").write_text(site_html, encoding="utf-8")
     shutil.copytree(fonts, site_out / "fonts")
     (site_out / ".htaccess").write_text(SITE_HTACCESS, encoding="utf-8")
