@@ -508,3 +508,31 @@ function role_perm_map(string $roleId): array
     }
     return $out;
 }
+
+/**
+ * شناسهٔ نقش سامانه‌ای از روی نام نقش قدیمی.
+ *
+ * از مهاجرت ۰۰۶ به این‌سو، membership.role_id ناتهی است: هر عضویت
+ * باید بگوید کدام بستهٔ مجوز را دارد، وگرنه موتور مجوز چیزی برای
+ * خواندن ندارد. ولی پنج جای کد هنوز عضویت را بدون role_id می‌ساختند
+ * و روی MySQL با STRICT_TRANS_TABLES — یعنی هر هاست معمولی — خطای
+ * «Field 'role_id' doesn't have a default value» می‌گرفتند. پس دعوت
+ * عضو، ورود با پیامک و ساخت فضای کاری همگی ۵۰۰ می‌دادند.
+ *
+ * راه‌حل عمداً ستون پیش‌فرض نیست: پیش‌فرض یعنی مدرسی که role_id‌اش
+ * جا افتاده، بی‌صدا مجوزهای زبان‌آموز بگیرد. اینجا اگر نقش پیدا نشود
+ * استثنا می‌دهد — عضویتِ نساخته بهتر از عضویتِ با دسترسی اشتباه است.
+ */
+function system_role_id(string $role): string
+{
+    static $cache = [];
+    if (isset($cache[$role])) return $cache[$role];
+
+    $st = db()->prepare("SELECT id FROM role WHERE role_key = ? AND is_system = 1 AND institute_id = ''");
+    $st->execute([$role]);
+    $id = $st->fetchColumn();
+    if (!$id) {
+        throw new RuntimeException("نقش سامانه‌ای «{$role}» در جدول role نیست — مهاجرت ۰۰۶ اجرا شده؟");
+    }
+    return $cache[$role] = (string)$id;
+}

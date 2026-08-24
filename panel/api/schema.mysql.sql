@@ -24,8 +24,30 @@ CREATE TABLE IF NOT EXISTS app_user (
   pass_hash         VARCHAR(255) NULL,
   phone_verified_at DATETIME     NULL,
   last_login_at     DATETIME     NULL,
+  /*
+   * نام فارسی و انگلیسی هر دو نگه داشته می‌شود: فارسی برای نمایش در
+   * پنل، انگلیسی برای گواهی پایان دوره که به لاتین صادر می‌شود.
+   *
+   * تاریخ تولد میلادی ذخیره و شمسی نمایش داده می‌شود — بند P.2.
+   * ذخیرهٔ شمسی هم محاسبهٔ سن را می‌شکند هم مرتب‌سازی تاریخی را.
+   */
+  first_name_fa     VARCHAR(60)  NULL,
+  last_name_fa      VARCHAR(60)  NULL,
+  first_name_en     VARCHAR(60)  NULL,
+  last_name_en      VARCHAR(60)  NULL,
+  national_id       VARCHAR(10)  NULL,
+  birth_date        DATE         NULL,
+  gender            VARCHAR(10)  NULL,
+  email             VARCHAR(160) NULL,
+  city              VARCHAR(80)  NULL,
+  signup_role       VARCHAR(16)  NULL,
+  profile_done      TINYINT(1)   NOT NULL DEFAULT 0,
   created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_user_phone (phone),
+  -- کد ملی یکتاست ولی اختیاری: چند کاربر می‌توانند خالی داشته باشند،
+  -- ولی دو نفر با یک کد ملی نه
+  UNIQUE KEY uq_user_national (national_id),
+  KEY ix_user_signup_role (signup_role),
   UNIQUE KEY uq_user_username (username),
   KEY ix_user_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -106,7 +128,18 @@ CREATE TABLE IF NOT EXISTS institute (
   phone         VARCHAR(20)  NULL,
   city          VARCHAR(80)  NULL,
   term_weeks    TINYINT UNSIGNED NOT NULL DEFAULT 12,
+  /*
+   * کد پیوستن روی خود آموزشگاه می‌نشیند نه در جدول جدا، چون هر
+   * آموزشگاه در هر لحظه یک کد فعال دارد. چرخاندن کد یعنی نوشتن
+   * مقدار تازه — و همان لحظه کد قدیمی بی‌اثر می‌شود، که دقیقاً رفتار
+   * مورد انتظار است وقتی کدی لو رفته.
+   */
+  join_code        VARCHAR(12) NULL,
+  join_code_role   VARCHAR(16) NOT NULL DEFAULT 'student',
+  join_code_active TINYINT(1)  NOT NULL DEFAULT 0,
+  accepts_requests TINYINT(1)  NOT NULL DEFAULT 1,
   created_at    DATETIME     NOT NULL,
+  UNIQUE KEY uq_join_code (join_code),
   KEY ix_inst_owner (owner_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -119,6 +152,8 @@ CREATE TABLE IF NOT EXISTS membership (
   status       VARCHAR(16) NOT NULL DEFAULT 'active',
   hourly_rate  BIGINT      NOT NULL DEFAULT 0,  -- ریال، فقط برای مدرس
   created_at   DATETIME    NOT NULL,
+  -- قید سه‌تایی (آموزشگاه، کاربر، نقش) پایین‌تر جایگزینش می‌شود؛
+  -- اینجا نمی‌تواند بیاید چون role_id هنوز ساخته نشده
   UNIQUE KEY uq_member (institute_id, user_id),
   KEY ix_member_user (user_id),
   KEY ix_member_role (institute_id, role),
@@ -550,6 +585,29 @@ ALTER TABLE membership
   ADD KEY ix_member_expiry (expires_at);
 
 
+-- ── عضویت: از تک‌نقشی به چند-نقشی ─────────────────────────────────
+--
+-- قید قدیمی (آموزشگاه، کاربر) یعنی هر کس در هر آموزشگاه فقط یک نقش
+-- دارد — و آموزشگاهی که مدیرش خودش هم تدریس می‌کند باید بین دو حساب
+-- جابه‌جا شود. قید تازه سه‌تایی است: همان آدم هم مدیر است هم مدرس،
+-- ولی عضویت تکراریِ *هم‌نقش* هنوز رد می‌شود.
+--
+-- ترتیب عمدی است: اول قید تازه، بعد برداشتن قدیمی. برعکسش پنجره‌ای
+-- باز می‌کند که هیچ قیدی برقرار نیست.
+ALTER TABLE membership ADD UNIQUE KEY uq_member_role (institute_id, user_id, role_id);
+ALTER TABLE membership DROP INDEX uq_member;
+
+-- role_id از این پس اجباری است، و به نقش واقعی اشاره می‌کند. کلید
+-- خارجی *بعد* از NOT NULL می‌آید تا اگر دادهٔ ناسازگاری بود، در گام
+-- قبل معلوم شده باشد نه اینجا.
+ALTER TABLE membership MODIFY COLUMN role_id CHAR(32) NOT NULL;
+ALTER TABLE membership ADD CONSTRAINT fk_member_role FOREIGN KEY (role_id) REFERENCES role(id);
+
+-- انتخابگر نقش در هر بارگذاری پنل همهٔ عضویت‌های فعال کاربر را
+-- می‌خواند؛ بدون این ایندکس، پیمایش کامل جدول است.
+ALTER TABLE membership ADD KEY ix_member_active (user_id, status, expires_at);
+
+
 -- ── نشست: زمینهٔ فعال ─────────────────────────────────────────────
 -- بدون این، سوییچ نقش فقط یک تغییر ظاهری در مرورگر است و کسی که در
 -- نمای زبان‌آموز نشسته می‌تواند با درخواست دستی دادهٔ مدرس را بخواند.
@@ -759,6 +817,40 @@ INSERT INTO role_grantable_perm (granter_role_id, perm_key) VALUES
 --  می‌شود. یعنی اگر لازم شد، بازگشت به کد قبلی در هر لحظه ممکن است
 --  بدون از‌دست‌رفتن داده.
 -- ═══════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════
+--  صف درخواست پیوستن
+--
+--  کسی که کد پیوستن ندارد، آموزشگاه را از فهرست انتخاب می‌کند و اینجا
+--  می‌نشیند تا مدیر تأیید یا رد کند.
+-- ═══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS join_request (
+  id           CHAR(32)     NOT NULL PRIMARY KEY,
+  institute_id CHAR(32)     NOT NULL,
+  user_id      CHAR(32)     NOT NULL,
+  wanted_role  VARCHAR(16)  NOT NULL,
+  message      VARCHAR(500) NULL,
+  status       VARCHAR(16)  NOT NULL DEFAULT 'pending',
+  decided_by   CHAR(32)     NULL,
+  decided_at   DATETIME     NULL,
+  decline_note VARCHAR(255) NULL,
+  created_at   DATETIME     NOT NULL,
+  UNIQUE KEY uq_join_req (institute_id, user_id, status),
+  KEY ix_join_req_inst (institute_id, status, created_at),
+  KEY ix_join_req_user (user_id, status),
+  CONSTRAINT ck_join_status CHECK (status IN ('pending','approved','declined','withdrawn')),
+  CONSTRAINT fk_join_inst FOREIGN KEY (institute_id) REFERENCES institute(id) ON DELETE CASCADE,
+  CONSTRAINT fk_join_user FOREIGN KEY (user_id) REFERENCES app_user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO permission (perm_key, group_key, label_fa, is_platform, is_write, sort_order) VALUES
+('member.joincode',  'member', 'مدیریت کد پیوستن آموزشگاه', 0, 1, 60),
+('member.approve',   'member', 'تأیید یا رد درخواست پیوستن', 0, 1, 70);
+
+INSERT INTO role_permission (role_id, perm_key, is_platform, scope) VALUES
+('r_manager', 'member.joincode', 0, 'institute'),
+('r_manager', 'member.approve',  0, 'institute');
+
 
 UPDATE membership SET role_id = CASE role
   WHEN 'manager' THEN 'r_manager'

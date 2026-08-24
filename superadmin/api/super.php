@@ -225,8 +225,8 @@ case 'institutes.create':
     $iid = new_id();
     $db->prepare('INSERT INTO institute (id, name, owner_user_id, phone, city, term_weeks, status, created_at) VALUES (?,?,?,?,?,?,?,?)')
        ->execute([$iid, $name, $uid, $phone ?: null, $city ?: null, 12, 'active', now_utc()]);
-    $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
-       ->execute([new_id(), $iid, $uid, 'manager', 'active', now_utc()]);
+    $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at) VALUES (?,?,?,?,?,?,?)')
+       ->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', now_utc()]);
 
     audit('super.institute_created', $a['id'], ['institute' => $iid, 'name' => $name, 'ownerPhone' => $phone]);
     ok(['id' => $iid]);
@@ -350,8 +350,8 @@ case 'membership.add':
         $mid = (string)$existing['id'];
     } else {
         $mid = new_id();
-        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
-            ->execute([$mid, $inst['id'], $u['id'], $role, 'active', now_utc()]);
+        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at) VALUES (?,?,?,?,?,?,?)')
+            ->execute([$mid, $inst['id'], $u['id'], $role, system_role_id($role), 'active', now_utc()]);
     }
     audit('super.membership_granted', $a['id'], ['user' => $u['id'], 'institute' => $inst['id'], 'role' => $role]);
     ok(['membershipId' => $mid]);
@@ -1016,7 +1016,7 @@ case 'demo.approve':
         $db->prepare(
             'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, expires_at, granted_by, granted_reason, created_at)
              VALUES (?,?,?,?,?,?,?,?,?,?)'
-        )->execute([new_id(), $iid, $uid, 'manager', 'r_manager', 'active', $until,
+        )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', $until,
                     $a['id'], 'دورهٔ آزمایشی ' . $days . ' روزه', now_utc()]);
 
         $db->prepare(

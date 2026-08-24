@@ -209,14 +209,14 @@ case 'register':
             $db->prepare(
                 'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at)
                  VALUES (?,?,?,?,?,?,?)'
-            )->execute([new_id(), $iid, $uid, 'manager', 'r_manager', 'active', $now]);
+            )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', $now]);
             $outcome = 'manager';
 
         } elseif ($mode === 'code') {
             $db->prepare(
                 'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, granted_reason, created_at)
                  VALUES (?,?,?,?,?,?,?,?)'
-            )->execute([new_id(), (string)$inst['id'], $uid, $wanted, 'r_' . $wanted,
+            )->execute([new_id(), (string)$inst['id'], $uid, $wanted, system_role_id($wanted),
                         'active', 'پیوستن با کد', $now]);
             $outcome = 'joined';
 

@@ -129,3 +129,29 @@ function is_last_active_manager(string $instituteId, string $membershipIdToExclu
     $st->execute([$instituteId, $membershipIdToExclude]);
     return (int)$st->fetchColumn() === 0;
 }
+
+/**
+ * شناسهٔ نقش سامانه‌ای از روی نام نقش.
+ *
+ * نسخهٔ دوقلوی همین تابع در panel/api/_perm.php هست. تکرارش عمدی است:
+ * بستهٔ سوپرادمین جدا منتشر می‌شود و panel/api/ را نمی‌بیند، پس یا
+ * باید تکرار شود یا یک فایل مشترک سوم ساخته شود که هر دو بسته کپی‌اش
+ * کنند — که همان تکرار است با یک لایهٔ اضافه.
+ *
+ * چرا اصلاً لازم است: از مهاجرت ۰۰۶، membership.role_id ناتهی است و
+ * پیش‌فرض ندارد. عمداً پیش‌فرض ندارد — پیش‌فرض یعنی عضویتی که role_id
+ * جا افتاده، بی‌صدا مجوزهای نقش دیگری بگیرد.
+ */
+function system_role_id(string $role): string
+{
+    static $cache = [];
+    if (isset($cache[$role])) return $cache[$role];
+
+    $st = db()->prepare("SELECT id FROM role WHERE role_key = ? AND is_system = 1 AND institute_id = ''");
+    $st->execute([$role]);
+    $id = $st->fetchColumn();
+    if (!$id) {
+        throw new RuntimeException("نقش سامانه‌ای «{$role}» در جدول role نیست — مهاجرت ۰۰۶ اجرا شده؟");
+    }
+    return $cache[$role] = (string)$id;
+}

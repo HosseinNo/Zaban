@@ -111,8 +111,8 @@ case 'invite':
     if ($uid) {
         $has = t_one('SELECT id FROM membership WHERE __I__ AND user_id = ?', [$uid]);
         if ($has) fail(409, 'already_member', 'این شماره از قبل عضو آموزشگاه است.');
-        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, status, created_at) VALUES (?,?,?,?,?,?)')
-            ->execute([new_id(), inst_id(), $uid, $role, 'active', now_utc()]);
+        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at) VALUES (?,?,?,?,?,?,?)')
+            ->execute([new_id(), inst_id(), $uid, $role, system_role_id($role), 'active', now_utc()]);
         if ($role === 'student' && $clsId !== '') enrol_student((string)$uid, $clsId);
         audit('member.added', my_id(), ['phone' => $phone, 'role' => $role]);
         ok(['joined' => true, 'message' => 'عضو شد. دفعهٔ بعد که وارد شود پنل خودش را می‌بیند.']);

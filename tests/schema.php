@@ -61,14 +61,14 @@ foreach (['permission','role','role_permission','user_permission',
 $np = (int)$pdo->query('SELECT COUNT(*) FROM permission')->fetchColumn();
 $nplat = (int)$pdo->query('SELECT COUNT(*) FROM permission WHERE is_platform=1')->fetchColumn();
 $nr = (int)$pdo->query('SELECT COUNT(*) FROM role')->fetchColumn();
-check($np === 59, "۵۹ مجوز درج شد", "شمار: $np");
+check($np === 61, "۶۱ مجوز درج شد", "شمار: $np");   // ۵۹ از ۰۰۶ + ۲ از ۰۰۹
 check($nplat === 14, "۱۴ مجوز سطح پلتفرم", "شمار: $nplat");
 check($nr === 3, "سه نقش سیستمی", "شمار: $nr");
 
 $mgr = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_manager'")->fetchColumn();
 $tch = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_teacher'")->fetchColumn();
 $std = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_student'")->fetchColumn();
-check($mgr === 42, "بستهٔ مدیر ۴۲ مجوز", "شمار: $mgr");
+check($mgr === 44, "بستهٔ مدیر ۴۴ مجوز", "شمار: $mgr");   // + کد پیوستن و تأیید درخواست
 check($tch === 23, "بستهٔ مدرس ۲۳ مجوز", "شمار: $tch");
 check($std === 10, "بستهٔ زبان‌آموز ۱۰ مجوز", "شمار: $std");
 
@@ -124,22 +124,37 @@ $pdo->prepare('INSERT INTO institute (id,name,owner_user_id,term_weeks,created_a
 foreach ([['u1','manager'],['u2','teacher'],['u3','student']] as [$uid,$role]) {
     $pdo->prepare('INSERT INTO app_user (id,phone,full_name,role,status,created_at) VALUES (?,?,?,?,?,?)')
         ->execute([$uid,'0912000000'.substr($uid,1),'کاربر '.$uid,$role,'active',$now]);
-    $pdo->prepare('INSERT INTO membership (id,institute_id,user_id,role,status,created_at) VALUES (?,?,?,?,?,?)')
-        ->execute(['m'.substr($uid,1),'i1',$uid,$role,'active',$now]);
+    $pdo->prepare('INSERT INTO membership (id,institute_id,user_id,role,role_id,status,created_at)
+                   VALUES (?,?,?,?,?,?,?)')
+        ->execute(['m'.substr($uid,1),'i1',$uid,$role,'r_'.$role,'active',$now]);
 }
-// همان UPDATE پایان اسکیما، این‌بار روی داده‌ای که وجود دارد
-$pdo->exec("UPDATE membership SET role_id = CASE role
-              WHEN 'manager' THEN 'r_manager' WHEN 'teacher' THEN 'r_teacher'
-              ELSE 'r_student' END WHERE role_id IS NULL");
 $map = $pdo->query('SELECT user_id, role, role_id FROM membership ORDER BY user_id')->fetchAll();
 $expect = ['u1'=>'r_manager','u2'=>'r_teacher','u3'=>'r_student'];
-$allOk = true;
+$allOk = count($map) === 3;
 foreach ($map as $m) {
-    if ($expect[$m['user_id']] !== $m['role_id']) { $allOk = false; }
+    if (($expect[$m['user_id']] ?? null) !== $m['role_id']) { $allOk = false; }
 }
 check($allOk, 'هر سه عضویت به نقش درست نگاشت شد');
-$nulls = (int)$pdo->query('SELECT COUNT(*) FROM membership WHERE role_id IS NULL')->fetchColumn();
-check($nulls === 0, 'هیچ عضویتی بدون role_id نماند', "باقی‌مانده: $nulls");
+
+/*
+ * عضویت بدون role_id باید رد شود.
+ *
+ * این جای آزمونِ قدیمیِ «UPDATE پایان اسکیما NULLها را پر می‌کند» را
+ * گرفته. آن آزمون وقتی معنا داشت که ستون NULL‌پذیر بود و مهاجرت آن را
+ * بعداً پر می‌کرد؛ حالا در نصب تازه از همان اول NOT NULL است.
+ *
+ * ضمانتِ تازه قوی‌تر است: عضویتِ بی‌نقش اصلاً ساخته نمی‌شود. یک بار
+ * شش دستور در کد این ستون را جا انداخته بودند و چون هیچ‌جا آزموده
+ * نمی‌شد، تنها نشانه‌اش خطای ۵۰۰ روی سرور زنده بود.
+ */
+try {
+    $pdo->prepare('INSERT INTO membership (id,institute_id,user_id,role,status,created_at)
+                   VALUES (?,?,?,?,?,?)')
+        ->execute(['m-noRole','i1','u3','student','active',$now]);
+    bad('عضویت بدون role_id پذیرفته شد');
+} catch (PDOException $e) {
+    ok('عضویت بدون role_id رد شد');
+}
 
 echo "\n\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90 ۶. کلید خارجی مجوز موردی \xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\n";
 $pdo->prepare('INSERT INTO user_permission (id,institute_id,user_id,perm_key,effect,granted_by,created_at)

@@ -19,6 +19,21 @@ function check(bool $c, string $w, string $why = ''): void { $c ? ok($w) : bad($
 $pdo = new PDO(DSN, 'root', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $now = gmdate('Y-m-d H:i:s');
 
+/*
+ * ردیف‌های اجرای قبلی پاک می‌شوند.
+ *
+ * این آزمون شناسه‌های ثابت دارد (i1، i2، u1، u2، …) و باید داشته باشد:
+ * قیدی که می‌آزماید روی همان سه‌تاییِ مشخص است، پس شناسهٔ تصادفی
+ * چیزی را ساده‌تر نمی‌کند. ولی بدون تمیزکاری، اجرای دوم به ردیف‌های
+ * اجرای اول می‌خورد و شکست می‌دهد — آزمونی که فقط یک‌بار سبز می‌شود
+ * عملاً آزمون نیست، چون کسی دومین بار اجرایش نمی‌کند.
+ *
+ * ترتیب مهم است: عضویت پیش از آموزشگاه و کاربر، چون کلید خارجی دارد.
+ */
+$pdo->exec("DELETE FROM membership WHERE id IN ('m-dual','m-ghost','m-i2','m-exp')");
+$pdo->exec("DELETE FROM membership WHERE institute_id = 'i2'");
+$pdo->exec("DELETE FROM institute  WHERE id = 'i2'");
+
 echo "\n\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90 ۱. قید تک‌نقشی برداشته شده \xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\n";
 $idx = $pdo->query("SHOW INDEX FROM membership WHERE Key_name = 'uq_member'")->fetchAll();
 check(count($idx) === 0, 'قید uq_member دیگر نیست');
