@@ -535,12 +535,74 @@ function viewUsers(){
       </tbody></table></div></div>`}`;
 }
 
+
+/* ── اعطا و سلب موردی روی یک کاربر ──
+ *
+ * بستهٔ نقش کف دسترسی است؛ این پنل استثناها را می‌سازد. دو حالت دارد:
+ * allow برای دادن چیزی که نقشش ندارد، deny برای گرفتن چیزی که دارد.
+ * سلب همیشه برنده است — حتی بر اعطای صریح — و این قاعده در موتور
+ * اعمال می‌شود، نه اینجا.
+ */
+function accessPanel(d){
+  if(!d.overrides&&!d.memberships)return "";
+  var cat=S.access;
+  var ovr=d.overrides||[];
+  var mem=(d.memberships||[]).filter(function(m){return m.status==="active";});
+  if(!mem.length)return "";
+
+  return h`
+  <div class="card" style="margin-block-end:16px">
+    <div class="card-h"><h3>دسترسی‌های موردی</h3>
+      <span class="muted" style="font-size:12.5px">فراتر یا کمتر از بستهٔ نقش</span></div>
+    <div class="card-b">
+      ${ovr.length? h`<div class="tbl-wrap"><table>
+        <thead><tr><th>آموزشگاه</th><th>مجوز</th><th>اثر</th><th>تا</th><th></th></tr></thead>
+        <tbody>${ovr.map(function(o){
+          return h`<tr>
+            <td>${esc(o.institute)}</td>
+            <td>${esc(o.label)}<br><span class="muted" dir="ltr" style="font-size:11.5px">${esc(o.perm)}</span></td>
+            <td>${o.effect==="allow"
+                  ? '<span class="pill p-ok">اعطا'+(o.scope?" · "+(SCOPE_FA[o.scope]||o.scope):"")+'</span>'
+                  : '<span class="pill p-bad">سلب</span>'}</td>
+            <td class="num">${o.expiresAt?jDateTime(o.expiresAt):"بی‌پایان"}</td>
+            <td><button class="btn btn--g btn--sm" data-a="permClear" data-uid="${d.user.id}"
+                        data-iid="${o.instituteId}" data-perm="${esc(o.perm)}">برداشتن</button></td>
+          </tr>`;}).join("")}
+        </tbody></table></div>`
+        : '<div class="empty" style="padding:14px">استثنایی ثبت نشده — این کاربر دقیقاً همان چیزی را دارد که نقشش می‌دهد.</div>'}
+
+      <div style="margin-block-start:16px;padding-block-start:16px;border-block-start:1px solid var(--line)">
+        <div class="grid g4" style="align-items:end">
+          <div class="fld"><label>آموزشگاه</label>
+            <select id="apInst">${mem.map(function(m){
+              return '<option value="'+m.instituteId+'">'+esc(m.institute)+' · '+esc(m.role)+'</option>';}).join("")}</select></div>
+          <div class="fld"><label>مجوز</label>
+            <select id="apPerm">${cat
+              ? cat.permissions.filter(function(x){return !x.platform;}).map(function(x){
+                  return '<option value="'+x.key+'">'+esc(x.label)+'</option>';}).join("")
+              : '<option value="">اول صفحهٔ نقش‌ها را باز کنید</option>'}</select></div>
+          <div class="fld"><label>محدوده</label>
+            <select id="apScope">${(cat&&cat.scopes||["own","institute"]).map(function(x){
+              return '<option value="'+x+'">'+(SCOPE_FA[x]||x)+'</option>';}).join("")}</select></div>
+          <div class="fld"><label>روز (۰ = بی‌پایان)</label>
+            <input id="apDays" type="text" inputmode="numeric" value="0"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-block-start:10px">
+          <button class="btn btn--p btn--sm" data-a="permAllow" data-uid="${d.user.id}">اعطا</button>
+          <button class="btn btn--d btn--sm" data-a="permDeny"  data-uid="${d.user.id}">سلب</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function viewUserDetail(){
   var d=S.userDetail;
   if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
   var u=d.user;
   return h`
   <button class="back" data-a="userBack">← بازگشت به جست‌وجو</button>
+  ${accessPanel(d)}
   <div class="card"><div class="card-h"><h3>${esc(u.name)}</h3>
       ${u.status==="active"?'<span class="pill p-ok">فعال</span>':'<span class="pill p-bad">مسدود</span>'}</div>
     <div class="card-b">
@@ -1133,6 +1195,8 @@ function doUserSearch(){
 function mb2(s){return (s||"").length;}
 function doUserOpen(id){
   if(!API.live){S.userDetail=demoUserDetail(id);render();return;}
+  // کاتالوگ مجوزها برای فهرست کشویی لازم است؛ یک‌بار می‌آید و می‌ماند
+  if(!S.access)call({action:"access.catalogue"}).then(function(r){if(r.ok){S.access=r;render();}});
   S.userDetail=null; render();
   call({action:"users.get",id:id}).then(function(r){
     if(r.ok)S.userDetail=r; else toast(r.message||"باز نشد");
@@ -1188,6 +1252,32 @@ document.addEventListener("click",function(e){
   var b=e.target.closest("[data-a]");
   if(!b)return;
   var a=b.dataset.a;
+
+  /* ── اعطا و سلب موردی ── */
+  if(a==="permAllow"||a==="permDeny"){
+    var days=parseInt(String((el("apDays")||{}).value||"0").replace(/[۰-۹]/g,function(c){
+      return "۰۱۲۳۴۵۶۷۸۹".indexOf(c);}),10)||0;
+    call({action:"user.permSet",userId:b.dataset.uid,
+          instituteId:(el("apInst")||{}).value,perm:(el("apPerm")||{}).value,
+          effect:a==="permAllow"?"allow":"deny",
+          scope:(el("apScope")||{}).value,days:days})
+      .then(function(r){
+        if(!r.ok){toast(r.message||"انجام نشد");return;}
+        toast(a==="permAllow"?"دسترسی داده شد":"دسترسی گرفته شد");
+        doUserOpen(b.dataset.uid);
+      });
+    return;
+  }
+
+  if(a==="permClear"){
+    call({action:"user.permSet",userId:b.dataset.uid,instituteId:b.dataset.iid,
+          perm:b.dataset.perm,effect:"clear"}).then(function(r){
+      if(!r.ok){toast(r.message||"برداشته نشد");return;}
+      toast("استثنا برداشته شد");
+      doUserOpen(b.dataset.uid);
+    });
+    return;
+  }
 
   /* ── نقش‌ها و مجوزها ── */
   if(a==="roleSel"){S.accessRole=b.dataset.id;render();return;}
