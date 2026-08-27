@@ -504,6 +504,57 @@ body.full-mode .shell,body.full-mode .demo-bar{display:none}
   border:1.5px solid var(--line-2);border-radius:var(--r1);background:var(--paper)}
 @media (max-width:560px){.req-a{align-items:stretch;inline-size:100%}}
 
+/* ───── اعلان ───── */
+.ntf-host{position:relative}
+.ntf-dot{position:absolute;inset-block-start:-4px;inset-inline-end:-4px;min-inline-size:17px;
+  block-size:17px;padding-inline:4px;border-radius:100px;background:var(--bad);color:#fff;
+  font-size:10.5px;font-weight:700;display:grid;place-items:center;pointer-events:none}
+.ntf-wrap{position:absolute;inset-block-start:calc(100% + 9px);inset-inline-end:0;z-index:60;
+  inline-size:min(370px,calc(100vw - 24px));background:var(--paper);border:1px solid var(--line-2);
+  border-radius:var(--r2);box-shadow:0 12px 34px rgba(0,0,0,.16);overflow:hidden}
+.ntf-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:12px 14px;border-block-end:1px solid var(--line);font-size:14px}
+.ntf-list{max-block-size:min(440px,60vh);overflow-y:auto}
+.ntf-f{padding:10px 12px;border-block-start:1px solid var(--line)}
+.ntf{display:flex;gap:11px;align-items:flex-start;text-align:start;inline-size:100%;
+  padding:12px 14px;border:none;border-block-end:1px solid var(--line);
+  background:transparent;font:inherit;color:inherit;cursor:pointer}
+.ntf:last-child{border-block-end:none}
+.ntf:hover{background:var(--surface-2)}
+.ntf.new{background:var(--brand-soft)}
+.ntf.new:hover{background:var(--brand-soft);filter:brightness(.97)}
+.ntf-i{inline-size:26px;block-size:26px;border-radius:50%;flex:none;display:grid;
+  place-items:center;font-size:13px;font-weight:700}
+.nk-info{background:var(--surface-3);color:var(--ink-2)}
+.nk-ok{background:var(--ok-soft);color:var(--ok)}
+.nk-warn{background:var(--warn-soft);color:var(--warn)}
+.nk-bad{background:var(--bad-soft);color:var(--bad);font-size:12px;letter-spacing:-1px}
+.ntf-b{flex:1;min-inline-size:0;display:flex;flex-direction:column;gap:3px}
+.ntf-b b{font-size:13.5px}
+.ntf-t{font-size:12.5px;color:var(--ink-2);line-height:1.75;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ntf-b small{font-size:11.5px;color:var(--ink-3)}
+.aud-picks{display:flex;flex-wrap:wrap;gap:7px}
+.aud{padding:9px 13px;border:1.5px solid var(--line-2);border-radius:var(--r1);
+  background:var(--paper);font:inherit;color:inherit;cursor:pointer;text-align:start}
+.aud:hover{border-color:var(--brand)}
+.aud.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 3px var(--ring)}
+.aud b{display:block;font-size:13.5px}
+.aud small{display:block;font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.aud.on small{color:var(--ink-2)}
+.kind-picks{display:flex;gap:7px;flex-wrap:wrap}
+.kind{padding:8px 15px;border:1.5px solid var(--line-2);border-radius:100px;
+  background:var(--paper);font:inherit;font-size:13px;color:var(--ink-3);cursor:pointer}
+.kind:hover{border-color:var(--brand)}
+.kind.on{font-weight:700;border-color:currentColor}
+.kind.on.nk-info{background:var(--surface-3);color:var(--ink)}
+.kind.on.nk-success{background:var(--ok-soft);color:var(--ok)}
+.kind.on.nk-warn{background:var(--warn-soft);color:var(--warn)}
+.kind.on.nk-urgent{background:var(--bad-soft);color:var(--bad)}
+.sent-list{display:flex;flex-direction:column}
+.sent{display:flex;gap:11px;padding:12px 15px;border-block-end:1px solid var(--line);align-items:flex-start}
+.sent:last-child{border-block-end:none}
+
 /* ───── ویزارد ───── */
 .wiz{display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-block-end:2px}
 .wstep{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:100px;
@@ -668,9 +719,12 @@ input.jdate{cursor:pointer}
         <button class="ib" id="themeBtn" aria-label="حالت روشن و تاریک">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
-        <button class="ib" aria-label="اعلان‌ها">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-        </button>
+        <div class="ntf-host" id="notifHost">
+          <button class="ib" aria-label="اعلان‌ها" data-act="ntf-bell">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="ntf-dot num" id="notifDot" style="display:none"></span>
+          </button>
+        </div>
       </div>
     </header>
     <main class="page" id="page"></main>
@@ -1038,6 +1092,9 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
           به «#/signup». اگر پیش‌فرض ثبت‌نام بماند، کسی که «ورود» زده روی
           فرمی می‌افتد که نام آموزشگاه می‌خواهد. */
        auth:{step:1,mode:"pass",phone:"",inst:"",name:"",user:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,wantPass:false,newPass:"",p1:"",p2:"",newInst:false},
+       notif:{open:false,unread:0,items:[],timer:null},
+       compose:{audience:"",title:"",body:"",kind:"info",busy:false,err:"",
+                auds:null,sent:null,loading:false},
        join:{loaded:false,busy:false,code:null,reqs:[]},
        su:{step:1,path:"",code:"",codeInst:null,insts:null,instQ:"",instId:"",instName:"",
            role:"student",msg:"",fnFa:"",lnFa:"",fnEn:"",lnEn:"",nid:"",by:"",bm:"",bd:"",
@@ -2187,6 +2244,220 @@ V["m/join"]=function(){
         </div>
       </div>`;}).join("")}</div>`}
   </div>`;
+};
+
+/* ══════════ اعلان ══════════
+ *
+ * زنگ در نوار بالا، و کشویی زیرش. صفحهٔ جدا ندارد چون اعلان چیزی
+ * نیست که کسی «برود سراغش» — وسط کار به چشمش می‌خورد یا هرگز.
+ *
+ * صندوق در هر بارگذاری پنل یک‌بار گرفته می‌شود و بعد هر دو دقیقه.
+ * نه کمتر: اعلانِ کلاس فردا، دو دقیقه دیرتر هم به‌موقع است، و هر
+ * درخواست اضافه روی هاست اشتراکی هزینه دارد.
+ */
+
+/*
+ * نشانه و رنگ، هر دو.
+ *
+ * نسخهٔ اول «هشدار» و «فوری» را هر دو با «!» نشان می‌داد و فقط رنگ
+ * فرق می‌کرد — یعنی برای کسی که رنگ را تشخیص نمی‌دهد، هیچ فرقی
+ * نداشتند. حالا نشانه هم فرق دارد و برچسب متنی هم برای صفحه‌خوان
+ * می‌رود.
+ */
+var NOTIF_KIND={
+  info   :{i:"◆",  c:"nk-info", t:"خبر"},
+  success:{i:"✓",  c:"nk-ok",   t:"خبر خوب"},
+  warn    :{i:"!",  c:"nk-warn", t:"هشدار"},
+  urgent :{i:"!!", c:"nk-bad",  t:"فوری"}
+};
+
+function notifLoad(){
+  if(!API.live||!API.user)return;
+  if(!navVisible({perm:"notify.view"}))return;
+  apiCall("notify.php",{action:"inbox",limit:30}).then(function(r){
+    if(!r||!r.ok)return;
+    S.notif.items=r.items||[];
+    S.notif.unread=r.unread|0;
+    notifPaint();
+  });
+}
+
+/* فقط عدد زنگ و فهرست کشویی را دست می‌زند، نه کل صفحه — render کامل
+   وسط کارِ کاربر، فرم نیمه‌پرشده را پاک می‌کند. */
+function notifPaint(){
+  var dot=el("notifDot");
+  if(dot){
+    dot.textContent=S.notif.unread?fa(S.notif.unread>99?"99+":S.notif.unread):"";
+    dot.style.display=S.notif.unread?"grid":"none";
+  }
+  var box=el("notifList");
+  if(box&&S.notif.open)box.innerHTML=notifListHtml();
+}
+
+function notifListHtml(){
+  var xs=S.notif.items||[];
+  if(!xs.length){
+    return '<div class="empty" style="padding:26px"><b>اعلانی ندارید</b>'
+         + '<p>خبرهای آموزشگاه و کلاس‌هایتان اینجا می‌آید.</p></div>';
+  }
+  return xs.map(function(n){
+    var k=NOTIF_KIND[n.kind]||NOTIF_KIND.info;
+    return h`<button class="ntf ${n.read?"":"new"}" data-act="ntf-open"
+                     data-id="${esc(n.id)}" data-link="${esc(n.link||"")}">
+      <span class="ntf-i ${k.c}" aria-label="${k.t}">${k.i}</span>
+      <span class="ntf-b">
+        <b>${esc(n.title)}</b>
+        <span class="ntf-t">${esc(n.body)}</span>
+        <small>${esc(n.from)} · ${jDateTime(n.createdAt)}</small>
+      </span>
+    </button>`;
+  }).join("");
+}
+
+/*
+ * بستن کشویی.
+ *
+ * پرچم S.notif.open به‌تنهایی کافی نیست: این عنصر بیرون از #page
+ * زندگی می‌کند، پس render() که فقط #page را بازمی‌نویسد به آن دست
+ * نمی‌زند. یک‌بار همین باعث شد کشویی روی صفحهٔ «اعلان تازه» باز بماند
+ * و نیمی از فرم را بپوشاند.
+ */
+function notifClose(){
+  S.notif.open=false;
+  var w=el("notifPanel");
+  if(w)w.remove();
+}
+
+function notifPanel(){
+  return h`
+  <div class="ntf-wrap" id="notifPanel">
+    <div class="ntf-h">
+      <b>اعلان‌ها</b>
+      ${S.notif.unread?h`<button class="btn btn--q btn--sm" data-act="ntf-all">همه را خواندم</button>`:""}
+    </div>
+    <div class="ntf-list" id="notifList">${notifListHtml()}</div>
+    ${navVisible({perm:"notify.send"})?h`
+      <div class="ntf-f"><button class="btn btn--p btn--sm btn--b" data-act="ntf-compose">
+        فرستادن اعلان تازه</button></div>`:""}
+  </div>`;
+}
+
+
+/* ── نوشتن و فرستادن ── */
+
+/* نوشته‌های فرم را پیش از هر render برمی‌دارد */
+function ntfRead(){
+  var t=el("cpTitle"), b=el("cpBody");
+  if(t)S.compose.title=t.value;
+  if(b)S.compose.body=b.value;
+}
+
+function notifCompose(){
+  notifClose();
+  S.compose={audience:"",title:"",body:"",kind:"info",busy:false,err:"",auds:null};
+  render();
+}
+
+/*
+ * فهرست مخاطبان را خود صفحه می‌گیرد، نه دکمه‌ای که به آن رسیده.
+ *
+ * اگر فقط دکمه می‌گرفت، هرکس #/compose را نشان می‌کرد یا صفحه را
+ * تازه می‌کرد، روی «در حال گرفتن فهرست…» می‌ماند تا ابد — چون هیچ‌کس
+ * درخواست را نفرستاده بود.
+ */
+function composeLoad(){
+  if(S.compose.auds!==null||S.compose.loading)return;
+  S.compose.loading=true;
+  apiCall("notify.php",{action:"audiences"}).then(function(r){
+    S.compose.loading=false;
+    if(!r||!r.ok){
+      S.compose.auds=[];
+      S.compose.err=(r&&r.message)||"فهرست مخاطبان نیامد.";
+      render(); return;
+    }
+    S.compose.auds=r.audiences||[];
+    S.compose.canSms=!!r.canSms;
+    if(S.compose.auds.length===1)S.compose.audience=S.compose.auds[0].key;
+    render();
+  });
+}
+
+V["compose"]=function(){
+  if(!API.live)return notBuilt();
+  composeLoad();
+  var c=S.compose||{};
+  var auds=c.auds;
+
+  return h`
+  <div class="card" style="max-inline-size:640px;margin-inline:auto">
+    <div class="card-h"><h3>اعلان تازه</h3>
+      <div class="r"><button class="btn btn--q btn--sm" data-act="ntf-back">بازگشت</button></div></div>
+    <div style="padding:16px">
+
+      <div class="fld">
+        <label>به چه کسانی؟ <span class="rq">*</span></label>
+        ${auds===null?h`<p class="muted" style="font-size:13px">در حال گرفتن فهرست…</p>`
+         :auds.length===0?h`<div class="su-note">${c.err
+            ? h`${esc(c.err)} <button class="btn btn--q btn--sm" data-act="ntf-retry">تلاش دوباره</button>`
+            : "هنوز مخاطبی ندارید. وقتی کلاسی بسازید یا کسی عضو شود، اینجا ظاهر می‌شود."}</div>`
+         :h`<div class="aud-picks">${auds.map(function(a){
+            return h`<button class="aud ${c.audience===a.key?"on":""}"
+                             data-act="ntf-aud" data-key="${esc(a.key)}">
+              <b>${esc(a.label)}</b>
+              <small class="num">${a.count?fa(a.count)+" نفر":"کسی نیست"}</small></button>`;
+           }).join("")}</div>`}
+      </div>
+
+      <div class="fld">
+        <label for="cpTitle">عنوان <span class="rq">*</span></label>
+        <input id="cpTitle" type="text" maxlength="140" placeholder="مثلاً: تعطیلی کلاس‌های پنجشنبه"
+               value="${esc(c.title||"")}">
+      </div>
+      <div class="fld">
+        <label for="cpBody">متن <span class="rq">*</span></label>
+        <textarea id="cpBody" maxlength="2000" style="min-block-size:118px"
+                  placeholder="کوتاه و روشن بنویسید. کسی که روی گوشی می‌خواند، سه خط اول را می‌بیند.">${esc(c.body||"")}</textarea>
+      </div>
+
+      <div class="fld">
+        <label>لحن</label>
+        <div class="kind-picks">
+          ${[["info","عادی","خبر معمولی"],
+             ["success","خوب","تبریک، نتیجه، تأیید"],
+             ["warn","هشدار","تغییر برنامه، سررسید"],
+             ["urgent","فوری","لغو ناگهانی، مسئلهٔ جدی"]].map(function(k){
+            return h`<button class="kind ${c.kind===k[0]?"on":""} nk-${k[0]}"
+                             data-act="ntf-kind" data-kind="${k[0]}"
+                             title="${k[2]}">${k[1]}</button>`;}).join("")}
+        </div>
+      </div>
+
+      ${c.err?h`<div class="au-err" role="alert">${esc(c.err)}</div>`:""}
+
+      <div class="r" style="gap:8px;margin-top:6px">
+        <button class="btn btn--p" data-act="ntf-send" ${c.busy?"disabled":""}>
+          ${c.busy?"در حال فرستادن…":"فرستادن"}</button>
+        <span class="muted" style="font-size:12.5px">
+          ${(function(){
+            var a=(auds||[]).filter(function(x){return x.key===c.audience;})[0];
+            return a?"به "+fa(a.count)+" نفر می‌رسد و قابل پس‌گرفتن نیست.":"";
+          })()}</span>
+      </div>
+    </div>
+  </div>
+
+  ${S.compose.sent?h`
+  <div class="card" style="max-inline-size:640px;margin:16px auto 0">
+    <div class="card-h"><h3>فرستاده‌های اخیر</h3></div>
+    <div class="sent-list">${S.compose.sent.map(function(x){
+      var k=NOTIF_KIND[x.kind]||NOTIF_KIND.info;
+      return h`<div class="sent">
+        <span class="ntf-i ${k.c}" aria-label="${k.t}">${k.i}</span>
+        <div class="ntf-b"><b>${esc(x.title)}</b>
+          <small>${esc(x.audience)} · ${fa(x.recipients)} نفر ·
+            ${fa(x.readCount)} خوانده · ${jDateTime(x.createdAt)}</small></div>
+      </div>`;}).join("")}</div>
+  </div>`:""}`;
 };
 
 V["m/finance"]=function(){
@@ -4350,7 +4621,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m":"پیشخوان","m/live":"کلاس‌های در حال برگزاری","m/students":"زبان‌آموزان",
  "m/student":"پروندهٔ زبان‌آموز","m/classes":"کلاس‌ها","m/finance":"مالی",
  "m/reports":"گزارش‌ها","m/settings":"تنظیمات","m/term":"ترم‌ساز",
- "m/join":"پیوستن و درخواست‌ها","m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
+ "compose":"اعلان تازه","m/join":"پیوستن و درخواست‌ها","m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
 var FULL={"auth":1,"signup":1,"nows":1,"susp":1,"meet":1,"pick":1};
@@ -4383,6 +4654,9 @@ function render(){
     else if(API.suspended){ r="susp"; }
     else if(API.noWorkspace){ r="nows"; }
     else if(r==="auth"||r==="nows"||r==="susp"||r==="pick"){ r=roleRoute(API.user.role); }
+    /* اعلان‌نویسی مسیر مشترک است: مدیر و مدرس هر دو به همان صفحه
+       می‌روند و محدودهٔ مجوز تعیین می‌کند چه مخاطبی می‌بینند */
+    else if(r==="compose"){ /* بگذار بماند */ }
     else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
     if("#/"+r!==location.hash){ location.replace("#/"+r); }
   }
@@ -4528,6 +4802,76 @@ document.addEventListener("click",function(e){
   var a=act.dataset.act;
 
 
+
+
+  /* ── اعلان ── */
+  if(a==="ntf-bell"){
+    S.notif.open=!S.notif.open;
+    var wrap=el("notifPanel");
+    if(S.notif.open){
+      /* کشویی جدا از render ساخته می‌شود تا بازکردنش صفحهٔ زیرش را
+         بازنسازد — فرمِ نیمه‌پرشده نباید با یک کلیک روی زنگ پاک شود */
+      if(!wrap){
+        var holder=document.createElement("div");
+        holder.innerHTML=notifPanel();
+        el("notifHost").appendChild(holder.firstElementChild);
+      }
+      notifLoad();
+    }else{ notifClose(); }
+    return;
+  }
+  if(a==="ntf-all"){
+    apiCall("notify.php",{action:"read"}).then(function(){
+      S.notif.unread=0;
+      (S.notif.items||[]).forEach(function(n){n.read=true;});
+      notifPaint();
+    });
+    return;
+  }
+  if(a==="ntf-open"){
+    var nid2=act.dataset.id, lnk=act.dataset.link||"";
+    var hit=(S.notif.items||[]).filter(function(n){return n.id===nid2;})[0];
+    if(hit&&!hit.read){
+      hit.read=true; S.notif.unread=Math.max(0,S.notif.unread-1); notifPaint();
+      apiCall("notify.php",{action:"read",ids:[nid2]});
+    }
+    if(lnk){ notifClose(); go(lnk); }
+    return;
+  }
+  if(a==="ntf-compose"){ notifCompose(); go("compose"); return; }
+  if(a==="ntf-retry"){ S.compose.auds=null; S.compose.err=""; composeLoad(); render(); return; }
+  if(a==="ntf-back"){ go(roleRoute((API.user||{}).role||"teacher")); return; }
+  if(a==="ntf-aud"){
+    ntfRead(); S.compose.audience=act.dataset.key; S.compose.err=""; render(); return;
+  }
+  if(a==="ntf-kind"){
+    ntfRead(); S.compose.kind=act.dataset.kind; render(); return;
+  }
+  if(a==="ntf-send"){
+    if(S.compose.busy)return;
+    ntfRead();
+    var c=S.compose;
+    if(!c.audience){ c.err="اول مخاطب را انتخاب کنید."; render(); return; }
+    if(!(c.title||"").trim()){ c.err="عنوان را بنویسید."; render(); return; }
+    if(!(c.body||"").trim()){ c.err="متن اعلان را بنویسید."; render(); return; }
+
+    c.busy=true; c.err=""; render();
+    apiCall("notify.php",{action:"send",audience:c.audience,
+                          title:c.title.trim(),body:c.body.trim(),kind:c.kind}).then(function(r){
+      S.compose.busy=false;
+      if(!r.ok){ S.compose.err=r.message||"فرستاده نشد."; render(); return; }
+      S.compose.title=""; S.compose.body="";
+      toast("به "+fa(r.recipients)+" نفر فرستاده شد — "+r.audience);
+      /* سابقه بعد از ارسال گرفته می‌شود، نه پیش از آن: فرستنده تازه
+         آنجاست که می‌خواهد ببیند چند نفر خواندند */
+      apiCall("notify.php",{action:"sent"}).then(function(s){
+        if(s&&s.ok)S.compose.sent=s.sent||[];
+        render();
+      });
+      notifLoad();
+    });
+    return;
+  }
 
   /* ── کد پیوستن و صف درخواست ── */
   if(a==="jc-refresh"){ joinLoad(true); toast("تازه‌سازی شد"); return; }
@@ -5241,6 +5585,19 @@ document.addEventListener("click",function(e){
   if(b){S.attNow[b.dataset.att]=b.dataset.v; drawAttendance(S.attSession.session.id);}
 });
 
+/*
+ * کلیک بیرون از کشویی می‌بنددش — رفتار مورد انتظار هر منوی شناور.
+ *
+ * روی فاز capture می‌نشیند تا پیش از dispatcher کنش‌ها اجرا شود، و
+ * کلیک روی خودِ زنگ یا داخل کشویی را دست‌نخورده می‌گذارد.
+ */
+document.addEventListener("click",function(e){
+  if(!S.notif.open)return;
+  var t=e.target;
+  if(t&&t.closest&&(t.closest("#notifPanel")||t.closest('[data-act="ntf-bell"]')))return;
+  notifClose();
+},true);
+
 document.addEventListener("input",function(e){
   if(e.target.id==="subText"){wordCount();return;}
 
@@ -5487,6 +5844,17 @@ el("themeBtn").addEventListener("click",function(){
 function finishBoot(){
   el("root").classList.toggle("is-live",API.live);
   render();
+  /*
+   * اعلان‌ها یک‌بار حالا و بعد هر دو دقیقه.
+   *
+   * نه کمتر: اعلانِ کلاسِ فردا، دو دقیقه دیرتر هم به‌موقع است، و هر
+   * درخواست اضافه روی هاست اشتراکی هزینه دارد. نه بیشتر: کسی که پنل
+   * را باز گذاشته، نباید خبر لغو کلاس امروز را نیم‌ساعت دیر بفهمد.
+   */
+  if(API.live&&API.user){
+    notifLoad();
+    if(!S.notif.timer)S.notif.timer=setInterval(notifLoad,120000);
+  }
   var b=el("boot");
   if(b){b.classList.add("off");setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);},400);}
 }
@@ -5518,7 +5886,16 @@ function boot(){
 
         var want=API.suspended?"susp":API.noWorkspace?"nows":roleRoute(m.user.role);
         var r=location.hash.replace(/^#\/?/,"");
-        if(!r||r==="auth"||r==="nows"||r==="susp"||r.split("/")[0]!==want){
+        /*
+         * مسیرهای مشترک بین نقش‌ها از این بازنویسی مستثنا هستند.
+         *
+         * قاعدهٔ «پیشوند مسیر باید با نقش بخواند» برای m/… و t/… و s/…
+         * درست است، ولی «compose» پیشوند نقشی ندارد و به هر دو نقش
+         * تعلق دارد. بدون این استثنا، تازه‌کردن صفحه یا نشان‌کردنش
+         * کاربر را به داشبورد پرت می‌کرد و نوشتهٔ نیمه‌کاره‌اش می‌رفت.
+         */
+        var shared=(r==="compose");
+        if(!shared&&(!r||r==="auth"||r==="nows"||r==="susp"||r.split("/")[0]!==want)){
           location.hash="#/"+want;
         }
         finishBoot();

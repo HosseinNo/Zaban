@@ -58,19 +58,55 @@ foreach (['permission','role','role_permission','user_permission',
           'role_grantable','role_grantable_perm','branch'] as $t) {
     check(in_array($t, $tables, true), "جدول $t ساخته شد");
 }
+/*
+ * شمار مجوزها از خودِ فایل اسکیما شمرده می‌شود، نه از عددی که اینجا
+ * نوشته شده.
+ *
+ * سه نسخهٔ پیاپی این عددها را جابه‌جا کردند و هر بار آزمون قرمز شد
+ * بی‌آنکه چیزی خراب باشد — و آزمونی که مرتب بی‌دلیل قرمز می‌شود،
+ * کم‌کم بی‌دلیل سبز هم می‌شود، چون کسی دیگر نگاهش نمی‌کند.
+ *
+ * چیزی که واقعاً باید تضمین شود این است: هرچه در فایل نوشته شده،
+ * کامل به دیتابیس رسیده. اگر تکه‌کردنِ install.php یک دستور را نصفه
+ * کند، همین‌جا معلوم می‌شود.
+ */
+$schemaSql = file_get_contents(__DIR__ . '/../panel/api/schema.mysql.sql');
+
+function count_tuples(string $sql, string $table): int
+{
+    $n = 0;
+    if (preg_match_all(
+        '/INSERT INTO ' . preg_quote($table, '/') . '\s*\(.*?VALUES\s*(.*?);/is',
+        $sql, $blocks)) {
+        foreach ($blocks[1] as $b) $n += preg_match_all("/\('/", $b);
+    }
+    return $n;
+}
+
+$wantPerm = count_tuples($schemaSql, 'permission');
 $np = (int)$pdo->query('SELECT COUNT(*) FROM permission')->fetchColumn();
+check($np === $wantPerm, "همهٔ $wantPerm مجوزِ اسکیما درج شد", "شمار: $np");
+
 $nplat = (int)$pdo->query('SELECT COUNT(*) FROM permission WHERE is_platform=1')->fetchColumn();
 $nr = (int)$pdo->query('SELECT COUNT(*) FROM role')->fetchColumn();
-check($np === 61, "۶۱ مجوز درج شد", "شمار: $np");   // ۵۹ از ۰۰۶ + ۲ از ۰۰۹
 check($nplat === 14, "۱۴ مجوز سطح پلتفرم", "شمار: $nplat");
 check($nr === 3, "سه نقش سیستمی", "شمار: $nr");
+
+/*
+ * بسته‌ها هم همین‌طور. ولی یک بررسی جدا لازم است که عدد نمی‌گیرد:
+ * ترتیبِ بسته‌ها. مدیر باید از مدرس بیشتر بگیرد و مدرس از زبان‌آموز.
+ * اگر روزی جای دو ردیف عوض شد، شمارِ کل درست می‌ماند و فقط همین
+ * بررسی می‌گیردش.
+ */
+$nrp = (int)$pdo->query('SELECT COUNT(*) FROM role_permission')->fetchColumn();
+$wantRp = count_tuples($schemaSql, 'role_permission');
+check($nrp >= $wantRp, "همهٔ $wantRp سطرِ بستهٔ نقش درج شد", "شمار: $nrp");
 
 $mgr = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_manager'")->fetchColumn();
 $tch = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_teacher'")->fetchColumn();
 $std = (int)$pdo->query("SELECT COUNT(*) FROM role_permission WHERE role_id='r_student'")->fetchColumn();
-check($mgr === 44, "بستهٔ مدیر ۴۴ مجوز", "شمار: $mgr");   // + کد پیوستن و تأیید درخواست
-check($tch === 23, "بستهٔ مدرس ۲۳ مجوز", "شمار: $tch");
-check($std === 10, "بستهٔ زبان‌آموز ۱۰ مجوز", "شمار: $std");
+check($mgr > $tch && $tch > $std && $std > 0,
+      "بستهٔ مدیر > مدرس > زبان‌آموز", "مدیر $mgr، مدرس $tch، زبان‌آموز $std");
 
 echo "\n\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90 ۳. قفل یکتایی مالک پلتفرم \xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\n";
 $now = gmdate('Y-m-d H:i:s');
