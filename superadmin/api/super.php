@@ -1075,8 +1075,244 @@ case 'demo.sweep':
     if ($c > 0) audit('demo.expired', $a['id'], ['count' => $c]);
     ok(['expired' => $c]);
 
+
+/* ═════════════════════ اعلان پلتفرم ═════════════════════
+ *
+ * سوپرادمین به چند آموزشگاه هم‌زمان می‌فرستد، پس اعلانش
+ * institute_id ندارد — به هیچ آموزشگاهی تعلق ندارد و در سابقهٔ
+ * هیچ‌کدام هم دیده نمی‌شود. گیرنده‌ها مثل هر اعلان دیگری در
+ * notification_target می‌نشینند و در همان زنگ همیشگی ظاهر می‌شوند.
+ *
+ * چرا بخش‌بندی و نه «همه»: پیامی که به همه می‌رود، برای بیشترشان
+ * بی‌ربط است و دفعهٔ بعد کسی نمی‌خواندش. «آموزشگاه‌هایی که دورهٔ
+ * آزمایشی‌شان رو به پایان است» مخاطب واقعی یک پیام است؛ «همه» نیست.
+ */
+
+case 'notify.audiences':
+    require_super();
+    $segs = [];
+    foreach (super_segments() as $key => $seg) {
+        $segs[] = ['key' => $key, 'label' => $seg['label'],
+                   'count' => super_audience_count($key)];
+    }
+
+    // آموزشگاه‌های تک‌به‌تک، برای پیامی که فقط به یکی می‌رود
+    $insts = db()->query(
+        "SELECT i.id, i.name, i.plan, i.status,
+                (SELECT COUNT(DISTINCT m.user_id) FROM membership m
+                  WHERE m.institute_id = i.id AND m.status = 'active') AS n
+           FROM institute i ORDER BY i.name LIMIT 300")->fetchAll();
+
+    ok([
+        'segments'   => $segs,
+        'institutes' => array_map(fn($i) => [
+            'id'     => (string)$i['id'],
+            'name'   => (string)$i['name'],
+            'plan'   => (string)$i['plan'],
+            'status' => (string)$i['status'],
+            'count'  => (int)$i['n'],
+        ], $insts),
+    ]);
+
+case 'notify.send':
+    $a = require_super();
+
+    $title = trim((string)($in['title'] ?? ''));
+    $body  = trim((string)($in['body'] ?? ''));
+    if ($title === '') fail(400, 'invalid', 'عنوان اعلان را بنویسید.');
+    if ($body === '')  fail(400, 'invalid', 'متن اعلان را بنویسید.');
+    if (mb_strlen($title) > 140)  fail(400, 'invalid', 'عنوان بلندتر از ۱۴۰ نویسه است.');
+    if (mb_strlen($body) > 2000)  fail(400, 'invalid', 'متن بلندتر از ۲۰۰۰ نویسه است.');
+
+    $kind = (string)($in['kind'] ?? 'info');
+    if (!in_array($kind, ['info', 'success', 'warn', 'urgent'], true)) $kind = 'info';
+    $seg  = trim((string)($in['segment'] ?? ''));
+
+    [$users, $label, $instId] = super_audience_users($seg);
+    if (!$users) fail(400, 'no_targets', 'این مخاطب الان هیچ کاربری ندارد.');
+
+    /*
+     * سقف عمدی روی شمار گیرنده.
+     *
+     * فرستادن به ده‌هزار نفر یعنی ده‌هزار ردیف در یک تراکنش — روی
+     * هاست اشتراکی همین می‌شود timeout و تراکنشِ نیمه‌کاره. سقف
+     * می‌گوید «این کار از اینجا انجام نمی‌شود»، به‌جای اینکه نصفه
+     * انجامش بدهد و کسی نفهمد کدام نصف.
+     */
+    if (count($users) > 5000) {
+        fail(413, 'too_many',
+            'این مخاطب ' . count($users) . ' نفر است و از سقف ۵۰۰۰ می‌گذرد. '
+          . 'بخش کوچک‌تری انتخاب کنید.');
+    }
+
+    $nid = new_id();
+    $now = now_utc();
+    $db  = db();
+
+    $db->beginTransaction();
+    try {
+        $db->prepare(
+            'INSERT INTO notification
+               (id, institute_id, sender_admin, sender_name, title, body, kind,
+                audience, recipients, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?)'
+        )->execute([$nid, $instId, $a['id'], (string)($a['full_name'] ?: 'تاکورا'),
+                    $title, $body, $kind, $label, count($users), $now]);
+
+        foreach (array_chunk($users, 100) as $chunk) {
+            $vals = implode(',', array_fill(0, count($chunk), '(?,?,?)'));
+            $args = [];
+            foreach ($chunk as $uid) { $args[] = new_id(); $args[] = $nid; $args[] = $uid; }
+            $db->prepare("INSERT INTO notification_target (id, notification_id, user_id) VALUES $vals")
+               ->execute($args);
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        error_log('super notify failed: ' . $e->getMessage());
+        fail(500, 'send_failed', 'اعلان فرستاده نشد. دوباره تلاش کنید.');
+    }
+
+    audit('super.notify_sent', $a['id'],
+          ['segment' => $seg, 'recipients' => count($users), 'kind' => $kind]);
+    ok(['id' => $nid, 'recipients' => count($users), 'audience' => $label]);
+
+case 'notify.sent':
+    require_super();
+    $rows = db()->query(
+        'SELECT id, title, body, kind, audience, recipients, sender_name, created_at,
+                (SELECT COUNT(*) FROM notification_target t
+                  WHERE t.notification_id = n.id AND t.read_at IS NOT NULL) AS read_n
+           FROM notification n
+          WHERE n.sender_admin IS NOT NULL
+          ORDER BY n.seq DESC LIMIT 60')->fetchAll();
+
+    ok(['sent' => array_map(fn($r) => [
+        'id'         => (string)$r['id'],
+        'title'      => (string)$r['title'],
+        'body'       => (string)$r['body'],
+        'kind'       => (string)$r['kind'],
+        'audience'   => (string)$r['audience'],
+        'recipients' => (int)$r['recipients'],
+        'readCount'  => (int)$r['read_n'],
+        'from'       => (string)$r['sender_name'],
+        'createdAt'  => (string)$r['created_at'],
+    ], $rows)]);
+
 default:
     fail(400, 'unknown_action', 'درخواست نامشخص.');
+}
+
+/* ── بخش‌بندی مخاطبان پلتفرم ──
+ *
+ * هر بخش یک شرط SQL روی membership است، نه فهرستی که دستی نگهداری
+ * شود. آموزشگاهی که فردا ساخته شود، فردا خودبه‌خود در «همهٔ مدیران»
+ * هست بی‌آنکه کسی چیزی به‌روز کند.
+ *
+ * @return array<string,array{label:string,where:string,args:list<mixed>}>
+ */
+function super_segments(): array
+{
+    return [
+        'all' => [
+            'label' => 'همهٔ کاربران پلتفرم',
+            'where' => '',
+            'args'  => [],
+        ],
+        'managers' => [
+            'label' => 'همهٔ مدیران آموزشگاه‌ها',
+            'where' => " AND m.role = 'manager'",
+            'args'  => [],
+        ],
+        'teachers' => [
+            'label' => 'همهٔ مدرسان',
+            'where' => " AND m.role = 'teacher'",
+            'args'  => [],
+        ],
+        'students' => [
+            'label' => 'همهٔ زبان‌آموزان',
+            'where' => " AND m.role = 'student'",
+            'args'  => [],
+        ],
+        'trial_managers' => [
+            'label' => 'مدیرانِ آموزشگاه‌های آزمایشی',
+            'where' => " AND m.role = 'manager' AND i.plan = 'trial'",
+            'args'  => [],
+        ],
+        /*
+         * هفت روز، نه یک روز.
+         *
+         * پیام «دورهٔ آزمایشی‌تان فردا تمام می‌شود» دیر است: مدیری که
+         * باید بودجه بگیرد یا با شریکش هماهنگ کند، یک روز وقت ندارد.
+         * هفت روز آن‌قدر هست که تصمیم بگیرد و آن‌قدر نیست که فراموش کند.
+         */
+        'trial_ending' => [
+            'label' => 'آزمایشی‌هایی که کمتر از یک هفته مانده',
+            'where' => " AND m.role = 'manager' AND i.plan = 'trial'
+                         AND i.trial_ends_at IS NOT NULL
+                         AND i.trial_ends_at BETWEEN UTC_TIMESTAMP()
+                                                AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 7 DAY)",
+            'args'  => [],
+        ],
+        'paid_managers' => [
+            'label' => 'مدیرانِ آموزشگاه‌های پولی',
+            'where' => " AND m.role = 'manager' AND i.plan NOT IN ('trial','readonly')",
+            'args'  => [],
+        ],
+        'suspended' => [
+            'label' => 'مدیرانِ آموزشگاه‌های معلق',
+            'where' => " AND m.role = 'manager' AND i.status = 'suspended'",
+            'args'  => [],
+        ],
+    ];
+}
+
+/**
+ * کاربرانِ یک بخش، یا یک آموزشگاه مشخص با «inst:<id>».
+ *
+ * @return array{0:list<string>,1:string,2:?string}  [شناسه‌ها، برچسب، آموزشگاه]
+ */
+function super_audience_users(string $key): array
+{
+    if (strpos($key, 'inst:') === 0) {
+        $iid = substr($key, 5);
+        if (!id_ok($iid)) fail(400, 'bad_audience', 'آموزشگاه نامشخص است.');
+        $st = db()->prepare('SELECT name FROM institute WHERE id = ?');
+        $st->execute([$iid]);
+        $name = $st->fetchColumn();
+        if ($name === false) fail(404, 'not_found', 'آموزشگاه پیدا نشد.');
+
+        $q = db()->prepare(
+            "SELECT DISTINCT m.user_id FROM membership m
+              WHERE m.institute_id = ? AND m.status = 'active'
+                AND (m.expires_at IS NULL OR m.expires_at > UTC_TIMESTAMP())");
+        $q->execute([$iid]);
+        return [array_map('strval', $q->fetchAll(PDO::FETCH_COLUMN)),
+                'آموزشگاه ' . $name, $iid];
+    }
+
+    $segs = super_segments();
+    if (!isset($segs[$key])) fail(400, 'bad_audience', 'مخاطب نامشخص است.');
+    $s = $segs[$key];
+
+    /*
+     * DISTINCT لازم است: از نسخهٔ ۷ یک نفر می‌تواند چند عضویت داشته
+     * باشد — هم در آموزشگاه‌های مختلف، هم با نقش‌های مختلف در یکی.
+     * بدون آن، مدیری که خودش تدریس هم می‌کند دو نسخه می‌گرفت و قید
+     * یکتای notification_target کل ارسال را با خطا برمی‌گرداند.
+     */
+    $q = db()->prepare(
+        "SELECT DISTINCT m.user_id
+           FROM membership m JOIN institute i ON i.id = m.institute_id
+          WHERE m.status = 'active'
+            AND (m.expires_at IS NULL OR m.expires_at > UTC_TIMESTAMP())" . $s['where']);
+    $q->execute($s['args']);
+    return [array_map('strval', $q->fetchAll(PDO::FETCH_COLUMN)), $s['label'], null];
+}
+
+function super_audience_count(string $key): int
+{
+    return count(super_audience_users($key)[0]);
 }
 
 function admin_exists(): bool

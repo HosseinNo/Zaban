@@ -32,7 +32,7 @@ case 'inbox':
                 t.id AS target_id, t.read_at
            FROM notification_target t JOIN notification n ON n.id = t.notification_id
           WHERE t.user_id = ?' . ($onlyUnread ? ' AND t.read_at IS NULL' : '') . '
-          ORDER BY n.created_at DESC LIMIT ' . $limit);
+          ORDER BY n.seq DESC LIMIT ' . $limit);
     $rows->execute([my_id()]);
 
     $unread = db()->prepare(
@@ -234,11 +234,21 @@ case 'sent':
 
     // مدرس فقط فرستاده‌های خودش را می‌بیند؛ مدیر همهٔ آموزشگاه را
     $mineOnly = scope_rank($scope) < scope_rank('institute');
+
+    /*
+     * اعلانی که سوپرادمین به این آموزشگاه فرستاده، اینجا نمی‌آید.
+     *
+     * این فهرست «چیزهایی که *ما* فرستادیم» است. اعلان پلتفرمی که به
+     * یک آموزشگاه خاص می‌رود، institute_id همان آموزشگاه را دارد و
+     * بدون این شرط در سیاههٔ مدیر می‌نشست — با نام فرستنده‌ای که مال
+     * او نیست. مدیر هنوز خودِ اعلان را در صندوقش می‌بیند چون عضو
+     * است؛ فقط در فهرست فرستاده‌هایش نیست.
+     */
     $rows = t_all(
         'SELECT id, title, body, kind, audience, recipients, sms_sent, sender_name, created_at
            FROM notification
-          WHERE __I__' . ($mineOnly ? ' AND sender_id = ?' : '') . '
-          ORDER BY created_at DESC LIMIT 60',
+          WHERE __I__ AND sender_admin IS NULL' . ($mineOnly ? ' AND sender_id = ?' : '') . '
+          ORDER BY seq DESC LIMIT 60',
         $mineOnly ? [my_id()] : []);
 
     ok(['sent' => array_map(fn($r) => [

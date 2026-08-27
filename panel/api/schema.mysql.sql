@@ -897,6 +897,19 @@ CREATE TABLE IF NOT EXISTS notification (
   sms_sent     TINYINT(1)   NOT NULL DEFAULT 0,
   created_at   DATETIME     NOT NULL,
 
+  /*
+   * ترتیبِ واقعیِ درج، مستقل از ساعت.
+   *
+   * created_at دقتِ ثانیه دارد. دو اعلانی که در یک ثانیه فرستاده
+   * شوند — که در ارسال پشت‌سرهم عادی است — با ORDER BY created_at
+   * ترتیب تعریف‌شده‌ای ندارند، پس فهرست «تازه‌ترین اول» گاهی وارونه
+   * می‌شود و بین دو نوبت به‌روزرسانی جابه‌جا.
+   *
+   * seq این را قطعی می‌کند و هزینه‌اش یک ستون هشت‌بایتی است.
+   */
+  seq          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  UNIQUE KEY uq_notif_seq (seq),
+
   KEY ix_notif_inst (institute_id, created_at),
   KEY ix_notif_sender (sender_id, created_at),
   CONSTRAINT ck_notif_kind CHECK (kind IN ('info','success','warn','urgent')),

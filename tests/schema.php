@@ -110,9 +110,22 @@ check($mgr > $tch && $tch > $std && $std > 0,
 
 echo "\n\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90 ۳. قفل یکتایی مالک پلتفرم \xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\n";
 $now = gmdate('Y-m-d H:i:s');
+/*
+ * رمز واقعی، نه رشتهٔ ساختگی.
+ *
+ * این ردیف فقط برای آزمونِ قفلِ یکتایی ساخته می‌شد و رمزش «h» بود —
+ * که هیچ درهم‌سازیِ معتبری نیست، پس با آن نمی‌شد وارد شد. ولی
+ * notify-platform.py به یک سوپرادمینِ قابل‌ورود نیاز دارد، و اگر
+ * دستی ساخته شود، اولین اجرای schema.php پاکش می‌کند.
+ *
+ * پس همین‌جا رمزی می‌گذاریم که آزمون‌های بعدی بشناسند. دیتابیس آزمون
+ * است و روی هیچ سروری بالا نمی‌آید.
+ */
+define('TEST_OWNER_PASS', 'admin12345');
 $pdo->prepare('INSERT INTO admin_user (id,username,pass_hash,full_name,status,is_platform_owner,created_at)
                VALUES (?,?,?,?,?,1,?)')
-    ->execute(['a1','owner','h','مالک','active',$now]);
+    ->execute(['a1','owner',password_hash(TEST_OWNER_PASS, PASSWORD_DEFAULT),
+               'مالک تاکورا','active',$now]);
 ok('مالک اول ساخته شد');
 
 try {

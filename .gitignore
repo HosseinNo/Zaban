@@ -18,3 +18,4 @@ talkora-site/
 talkora-admin/
 upload-test.txt
 .claude/
+superadmin/api/config.php

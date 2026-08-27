@@ -132,6 +132,33 @@ nav .grp{font-size:11px;color:var(--ink-3);padding:14px 11px 5px;font-weight:700
 .kpi .d{font-size:12.5px;color:var(--ink-3)}
 
 .fld{margin-block-end:15px}
+.fld .rq{color:var(--bad)}
+.row{display:flex;flex-wrap:wrap}
+.au-err{margin-block:2px 14px;padding:10px 12px;border-radius:10px;font-size:13.5px;
+  background:var(--bad-soft);color:var(--bad);border:1px solid currentColor}
+.seg-picks{display:flex;flex-wrap:wrap;gap:8px}
+.aud{padding:9px 13px;border:1.5px solid var(--line-2);border-radius:10px;text-align:start;
+  background:var(--surface);font:inherit;color:inherit;cursor:pointer}
+.aud:hover:not([disabled]){border-color:var(--brand-2)}
+.aud[disabled]{opacity:.45;cursor:not-allowed}
+.aud.on{border-color:var(--brand-2);background:var(--brand-soft)}
+.aud b{display:block;font-size:13.5px}
+.aud small{display:block;font-size:11.5px;color:var(--ink-3);margin-block-start:2px}
+.kind-picks{display:flex;gap:7px;flex-wrap:wrap}
+.kind{padding:8px 15px;border:1.5px solid var(--line-2);border-radius:100px;background:var(--surface);
+  font:inherit;font-size:13px;color:var(--ink-3);cursor:pointer}
+.kind:hover{border-color:var(--brand-2)}
+.kind.on{font-weight:700;border-color:currentColor}
+.kind.on.nk-info{background:var(--surface-2);color:var(--ink)}
+.kind.on.nk-success{background:var(--ok-soft);color:var(--ok)}
+.kind.on.nk-warn{background:var(--warn-soft);color:var(--warn)}
+.kind.on.nk-urgent{background:var(--bad-soft);color:var(--bad)}
+.ntf-i{display:inline-grid;place-items:center;inline-size:22px;block-size:22px;border-radius:50%;
+  font-size:11.5px;font-weight:700;margin-inline-end:6px;vertical-align:-4px}
+.nk-info{background:var(--surface-2);color:var(--ink)}
+.nk-ok{background:var(--ok-soft);color:var(--ok)}
+.nk-warn{background:var(--warn-soft);color:var(--warn)}
+.nk-bad{background:var(--bad-soft);color:var(--bad);font-size:10.5px;letter-spacing:-1px}
 .fld label{display:block;font-size:13.5px;font-weight:700;margin-block-end:6px}
 .fld input,.fld select,.fld textarea{inline-size:100%;padding:10px 12px;border:1px solid var(--line-2);
   border-radius:var(--r1);background:var(--surface);color:var(--ink);min-block-size:44px}
@@ -291,7 +318,9 @@ var S={view:"dash",settings:null,leads:null,stats:null,events:null,
        codes:null,health:null,issued:null,smsTest:null,busy:false,err:"",
        institutes:null,instQ:"",instStatus:"",instDetail:null,
        userQ:"",userResults:null,userDetail:null,
-       reasonModal:null};
+       reasonModal:null,
+       notifData:null,notifSent:[],notifBusy:false,
+       notifDraft:{segment:"",title:"",body:"",kind:"info",busy:false,err:""}};
 
 var NAV=[
   {g:"نمای‌کلی"},
@@ -301,6 +330,7 @@ var NAV=[
   {v:"users",t:"کاربران و نقش‌ها"},
   {v:"access",t:"نقش‌ها و مجوزها"},
   {v:"leads",t:"درخواست‌های دمو"},
+  {v:"notify",t:"اعلان به کاربران"},
   {g:"سایت"},
   {v:"pricing",t:"قیمت‌ها"},
   {v:"contact",t:"تماس و ایمیل"},
@@ -314,7 +344,7 @@ var NAV=[
 ];
 
 var TITLES={dash:"پیشخوان",institutes:"آموزشگاه‌ها",users:"کاربران و نقش‌ها",
-  leads:"درخواست‌های دموی رایگان",pricing:"قیمت‌ها",contact:"تماس و ایمیل",
+  leads:"درخواست‌های دموی رایگان",notify:"اعلان به کاربران",pricing:"قیمت‌ها",contact:"تماس و ایمیل",
   content:"متن‌های سایت",trust:"نمادها و وضعیت",sms:"ورود کاربران و پیامک",
   health:"سلامت سامانه",events:"رویدادهای اخیر",account:"حساب من"};
 
@@ -792,6 +822,135 @@ function viewTrust(){
 var LEAD_FA={new:"تازه",contacted:"تماس گرفته شد",won:"مشتری شد",lost:"از دست رفت"};
 var LEAD_CLS={new:"warn",contacted:"info",won:"ok",lost:"mute"};
 
+/* ══════════ اعلان پلتفرم ══════════
+ *
+ * سوپرادمین به بخشی از کاربران همهٔ آموزشگاه‌ها می‌فرستد. بخش‌بندی
+ * مهم است، نه تزئینی: پیامی که به همه می‌رود برای بیشترشان بی‌ربط
+ * است و دفعهٔ بعد کسی نمی‌خواندش. «آموزشگاه‌هایی که دورهٔ آزمایشی‌شان
+ * رو به پایان است» مخاطب واقعی یک پیام است؛ «همه» معمولاً نیست.
+ */
+
+var NKIND={info:{i:"◆",c:"nk-info",t:"خبر"},
+           success:{i:"✓",c:"nk-ok",t:"خبر خوب"},
+           warn:{i:"!",c:"nk-warn",t:"هشدار"},
+           urgent:{i:"!!",c:"nk-bad",t:"فوری"}};
+
+function loadNotify(force){
+  if(S.notifBusy)return;
+  if(S.notifData&&!force)return;
+  S.notifBusy=true;
+  Promise.all([
+    call({action:"notify.audiences"}),
+    call({action:"notify.sent"})
+  ]).then(function(r){
+    S.notifBusy=false;
+    if(r[0]&&r[0].ok)S.notifData=r[0];
+    if(r[1]&&r[1].ok)S.notifSent=r[1].sent||[];
+    if(S.view==="notify")render();
+  });
+}
+
+function nfRead(){
+  var t=el("nfTitle"), b=el("nfBody"), i=el("nfInst");
+  if(t)S.notifDraft.title=t.value;
+  if(b)S.notifDraft.body=b.value;
+  /* کشویی آموزشگاه و کارت‌های بخش یک خانه‌اند: انتخاب هرکدام آن یکی
+     را باطل می‌کند، وگرنه کاربر دو چیز انتخاب‌شده می‌بیند و نمی‌داند
+     کدام می‌رود */
+  if(i&&i.value&&i.value!==S.notifDraft.segment&&i.value.indexOf("inst:")===0){
+    S.notifDraft.segment=i.value;
+  }
+}
+
+function viewNotify(){
+  loadNotify(false);
+  var d=S.notifData;
+  if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
+
+  var n=S.notifDraft;
+  var picked=(d.segments||[]).concat((d.institutes||[]).map(function(i){
+    return {key:"inst:"+i.id,label:"آموزشگاه "+i.name,count:i.count};
+  })).filter(function(x){return x.key===n.segment;})[0];
+
+  return h`
+  <div class="card" style="margin-block-end:16px">
+    <div class="card-h"><h3>اعلان تازه</h3></div>
+    <div style="padding:16px">
+
+      <div class="fld">
+        <label>بخش مخاطب <span class="rq">*</span></label>
+        <div class="seg-picks">${(d.segments||[]).map(function(s){
+          return h`<button class="aud ${n.segment===s.key?"on":""}"
+                           data-seg="${esc(s.key)}" ${s.count?"":"disabled"}>
+            <b>${esc(s.label)}</b>
+            <small class="num">${s.count?fa(s.count)+" نفر":"کسی نیست"}</small></button>`;
+        }).join("")}</div>
+      </div>
+
+      <div class="fld">
+        <label for="nfInst">یا یک آموزشگاه مشخص</label>
+        <select id="nfInst">
+          <option value="">— انتخاب کنید —</option>
+          ${(d.institutes||[]).map(function(i){
+            return '<option value="inst:'+esc(i.id)+'"'+(n.segment==="inst:"+i.id?" selected":"")+'>'
+                 + esc(i.name)+' ('+fa(i.count)+' نفر)'+(i.plan==="trial"?" — آزمایشی":"")
+                 + (i.status==="suspended"?" — معلق":"")+'</option>';}).join("")}
+        </select>
+      </div>
+
+      <div class="fld">
+        <label for="nfTitle">عنوان <span class="rq">*</span></label>
+        <input id="nfTitle" type="text" maxlength="140" value="${esc(n.title)}"
+               placeholder="مثلاً: به‌روزرسانی سامانه در شب جمعه">
+      </div>
+      <div class="fld">
+        <label for="nfBody">متن <span class="rq">*</span></label>
+        <textarea id="nfBody" maxlength="2000" rows="4"
+                  placeholder="کوتاه و روشن. گیرنده روی گوشی سه خط اول را می‌بیند.">${esc(n.body)}</textarea>
+      </div>
+
+      <div class="fld">
+        <label>لحن</label>
+        <div class="kind-picks">${[["info","عادی"],["success","خوب"],["warn","هشدار"],["urgent","فوری"]]
+          .map(function(k){
+            return '<button class="kind '+(n.kind===k[0]?"on ":"")+"nk-"+k[0]+'" data-kind="'+k[0]+'">'
+                 + k[1]+'</button>';}).join("")}</div>
+      </div>
+
+      ${n.err?'<div class="au-err" role="alert">'+esc(n.err)+'</div>':""}
+
+      <div class="row" style="gap:10px;align-items:center">
+        <button class="btn btn--p" data-a="nf-send" ${n.busy?"disabled":""}>
+          ${n.busy?"در حال فرستادن…":"فرستادن"}</button>
+        <span class="muted">${picked
+          ? "به "+fa(picked.count)+" نفر می‌رسد و قابل پس‌گرفتن نیست."
+          : "اول بخش مخاطب را انتخاب کنید."}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>فرستاده‌های پلتفرم</h3>
+      <button class="btn btn--g btn--sm" data-a="nf-refresh">تازه‌سازی</button></div>
+    ${(S.notifSent||[]).length===0
+      ? '<div class="empty"><b>هنوز اعلانی نفرستاده‌اید</b></div>'
+      : h`<div class="tbl-wrap"><table>
+          <thead><tr><th>عنوان</th><th>مخاطب</th><th>گیرنده</th><th>خوانده</th><th>زمان</th></tr></thead>
+          <tbody>${S.notifSent.map(function(x){
+            var k=NKIND[x.kind]||NKIND.info;
+            var pct=x.recipients?Math.round(x.readCount*100/x.recipients):0;
+            return h`<tr>
+              <td><span class="ntf-i ${k.c}" aria-label="${k.t}">${k.i}</span>
+                  <b>${esc(x.title)}</b>
+                  <br><span class="muted">${esc(x.body.slice(0,90))}${x.body.length>90?"…":""}</span></td>
+              <td>${esc(x.audience)}</td>
+              <td class="num">${fa(x.recipients)}</td>
+              <td class="num">${fa(x.readCount)}<span class="muted"> (${fa(pct)}٪)</span></td>
+              <td class="num">${jDateTime(x.createdAt)}</td></tr>`;}).join("")}
+          </tbody></table></div>`}
+  </div>`;
+}
+
 function viewLeads(){
   var d=S.leads;
   if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
@@ -1038,7 +1197,7 @@ function viewAccess(){
   </div>`;
 }
 
-var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,access:viewAccess,
+var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,access:viewAccess,notify:viewNotify,
            pricing:viewPricing,contact:viewContact,content:viewContent,trust:viewTrust,
            sms:viewSms,health:viewHealth,events:viewEvents,account:viewAccount};
 
@@ -1249,9 +1408,39 @@ document.addEventListener("click",function(e){
   var ou=e.target.closest("[data-openuser]");
   if(ou){S.userDetail=null;doUserOpen(ou.dataset.openuser);return;}
 
+  /*
+     نوشته‌های فرم را پیش از هر render برمی‌داریم؛ وگرنه زدن روی یک
+     بخش یا لحن، عنوان و متنِ تایپ‌شده را پاک می‌کند.
+  */
+  var seg=e.target.closest("[data-seg]");
+  if(seg){ nfRead(); S.notifDraft.segment=seg.dataset.seg; S.notifDraft.err=""; render(); return; }
+  var kd=e.target.closest("[data-kind]");
+  if(kd){ nfRead(); S.notifDraft.kind=kd.dataset.kind; render(); return; }
+
   var b=e.target.closest("[data-a]");
   if(!b)return;
   var a=b.dataset.a;
+
+  /* ── اعلان پلتفرم ── */
+  if(a==="nf-refresh"){ loadNotify(true); toast("تازه‌سازی شد"); return; }
+  if(a==="nf-send"){
+    if(S.notifDraft.busy)return;
+    nfRead();
+    var n=S.notifDraft;
+    if(!n.segment){ n.err="بخش مخاطب را انتخاب کنید."; render(); return; }
+    if(!n.title.trim()){ n.err="عنوان را بنویسید."; render(); return; }
+    if(!n.body.trim()){ n.err="متن اعلان را بنویسید."; render(); return; }
+    n.busy=true; n.err=""; render();
+    call({action:"notify.send",segment:n.segment,title:n.title.trim(),
+          body:n.body.trim(),kind:n.kind}).then(function(r){
+      S.notifDraft.busy=false;
+      if(!r.ok){ S.notifDraft.err=r.message||"فرستاده نشد."; render(); return; }
+      S.notifDraft.title=""; S.notifDraft.body="";
+      toast("به "+fa(r.recipients)+" نفر فرستاده شد — "+r.audience);
+      loadNotify(true);
+    });
+    return;
+  }
 
   /* ── اعطا و سلب موردی ── */
   if(a==="permAllow"||a==="permDeny"){
