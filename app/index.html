@@ -846,6 +846,20 @@ function jDateTime(s){
   return jDate(s)+(t?"، "+fa(t[1]+":"+t[2]):"");
 }
 
+/**
+ * مهلت تکلیف، همیشه شمسی.
+ *
+ * سرور due را خام می‌دهد ("2026-08-20 23:59:00") ولی دادهٔ نمایشی
+ * رشتهٔ فارسیِ آماده دارد ("۲۰ مهر"). پیش از این هر دو مستقیم چاپ
+ * می‌شدند، پس در حالت نمایشی درست به‌نظر می‌رسید و فقط روی نصب
+ * واقعی تاریخ میلادی وسط متن فارسی ظاهر می‌شد — نقض بند P.2، و درست
+ * همان جایی که هیچ‌کس نگاه نمی‌کرد چون دمو سالم بود.
+ */
+function dueFa(v){
+  if(!v)return "—";
+  return /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? jDateTime(v) : String(v);
+}
+
 /** امروز به میلادی ISO، برای فرستادن به سرور */
 function todayISO(){var d=new Date();
   return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
@@ -1371,6 +1385,40 @@ function navVisible(it){
   return S.perms.indexOf(it.perm)>=0;
 }
 
+/*
+ * عدد کنار مورد منو — از دادهٔ واقعی، نه از عددی که در NAV نوشته شده.
+ *
+ * آن عددها (badge:2، badge:6، badge:1) لیترال ثابت بودند و مستقیم چاپ
+ * می‌شدند. یعنی مدرس همیشه «۶» روی صف تصحیح می‌دید، چه چیزی برای
+ * تصحیح بود چه نبود — و زبان‌آموز همیشه «۱» روی شهریه، در حالی که
+ * سامانه اصلاً دادهٔ مالی واقعی ندارد.
+ *
+ * عددی که همیشه یک چیز می‌گوید، بدتر از نبودنش است: کاربر یاد می‌گیرد
+ * نادیده‌اش بگیرد و آن‌وقت وقتی واقعاً چیزی هست هم نمی‌بیند. پس هر
+ * عددی که نمی‌توانیم واقعاً حساب کنیم، اصلاً نشان داده نمی‌شود.
+ */
+function navBadge(it){
+  if(!API.live)return it.badge||0;          // حالت نمایشی همان عدد نمایشی
+  var A=DB.assignments||[], S2=DB.submissions||[], me=(API.user||{}).id;
+  if(it.r==="t/grading"){
+    // تحویل‌های نمره‌نخورده
+    return S2.filter(function(x){return x.score==null;}).length;
+  }
+  if(it.r==="t/assignments"){
+    return A.filter(function(a){return a.status!=="closed";}).length;
+  }
+  if(it.r==="s/assignments"){
+    // تکلیف‌هایی که هنوز تحویلشان نداده‌ام
+    var done={};
+    S2.forEach(function(x){if(!me||x.sid===me)done[x.aid]=1;});
+    return A.filter(function(a){return a.status!=="closed"&&!done[a.id];}).length;
+  }
+  if(it.r==="m/live"){
+    return (DB.sessions||[]).filter(function(x){return x.status==="live";}).length;
+  }
+  return 0;   // بقیه دادهٔ واقعی ندارند
+}
+
 function renderNav(){
   var items=(NAV[S.role]||[]).filter(navVisible),out="";
   // سرگروهی که همهٔ زیرمجموعه‌اش پنهان شده، خودش هم نباید بماند
@@ -1382,8 +1430,9 @@ function renderNav(){
   items.forEach(function(it){
     if(it.g){out+='<div class="nav-grp">'+it.g+'</div>';return;}
     var on=(S.route===it.r)?" on":"";
+    var bn=navBadge(it);
     out+='<a class="nav-a'+on+'" href="#/'+it.r+'">'+icon(it.i)+'<span>'+it.t+'</span>'+
-         (it.badge?'<span class="badge num">'+fa(it.badge)+'</span>':'')+'</a>';
+         (bn?'<span class="badge num">'+fa(bn)+'</span>':'')+'</a>';
   });
   el("nav").innerHTML=out;
   var m=DB.me[S.role];
@@ -1619,18 +1668,33 @@ function countAtt(){var p=0,l=0,a=0;
 V["t/assignments"]=function(){
   return h`
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <h2 style="font-size:18px">تکالیف ${esc(DB.classes[0].name)}</h2>
-    <button class="btn btn--p btn--sm" style="margin-inline-start:auto" data-act="new-assignment">تکلیف جدید</button>
+    <h2 style="font-size:18px">تکالیف</h2>
+    <span class="muted" style="font-size:12.5px">همهٔ کلاس‌های شما</span>
+    <button class="btn btn--p btn--sm" style="margin-inline-start:auto"
+            data-act="new-assignment">تکلیف تازه</button>
   </div>
+  ${DB.assignments.length===0?'<div class="card"><div class="empty"><b>هنوز تکلیفی نساخته‌اید</b>'
+     +'<p>با دکمهٔ «تکلیف تازه» اولین تکلیف را برای یکی از کلاس‌هایتان بسازید.</p></div></div>':""}
   ${DB.assignments.map(function(a){
+    /*
+     * عنوان صفحه «تکالیف <کلاس اول>» بود ولی تکالیف *همهٔ* کلاس‌ها را
+     * فهرست می‌کرد — مدرسِ دو کلاسه، تکلیف کلاس دوم را زیر نام کلاس
+     * اول می‌دید. و DB.classes[0] روی مدرسی که هنوز کلاسی ندارد
+     * می‌ترکید. حالا عنوان راست می‌گوید و نام کلاس روی خودِ هر ردیف است.
+     *
+     * دکمهٔ «تکلیف تازه» هم پیش‌تر فقط toast می‌زد؛ حالا به همان
+     * مسیری وصل است که از داشبورد کار می‌کند و واقعاً تکلیف می‌سازد.
+     */
+    var kn=(DB.classes||[]).filter(function(c){return c.id===a.cls;})[0];
     var pend=a.submitted-a.graded;
     return h`<div class="asg">
       <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
       <div class="bd">
         <b>${esc(a.title)}</b>
         <div class="metaline m">
+          ${kn?h`<span>${esc(kn.name)}</span>`:""}
           <span>${typeName(a.type)}</span>
-          <span class="num">مهلت ${a.due}</span>
+          <span class="num">مهلت ${dueFa(a.due)}</span>
           ${a.extendedTo?h`<span class="pill p-warn">تمدیدشده</span>`:""}
           <span class="num">${fa(a.max)} نمره</span>
         </div>
@@ -1876,7 +1940,7 @@ var demoS=function(){
               <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
               <div class="bd"><b>${esc(a.title)}</b>
                 <div class="metaline m"><span>${typeName(a.type)}</span>
-                  <span class="num">مهلت ${a.due}</span></div></div>
+                  <span class="num">مهلت ${dueFa(a.due)}</span></div></div>
               <div class="rt"><button class="btn btn--p btn--sm" data-act="open-sub" data-aid="${a.id}">
                 ${a.type==="speaking"?"ضبط و ارسال":"نوشتن و ارسال"}</button></div></div>`;}).join("")}
         </div>
@@ -1938,7 +2002,7 @@ V["s/assignments"]=function(){
       <div class="bd"><b>${esc(a.title)}</b>
         <p class="muted" style="font-size:13px;margin-top:5px;line-height:1.85">${esc(a.desc)}</p>
         <div class="metaline m" style="margin-top:7px">
-          <span>${typeName(a.type)}</span><span class="num">مهلت ${a.due}</span>
+          <span>${typeName(a.type)}</span><span class="num">مهلت ${dueFa(a.due)}</span>
           ${a.extendedTo?h`<span class="pill p-warn">تمدیدشده</span>`:""}
           <span class="num">${fa(a.max)} نمره</span></div></div>
       <div class="rt">${st}
@@ -4679,7 +4743,7 @@ function modalSubmit(aid){
         <p style="font-size:14px;line-height:1.95;margin-bottom:15px">${esc(a.desc)}</p>
         <div class="metaline muted" style="font-size:12.5px;margin-bottom:15px">
           <span class="num">حداکثر ۲ دقیقه</span><span class="num">۲ تلاش مجاز</span>
-          <span class="num">مهلت ${a.due}</span></div>
+          <span class="num">مهلت ${dueFa(a.due)}</span></div>
         <div class="rec" id="recBox">
           <button class="rec-btn" id="recBtn" aria-label="شروع ضبط">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
@@ -4704,7 +4768,7 @@ function modalSubmit(aid){
     <div class="modal-b">
       <p style="font-size:14px;line-height:1.95;margin-bottom:15px">${esc(a.desc)}</p>
       <div class="metaline muted" style="font-size:12.5px;margin-bottom:15px">
-        <span class="num">۱۲۰ تا ۱۵۰ کلمه</span><span class="num">مهلت ${a.due}</span>
+        <span class="num">۱۲۰ تا ۱۵۰ کلمه</span><span class="num">مهلت ${dueFa(a.due)}</span>
         <span class="num">${fa(a.max)} نمره</span></div>
       <div class="fld">
         <label for="subText">متن شما</label>
@@ -5453,10 +5517,37 @@ document.addEventListener("click",function(e){
     S.enrol.step=n; render();
   }
   else if(a==="en-pay"){
-    var who=S.enrol.name||"زبان‌آموز";
-    toast("ثبت‌نام "+esc(who)+" کامل شد؛ رسید و برنامهٔ کلاسی پیامک شد");
-    S.enrol={step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false};
-    go("m/students");
+    /*
+     * این ویزارد در حالت زنده هیچ کاری نمی‌کرد: نام و شماره و کلاس را
+     * می‌گرفت، «ثبت‌نام کامل شد؛ رسید و برنامهٔ کلاسی پیامک شد» را
+     * نشان می‌داد، و هیچ‌کس ثبت‌نام نمی‌شد. مدیر هم روی همین حرف حساب
+     * می‌کرد و پیگیری نمی‌کرد.
+     *
+     * institute.php|invite دقیقاً همین را انجام می‌دهد: اگر شماره از
+     * قبل حساب دارد همان لحظه عضو و در کلاس ثبت‌نام می‌شود، وگرنه
+     * دعوت ثبت می‌شود تا اولین ورودش. پیام موفقیت را هم خود سرور
+     * می‌دهد، پس دیگر ادعای پیامکی که فرستاده نمی‌شود در کار نیست.
+     */
+    var en=S.enrol, who=en.name||"زبان‌آموز";
+    if(!API.live){
+      toast("در نسخهٔ نمایشی ذخیره نمی‌شود.");
+      S.enrol={step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false};
+      go("m/students"); return;
+    }
+    if(!(en.name||"").trim()){toast("نام را وارد کنید");return;}
+    if(!/^09\d{9}$/.test(enDigits(en.phone||"").trim())){
+      toast("شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود");return;}
+    /* doAct نه act — داخل این تابع «act» عنصرِ کلیک‌شده است.
+       doAct خودش bootstrap را تازه می‌کند و بعد then را صدا می‌زند. */
+    doAct("institute.php",
+      {action:"invite",fullName:en.name.trim(),phone:enDigits(en.phone).trim(),
+       role:"student",classId:en.clsId||""},
+      null,
+      function(r){
+        toast((r&&r.message)||("«"+who+"» ثبت شد"));
+        S.enrol={step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false};
+        go("m/students");
+      });
   }
   else if(a==="go-exam"){go("s/exams");}
 
@@ -5523,8 +5614,13 @@ document.addEventListener("click",function(e){
     else{toast("کلاس پایان یافت. حضور و غیاب خودکار آماده است."); }
   }
   else if(a==="join-class"){
+    /* در حالت زنده، ورود به جلسه از se-join می‌رود که واقعاً
+       sessions.php|join را صدا می‌زند و پنجرهٔ زمانی را رعایت می‌کند.
+       این شاخه فقط نمایشی است؛ ادعای «حضورتان خودکار ثبت می‌شود» هم
+       فقط برای BigBlueButton درست است، نه برای هر ارائه‌دهنده‌ای. */
+    if(API.live){toast("برای ورود، از دکمهٔ خودِ جلسه استفاده کنید.");return;}
     if(S.live)S.live.joined++;
-    toast("وارد کلاس شدید. حضورتان خودکار ثبت می‌شود.");
+    toast("وارد کلاس شدید.");
     render();
   }
   else if(a==="all-present"){
@@ -5535,13 +5631,21 @@ document.addEventListener("click",function(e){
     el("cNo").textContent=fa(cc.a)+" غایب";
   }
   else if(a==="cancel-session"){
-    toast("جلسه لغو شد. همه «نامربوط» ثبت شدند و به زبان‌آموزها پیامک رفت.");
-    go("t");
+    /* sessions.php اکشن cancel را واقعاً دارد؛ این دکمه فقط به آن وصل
+       نبود و پیامی می‌داد که هم لغو را ادعا می‌کرد هم پیامکی را که
+       اصلاً فرستاده نمی‌شد (بند P.4: پیامک فقط سرویس وریفای است). */
+    var sid=act.dataset.id||(S.live&&S.live.sessionId)||"";
+    if(!API.live){toast("در نسخهٔ نمایشی ذخیره نمی‌شود.");go("t");return;}
+    if(!sid){toast("جلسه مشخص نیست.");return;}
+    doAct("sessions.php",{action:"cancel",id:sid},"جلسه لغو شد",function(){go("t");});
   }
   else if(a==="submit-att"){
+    /* مسیر واقعی att-save است (attendance.php|save). این شاخه فقط در
+       نسخهٔ نمایشی می‌ماند و دیگر ادعای پیامک نمی‌کند — پیامک غیبت
+       اصلاً پیاده نشده (بند P.4). */
+    if(API.live){toast("این نما نمایشی است؛ حضور و غیاب را از خودِ جلسه ثبت کنید.");return;}
     var cnt=countAtt();
-    var msg=cnt.a>0?"ثبت شد؛ به "+fa(cnt.a)+" زبان‌آموز پیامک غیبت رفت"
-                   :"ثبت شد؛ همه حاضر بودند";
+    var msg=cnt.a>0?"ثبت شد؛ "+fa(cnt.a)+" غایب":"ثبت شد؛ همه حاضر بودند";
     var snap=JSON.parse(JSON.stringify(S.att));
     toast(msg,function(){S.att=snap;toast("ثبت برگردانده شد");});
     go("t");
@@ -5605,7 +5709,13 @@ document.addEventListener("click",function(e){
                   :"نمرات منتشر شد و به زبان‌آموزها اطلاع داده شد.");
   }
   else if(a==="pay"){toast("در محصول واقعی، اینجا به درگاه پرداخت منتقل می‌شوید.");}
-  else if(a==="upload-receipt"){toast("فیش آپلود شد و به صف تأیید مالی رفت.");}
+  else if(a==="upload-receipt"){
+    /* هیچ نقطهٔ پایانی مالی وجود ندارد. تا وقتی ندارد، نباید بگوید
+       «به صف تأیید رفت» — زبان‌آموز روی همین حرف حساب می‌کند و
+       پیگیری نمی‌کند. */
+    toast(API.live?"ثبت فیش هنوز فعال نیست. با آموزشگاه تماس بگیرید."
+                  :"فیش آپلود شد و به صف تأیید مالی رفت.");
+  }
   else if(a==="new-assignment"){
     /* همین قابلیت از داشبورد (ag-new) کامل کار می‌کند؛ این دکمه فقط
        به آن وصل نبود. اگر مدرس بیش از یک کلاس دارد، اول باید کلاس را
