@@ -151,9 +151,22 @@ ADMIN_ROBOTS = """User-agent: *
 Disallow: /
 """
 
+# نقشهٔ اصلی، که به نقشهٔ پویای وبلاگ اشاره می‌کند.
+#
+# نوشته‌ها را اینجا نمی‌شود فهرست کرد چون در زمان ساخت وجود ندارند؛
+# blog/sitemap.php آن‌ها را از دیتابیس می‌سازد. فهرست نقشه‌ها راه
+# استانداردِ گفتنِ همین چیز به گوگل است.
 SITEMAP = f"""<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://{SITE_DOMAIN}/sitemap-pages.xml</loc></sitemap>
+  <sitemap><loc>https://{SITE_DOMAIN}/blog/sitemap.xml</loc></sitemap>
+</sitemapindex>
+"""
+
+SITEMAP_PAGES = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://{SITE_DOMAIN}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://{SITE_DOMAIN}/blog/</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
 </urlset>
 """
 
@@ -747,6 +760,21 @@ def main() -> int:
     (site_out / ".htaccess").write_text(SITE_HTACCESS, encoding="utf-8")
     (site_out / "robots.txt").write_text(SITE_ROBOTS, encoding="utf-8")
     (site_out / "sitemap.xml").write_text(SITEMAP, encoding="utf-8")
+    (site_out / "sitemap-pages.xml").write_text(SITEMAP_PAGES, encoding="utf-8")
+
+    # وبلاگ: صفحه‌های سمت‌سرور، شیوه‌نامه، و پوشهٔ تصویرها.
+    #
+    # uploads خالی کپی می‌شود ولی .htaccess‌اش می‌رود: پوشه‌ای که فایل
+    # آپلودی می‌گیرد و PHP اجرا می‌کند، بدترین سوراخ ممکن است.
+    blog_src = ROOT / "site" / "blog"
+    blog_out = site_out / "blog"
+    blog_out.mkdir()
+    for f in sorted(blog_src.glob("*.php")):
+        shutil.copy2(f, blog_out / f.name)
+    shutil.copy2(blog_src / ".htaccess", blog_out / ".htaccess")
+    shutil.copytree(blog_src / "assets", blog_out / "assets")
+    (blog_out / "uploads").mkdir()
+    shutil.copy2(blog_src / "uploads" / ".htaccess", blog_out / "uploads" / ".htaccess")
     (site_out / "راهنمای-آپلود.txt").write_text(SITE_GUIDE, encoding="utf-8")
 
     # سایت هم یک api کوچک می‌گیرد: تنظیماتی که ادمین عوض می‌کند و فرم دمو.

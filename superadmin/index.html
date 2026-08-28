@@ -139,6 +139,36 @@ nav .grp{font-size:11px;color:var(--ink-3);padding:14px 11px 5px;font-weight:700
 .seg-picks{display:flex;flex-wrap:wrap;gap:8px}
 .jsel{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:7px}
 .jsel select{inline-size:100%}
+/* ── ویرایشگر وبلاگ ── */
+.ed-bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:7px 8px;
+  border:1px solid var(--line-2);border-block-end:none;
+  border-radius:10px 10px 0 0;background:var(--surface-2)}
+.ed-bar button{padding:6px 11px;border-radius:7px;font-size:12.5px;
+  background:var(--surface);border:1px solid var(--line);color:var(--ink-2);cursor:pointer}
+.ed-bar button:hover{border-color:var(--brand-2);color:var(--ink)}
+.ed-bar .sep{inline-size:1px;block-size:20px;background:var(--line-2);margin-inline:4px}
+.ed{min-block-size:340px;max-block-size:60vh;overflow-y:auto;padding:16px 18px;
+  border:1px solid var(--line-2);border-radius:0 0 10px 10px;background:var(--surface);
+  line-height:2;font-size:15px}
+.ed:focus{outline:none;border-color:var(--brand-2)}
+.ed h2{font-size:21px;padding-block:14px 6px}
+.ed h3{font-size:18px;padding-block:12px 5px}
+.ed p{padding-block-end:11px}
+.ed ul,.ed ol{padding-inline-start:26px;padding-block-end:11px}
+.ed li{padding-block-end:4px}
+.ed blockquote{border-inline-start:3px solid var(--brand-2);padding-inline-start:14px;
+  margin-block:12px;color:var(--ink-2)}
+.ed img{max-inline-size:100%;height:auto;border-radius:8px;margin-block:8px}
+.ed a{color:var(--brand-2)}
+.cover-pick{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.cover-prev{inline-size:190px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;
+  border:1px solid var(--line-2);flex:none}
+.empty-prev{display:grid;place-items:center;background:var(--surface-2);
+  color:var(--ink-3);font-size:12.5px}
+.seo{border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  margin-block:6px 14px;background:var(--surface-2)}
+.seo summary{cursor:pointer;font-weight:700;font-size:14px}
+.jsel select{inline-size:100%}
 .aud{padding:9px 13px;border:1.5px solid var(--line-2);border-radius:10px;text-align:start;
   background:var(--surface);font:inherit;color:inherit;cursor:pointer}
 .aud:hover:not([disabled]){border-color:var(--brand-2)}
@@ -384,6 +414,7 @@ var S={view:"dash",settings:null,leads:null,stats:null,events:null,
        userQ:"",userResults:null,userDetail:null,
        reasonModal:null,
        notifData:null,notifSent:[],notifBusy:false,
+       blog:null,blogEdit:null,blogBusy:false,
        endingSoon:[],
        notifDraft:{segment:"",title:"",body:"",kind:"info",busy:false,err:""}};
 
@@ -396,6 +427,8 @@ var NAV=[
   {v:"access",t:"نقش‌ها و مجوزها"},
   {v:"leads",t:"درخواست‌های دمو"},
   {v:"notify",t:"اعلان به کاربران"},
+  {g:"محتوا"},
+  {v:"blog",t:"وبلاگ"},
   {g:"سایت"},
   {v:"pricing",t:"قیمت‌ها"},
   {v:"contact",t:"تماس و ایمیل"},
@@ -409,7 +442,7 @@ var NAV=[
 ];
 
 var TITLES={dash:"پیشخوان",institutes:"آموزشگاه‌ها",users:"کاربران و نقش‌ها",
-  leads:"درخواست‌های دموی رایگان",notify:"اعلان به کاربران",pricing:"قیمت‌ها",contact:"تماس و ایمیل",
+  leads:"درخواست‌های دموی رایگان",notify:"اعلان به کاربران",blog:"وبلاگ",pricing:"قیمت‌ها",contact:"تماس و ایمیل",
   content:"متن‌های سایت",trust:"نمادها و وضعیت",sms:"ورود کاربران و پیامک",
   health:"سلامت سامانه",events:"رویدادهای اخیر",account:"حساب من"};
 
@@ -1040,6 +1073,236 @@ function viewNotify(){
   </div>`;
 }
 
+/* ══════════ وبلاگ ══════════
+ *
+ * ویرایشگر روی contenteditable ساخته شده، نه روی یک کتابخانهٔ آماده.
+ * دلیلش همان دلیل همیشگی این پروژه است: هاست اشتراکی، بی npm و بی
+ * مرحلهٔ build. execCommand منسوخ اعلام شده ولی در همهٔ مرورگرهای
+ * امروز کار می‌کند و جایگزینِ بی‌وابستگی ندارد.
+ *
+ * هرچه اینجا تولید شود، سمت سرور پالوده می‌شود — پس ویرایشگر لازم
+ * نیست خودش امن باشد، فقط باید راحت باشد.
+ */
+
+function loadBlog(force){
+  if(S.blogBusy)return;
+  if(S.blog&&!force)return;
+  S.blogBusy=true;
+  call({action:"blog.list"}).then(function(r){
+    S.blogBusy=false;
+    if(r.ok)S.blog=r;
+    if(S.view==="blog")render();
+  });
+}
+
+function viewBlog(){
+  loadBlog(false);
+  var d=S.blog;
+  if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
+  if(S.blogEdit)return viewBlogEdit();
+
+  var posts=d.posts||[];
+  var live=posts.filter(function(p){return p.status==="published";}).length;
+
+  return h`
+  ${d.uploads&&d.uploads.ok===false?h`<div class="note note--w">
+    <b>پوشهٔ تصویرها نوشتنی نیست.</b> تا وقتی درست نشود، آپلود تصویر کار نمی‌کند.
+    مسیر را با <code>blog_upload_dir</code> در config.php بدهید.</div>`:""}
+
+  <div class="card">
+    <div class="card-h"><h3>نوشته‌ها</h3>
+      <div class="row" style="gap:10px;align-items:center">
+        <span class="muted num">${fa(live)} منتشرشده از ${fa(posts.length)}</span>
+        <button class="btn btn--p btn--sm" data-a="blogNew">نوشتهٔ تازه</button>
+      </div></div>
+    ${posts.length===0?'<div class="empty"><b>هنوز نوشته‌ای نیست</b>'
+      +'<p>اولین نوشته را بنویسید تا وبلاگ در گوگل دیده شود.</p></div>'
+    :h`<div class="tbl-wrap"><table>
+      <thead><tr><th>عنوان</th><th>دسته</th><th>نشانی</th><th>بازدید</th>
+                 <th>تاریخ</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>${posts.map(function(p){
+        return h`<tr>
+          <td><b>${esc(p.title)}</b>
+            ${p.excerpt?'<br><span class="muted">'+esc(p.excerpt.slice(0,70))+'…</span>':""}</td>
+          <td>${p.category?esc(p.category):'<span class="muted">—</span>'}</td>
+          <td><code style="font-size:11.5px">${esc(p.slug)}</code></td>
+          <td class="num">${fa(p.views)}</td>
+          <td class="num">${p.publishedAt?jDateTime(p.publishedAt):'<span class="muted">—</span>'}</td>
+          <td>${p.status==="published"?'<span class="pill p-ok">منتشرشده</span>'
+                                      :'<span class="pill p-mute">پیش‌نویس</span>'}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn--g btn--sm" data-a="blogEdit" data-id="${esc(p.id)}">ویرایش</button>
+            <button class="btn btn--sm ${p.status==="published"?"btn--g":"btn--p"}"
+                    data-a="blogPub" data-id="${esc(p.id)}"
+                    data-on="${p.status==="published"?"0":"1"}">
+              ${p.status==="published"?"از انتشار درآور":"انتشار"}</button>
+            ${p.status==="published"?h`<a class="btn btn--g btn--sm"
+               href="${esc(blogPublicUrl(p.slug))}" target="_blank" rel="noopener">دیدن</a>`:""}
+          </td></tr>`;}).join("")}
+      </tbody></table></div>`}
+  </div>`;
+}
+
+/* نشانی عمومی نوشته — همان قاعدهٔ سمت سایت */
+function blogPublicUrl(slug){
+  return "https://talkora.ir/blog/"+encodeURIComponent(slug);
+}
+
+function viewBlogEdit(){
+  var p=S.blogEdit, isNew=!p.id;
+  var cats=(S.blog&&S.blog.categories)||[];
+  return h`
+  <button class="back" data-a="blogBack">← بازگشت به فهرست نوشته‌ها</button>
+
+  <div class="card">
+    <div class="card-h"><h3>${isNew?"نوشتهٔ تازه":"ویرایش نوشته"}</h3>
+      ${p.slug?h`<code style="font-size:12px">${esc(p.slug)}</code>`:""}</div>
+    <div class="card-b">
+      <div class="fld"><label for="bTitle">عنوان <span class="rq">*</span></label>
+        <input id="bTitle" type="text" maxlength="200" value="${esc(p.title||"")}"
+               placeholder="مثلاً: چطور کلاس مکالمه را زنده نگه داریم"></div>
+
+      <div class="grid g2">
+        <div class="fld"><label for="bSlug">نشانی</label>
+          <input id="bSlug" type="text" maxlength="180" value="${esc(p.slug||"")}"
+                 placeholder="خالی بگذارید تا از عنوان ساخته شود">
+          <span class="hint">فارسی بماند — کلیدواژه در نشانی، خودش عامل رتبه است.
+            بعد از انتشار عوضش نکنید.</span></div>
+        <div class="fld"><label for="bCat">دسته</label>
+          <select id="bCat"><option value="">— بدون دسته —</option>
+            ${cats.map(function(c){
+              return '<option value="'+esc(c.id)+'"'+(p.categoryId===c.id?" selected":"")+'>'
+                   + esc(c.name)+'</option>';}).join("")}
+          </select></div>
+      </div>
+
+      <div class="fld"><label for="bExcerpt">چکیده</label>
+        <textarea id="bExcerpt" rows="2" maxlength="400"
+          placeholder="یکی دو جمله. همین در فهرست و در اشتراک‌گذاری دیده می‌شود.">${esc(p.excerpt||"")}</textarea></div>
+
+      <div class="fld">
+        <label>تصویر شاخص</label>
+        <div class="cover-pick">
+          ${p.cover?h`<img src="${esc(blogUploadUrl(p.cover))}" alt="" class="cover-prev">`
+                   :'<div class="cover-prev empty-prev">بدون تصویر</div>'}
+          <div class="row" style="gap:8px;flex-direction:column;align-items:stretch;flex:1">
+            <input type="file" id="bCoverFile" accept="image/png,image/jpeg,image/webp,image/gif">
+            <input id="bCoverAlt" type="text" maxlength="200" value="${esc(p.coverAlt||"")}"
+                   placeholder="متن جایگزین تصویر — برای صفحه‌خوان و جست‌وجوی تصویر">
+            ${p.cover?h`<button class="btn btn--g btn--sm" data-a="blogCoverClear">برداشتن تصویر</button>`:""}
+          </div>
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>متن نوشته <span class="rq">*</span></label>
+        <div class="ed-bar" role="toolbar" aria-label="ابزار نوشتن">
+          <button type="button" data-ed="formatBlock" data-v="h2">تیتر</button>
+          <button type="button" data-ed="formatBlock" data-v="h3">زیرتیتر</button>
+          <button type="button" data-ed="formatBlock" data-v="p">متن</button>
+          <span class="sep"></span>
+          <button type="button" data-ed="bold"><b>پررنگ</b></button>
+          <button type="button" data-ed="italic"><i>مورب</i></button>
+          <span class="sep"></span>
+          <button type="button" data-ed="insertUnorderedList">فهرست</button>
+          <button type="button" data-ed="insertOrderedList">شماره‌دار</button>
+          <button type="button" data-ed="formatBlock" data-v="blockquote">نقل‌قول</button>
+          <span class="sep"></span>
+          <button type="button" data-a="blogLink">پیوند</button>
+          <button type="button" data-a="blogImage">تصویر</button>
+          <span class="sep"></span>
+          <button type="button" data-ed="removeFormat">پاک‌کردن قالب</button>
+        </div>
+        <div id="bBody" class="ed" contenteditable="true" dir="rtl"></div>
+        <input type="file" id="bInlineFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <span class="hint">هرچه اینجا بنویسید سمت سرور پالوده می‌شود؛
+          تگ و صفت خطرناک ذخیره نمی‌شود.</span>
+      </div>
+
+      <details class="seo">
+        <summary>تنظیمات سئو</summary>
+        <div class="grid g2" style="margin-block-start:12px">
+          <div class="fld"><label for="bMetaT">عنوان متا</label>
+            <input id="bMetaT" type="text" maxlength="200" value="${esc(p.metaTitle||"")}"
+                   placeholder="خالی = همان عنوان نوشته">
+            <span class="hint">آنچه در نتیجهٔ گوگل دیده می‌شود. زیر ۶۰ نویسه بهتر است.</span></div>
+          <div class="fld"><label for="bAuthor">نویسنده</label>
+            <input id="bAuthor" type="text" maxlength="120" value="${esc(p.author||"تیم تاکورا")}"></div>
+        </div>
+        <div class="fld"><label for="bMetaD">توضیح متا</label>
+          <textarea id="bMetaD" rows="2" maxlength="300"
+            placeholder="خالی = چکیده">${esc(p.metaDesc||"")}</textarea>
+          <span class="hint">زیر ۱۶۰ نویسه، وگرنه گوگل کوتاهش می‌کند.</span></div>
+      </details>
+
+      ${p.err?'<div class="au-err" role="alert">'+esc(p.err)+'</div>':""}
+
+      <div class="row" style="gap:8px;margin-block-start:6px">
+        <button class="btn btn--p" data-a="blogSave" ${p.busy?"disabled":""}>
+          ${p.busy?"در حال ذخیره…":"ذخیره"}</button>
+        ${p.id?h`<button class="btn btn--g" data-a="blogPub" data-id="${esc(p.id)}"
+          data-on="${p.status==="published"?"0":"1"}">
+          ${p.status==="published"?"از انتشار درآور":"ذخیره و انتشار"}</button>`:""}
+        ${p.id?h`<button class="btn btn--d btn--sm" style="margin-inline-start:auto"
+          data-a="blogDelete" data-id="${esc(p.id)}">حذف</button>`:""}
+      </div>
+    </div>
+  </div>`;
+}
+
+function blogUploadUrl(file){
+  var base=(S.blog&&S.blog.uploads&&S.blog.uploads.url)||"https://talkora.ir/blog/uploads";
+  return base+"/"+encodeURIComponent(file);
+}
+
+/*
+ * بدنه بعد از هر render دوباره پر می‌شود.
+ *
+ * contenteditable را نمی‌شود مثل input با value پر کرد؛ innerHTML
+ * لازم است و باید *بعد* از نشستن عنصر در DOM انجام شود. اگر داخل
+ * قالب می‌گذاشتیمش، هر بار که کاربر چیزی تایپ می‌کرد و render
+ * می‌خورد، مکان‌نما به اول متن می‌پرید.
+ */
+function blogFillBody(){
+  var n=el("bBody");
+  if(n&&S.blogEdit)n.innerHTML=S.blogEdit.body||"";
+}
+
+/** نوشته‌های فرم را پیش از هر render برمی‌دارد */
+function blogRead(){
+  if(!S.blogEdit)return;
+  var p=S.blogEdit;
+  function v(id){var n=el(id); return n?n.value:"";}
+  p.title=v("bTitle"); p.slug=v("bSlug"); p.excerpt=v("bExcerpt");
+  p.categoryId=v("bCat"); p.coverAlt=v("bCoverAlt");
+  p.metaTitle=v("bMetaT"); p.metaDesc=v("bMetaD"); p.author=v("bAuthor");
+  var bd=el("bBody"); if(bd)p.body=bd.innerHTML;
+}
+
+/**
+ * آپلود تصویر.
+ *
+ * فایل با FileReader به data-URI تبدیل می‌شود و همان رشته می‌رود —
+ * یک مسیر به‌جای دو، و بی‌نیاز از فرم چندبخشی که با بدنهٔ JSON بقیهٔ
+ * API نمی‌خواند. سرور خودش از بایت‌ها بررسی می‌کند که واقعاً تصویر
+ * است؛ پسوند و MIME هر دو از سمت مرورگر می‌آیند و هر دو دروغ
+ * می‌گویند.
+ */
+function blogUpload(file, then){
+  if(!file)return;
+  if(file.size>3*1024*1024){toast("حجم تصویر بیشتر از ۳ مگابایت است");return;}
+  var fr=new FileReader();
+  fr.onload=function(){
+    toast("در حال آپلود…");
+    call({action:"blog.upload",name:file.name,data:String(fr.result)}).then(function(r){
+      if(!r.ok){toast(r.message||"آپلود نشد");return;}
+      then(r);
+    });
+  };
+  fr.onerror=function(){toast("فایل خوانده نشد");};
+  fr.readAsDataURL(file);
+}
+
 function viewLeads(){
   var d=S.leads;
   if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
@@ -1286,7 +1549,7 @@ function viewAccess(){
   </div>`;
 }
 
-var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,access:viewAccess,notify:viewNotify,
+var VIEWS={dash:viewDash,institutes:viewInstitutes,users:viewUsers,leads:viewLeads,access:viewAccess,notify:viewNotify,blog:viewBlog,
            pricing:viewPricing,contact:viewContact,content:viewContent,trust:viewTrust,
            sms:viewSms,health:viewHealth,events:viewEvents,account:viewAccount};
 
@@ -1314,6 +1577,19 @@ function render(){
     </div>
   </div>
   ${viewReasonModal()}`;
+
+  /*
+     ویرایشگر بعد از *هر* render دوباره پر می‌شود، اینجا و نه در
+     صداکننده‌ها.
+
+     contenteditable با value پر نمی‌شود و innerHTML باید بعد از
+     نشستن عنصر در DOM بیاید. نسخهٔ اول این کار را در هر صداکننده
+     انجام می‌داد و یکی از آن‌ها — loadBlog که async است — بعدِ
+     پرکردن، دوباره render می‌کرد. نتیجه: متنِ تازه‌ذخیره‌شده از
+     ویرایشگر پاک می‌شد و کلیک بعدیِ کاربر «متن نوشته خالی است»
+     می‌گرفت. یعنی باگی که نوشتهٔ کسی را می‌برد.
+  */
+  blogFillBody();
 }
 
 function focusFirst(){
@@ -1419,6 +1695,7 @@ function need(view){
   }
   if(view==="institutes"&&!S.institutes&&!S.instDetail) return doInstSearch();
   if(view==="leads"&&!S.leads)     return call({action:"leads"}).then(function(r){if(r.ok)S.leads=r;});
+  if(view==="blog"&&!S.blog)       return call({action:"blog.list"}).then(function(r){if(r.ok)S.blog=r;});
   if(view==="access"&&!S.access)   return call({action:"access.catalogue"}).then(function(r){if(r.ok)S.access=r;});
   if(view==="events"&&!S.events)   return call({action:"recent"}).then(function(r){if(r.ok)S.events=r.events;});
   if(view==="health"&&!S.health)   return call({action:"diagnostics"}).then(function(r){if(r.ok)S.health=r.checks;});
@@ -1523,9 +1800,109 @@ document.addEventListener("click",function(e){
   var kd=e.target.closest("[data-kind]");
   if(kd){ nfRead(); S.notifDraft.kind=kd.dataset.kind; render(); return; }
 
+  /*
+     نوار ابزار ویرایشگر.
+     preventDefault لازم است وگرنه کلیک، تمرکز را از contenteditable
+     می‌گیرد و execCommand روی انتخابِ ازدست‌رفته اثری ندارد.
+  */
+  var ed=e.target.closest("[data-ed]");
+  if(ed){
+    e.preventDefault();
+    var body=el("bBody"); if(body)body.focus();
+    document.execCommand(ed.dataset.ed,false,ed.dataset.v?"<"+ed.dataset.v+">":null);
+    blogRead();
+    return;
+  }
+
   var b=e.target.closest("[data-a]");
   if(!b)return;
   var a=b.dataset.a;
+
+
+  /* ── وبلاگ ── */
+  if(a==="blogNew"){
+    S.blogEdit={id:"",title:"",slug:"",excerpt:"",body:"",cover:null,coverAlt:"",
+                categoryId:"",metaTitle:"",metaDesc:"",author:"تیم تاکورا",
+                status:"draft",busy:false,err:""};
+    render(); return;
+  }
+  if(a==="blogBack"){ S.blogEdit=null; loadBlog(true); render(); return; }
+  if(a==="blogEdit"){
+    call({action:"blog.get",id:b.dataset.id}).then(function(r){
+      if(!r.ok){toast(r.message||"باز نشد");return;}
+      S.blogEdit=Object.assign({busy:false,err:""},r.post);
+      render();
+    });
+    return;
+  }
+  if(a==="blogCoverClear"){ blogRead(); S.blogEdit.cover=null; render(); return; }
+
+  if(a==="blogSave"){
+    if(S.blogEdit&&S.blogEdit.busy)return;
+    blogRead();
+    var p=S.blogEdit;
+    if(!p.title.trim()){ p.err="عنوان را بنویسید."; render(); return; }
+    if(!p.body.trim()){ p.err="متن نوشته خالی است."; render(); return; }
+    p.busy=true; p.err=""; render();
+    call({action:"blog.save",id:p.id||"",title:p.title,slug:p.slug,excerpt:p.excerpt,
+          body:p.body,cover:p.cover||"",coverAlt:p.coverAlt,categoryId:p.categoryId,
+          metaTitle:p.metaTitle,metaDesc:p.metaDesc,author:p.author}).then(function(r){
+      S.blogEdit.busy=false;
+      if(!r.ok){ S.blogEdit.err=r.message||"ذخیره نشد"; render(); return; }
+      S.blogEdit.id=r.id; S.blogEdit.slug=r.slug;
+      toast("ذخیره شد — "+fa(r.readingMin)+" دقیقه خواندن");
+      loadBlog(true); render();
+    });
+    return;
+  }
+
+  if(a==="blogPub"){
+    var pid=b.dataset.id, on=b.dataset.on==="1";
+    /*
+     * اگر روی صفحهٔ ویرایش هستیم، اول ذخیره بعد انتشار.
+     *
+     * وگرنه دکمهٔ «ذخیره و انتشار» نسخهٔ قبلی را منتشر می‌کرد و
+     * نویسنده فکر می‌کرد تغییرهایش رفته — بدترین نوع اشتباه، چون
+     * بی‌صداست.
+     */
+    var go=function(){
+      call({action:"blog.publish",id:pid,on:on}).then(function(r){
+        if(!r.ok){toast(r.message||"انجام نشد");return;}
+        toast(on?"منتشر شد":"از انتشار درآمد");
+        if(S.blogEdit&&S.blogEdit.id===pid)S.blogEdit.status=r.status;
+        loadBlog(true); render();
+      });
+    };
+    if(S.blogEdit&&S.blogEdit.id===pid){
+      blogRead();
+      var q=S.blogEdit;
+      call({action:"blog.save",id:q.id,title:q.title,slug:q.slug,excerpt:q.excerpt,
+            body:q.body,cover:q.cover||"",coverAlt:q.coverAlt,categoryId:q.categoryId,
+            metaTitle:q.metaTitle,metaDesc:q.metaDesc,author:q.author}).then(function(r){
+        if(!r.ok){toast(r.message||"ذخیره نشد");return;}
+        S.blogEdit.slug=r.slug; go();
+      });
+    } else go();
+    return;
+  }
+
+  if(a==="blogDelete"){
+    if(!confirm("این نوشته و تصویر شاخصش برای همیشه پاک می‌شوند. مطمئنید؟"))return;
+    call({action:"blog.delete",id:b.dataset.id}).then(function(r){
+      if(!r.ok){toast(r.message||"حذف نشد");return;}
+      toast("نوشته حذف شد");
+      S.blogEdit=null; loadBlog(true); render();
+    });
+    return;
+  }
+
+  if(a==="blogLink"){
+    var url=prompt("نشانی پیوند:","https://");
+    if(!url)return;
+    document.execCommand("createLink",false,url);
+    blogRead(); return;
+  }
+  if(a==="blogImage"){ var fi=el("bInlineFile"); if(fi)fi.click(); return; }
 
   /* ── اعلان پلتفرم ── */
   if(a==="nf-refresh"){ loadNotify(true); toast("تازه‌سازی شد"); return; }
@@ -1902,6 +2279,23 @@ document.addEventListener("click",function(e){
 });
 
 document.addEventListener("change",function(e){
+  if(e.target.id==="bCoverFile"){
+    blogUpload(e.target.files&&e.target.files[0],function(r){
+      blogRead(); S.blogEdit.cover=r.file; render();
+      toast("تصویر شاخص گذاشته شد");
+    });
+    return;
+  }
+  if(e.target.id==="bInlineFile"){
+    blogUpload(e.target.files&&e.target.files[0],function(r){
+      var body=el("bBody"); if(body)body.focus();
+      document.execCommand("insertHTML",false,
+        '<img src="'+r.url+'" alt="" width="'+r.width+'" height="'+r.height+'">');
+      blogRead();
+      toast("تصویر در متن گذاشته شد");
+    });
+    return;
+  }
   var l=e.target.closest&&e.target.closest("[data-lead]");
   if(l){
     if(!API.live){toast("در نسخهٔ نمایشی ذخیره نمی‌شود.");return;}

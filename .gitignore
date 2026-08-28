@@ -19,3 +19,7 @@ talkora-admin/
 upload-test.txt
 .claude/
 superadmin/api/config.php
+
+# site/api/ در ساخت بسته از panel/api/ کپی می‌شود؛ نسخهٔ محلی‌اش فقط
+# برای بالا آوردن سرور آزمون سایت است و نباید دو نسخه در مخزن بماند
+site/api/

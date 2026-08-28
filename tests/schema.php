@@ -87,9 +87,21 @@ $wantPerm = count_tuples($schemaSql, 'permission');
 $np = (int)$pdo->query('SELECT COUNT(*) FROM permission')->fetchColumn();
 check($np === $wantPerm, "همهٔ $wantPerm مجوزِ اسکیما درج شد", "شمار: $np");
 
+/*
+ * شمار مجوزهای پلتفرمی هم از فایل خوانده می‌شود.
+ *
+ * عدد ثابت اینجا هم همان مشکل را داشت: نسخهٔ ۱۲ سه مجوز وبلاگ افزود
+ * و آزمون قرمز شد بی‌آنکه چیزی خراب باشد.
+ */
+$wantPlat = 0;
+if (preg_match_all('/INSERT INTO permission\s*\(.*?VALUES\s*(.*?);/is', $schemaSql, $blocks)) {
+    foreach ($blocks[1] as $b) {
+        $wantPlat += preg_match_all("/\('[a-z0-9_.]+',\s*'[a-z]+',\s*'[^']*',\s*1,/", $b);
+    }
+}
 $nplat = (int)$pdo->query('SELECT COUNT(*) FROM permission WHERE is_platform=1')->fetchColumn();
 $nr = (int)$pdo->query('SELECT COUNT(*) FROM role')->fetchColumn();
-check($nplat === 14, "۱۴ مجوز سطح پلتفرم", "شمار: $nplat");
+check($nplat === $wantPlat, "همهٔ $wantPlat مجوز سطح پلتفرم درج شد", "شمار: $nplat");
 check($nr === 3, "سه نقش سیستمی", "شمار: $nr");
 
 /*

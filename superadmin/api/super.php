@@ -760,6 +760,24 @@ case 'diagnostics':
     $add('پایگاه داده', $tables >= 20 ? 'ok' : ($tables > 0 ? 'warn' : 'bad'),
          $tables > 0 ? "متصل — {$tables} جدول (مشترک با پنل آموزشگاه‌ها)" : 'اتصال برقرار نشد');
 
+    /*
+     * وبلاگ: پوشهٔ تصویر و نشانی‌های تمیز.
+     *
+     * هر دو چیزهایی‌اند که بی‌صدا خراب می‌شوند. پوشهٔ نانوشتنی یعنی
+     * اولین آپلود شکست می‌خورد؛ نشانی تمیزِ کارنکرده یعنی *همهٔ*
+     * نوشته‌ها ۴۰۴ می‌دهند و کل وبلاگ از دید گوگل ناپدید می‌شود، بی
+     * آنکه چیزی در پنل به‌نظر خراب بیاید.
+     */
+    $up = blog_uploads_state();
+    $add('تصویرهای وبلاگ', $up['ok'] ? 'ok' : 'warn',
+         $up['ok'] ? 'پوشه نوشتنی است — ' . $up['dir']
+                   : 'پوشه پیدا نشد یا نوشتنی نیست؛ blog_upload_dir را در config.php بدهید.');
+
+    $pretty = blog_pretty_check();
+    $add('نشانی نوشته‌های وبلاگ',
+         $pretty['state'],
+         $pretty['detail']);
+
     $add('گواهی SSL', is_https() ? 'ok' : 'bad',
          is_https() ? 'پنل روی https باز شده' : 'پنل روی http است؛ کوکی ورود پرچم Secure دارد.');
 
@@ -1290,8 +1308,586 @@ case 'notify.sent':
         'createdAt'  => (string)$r['created_at'],
     ], $rows)]);
 
+
+/* ═════════════════════ وبلاگ ═════════════════════
+ *
+ * وبلاگ کار پلتفرم است نه آموزشگاه، پس فقط از این پنل نوشته می‌شود.
+ * صفحه‌های عمومی‌اش در site/blog/ سمت سرور رندر می‌شوند — دلیلش در
+ * migrations/012 نوشته شده.
+ */
+
+case 'blog.list':
+    require_super();
+    $status = in_array(($in['status'] ?? 'all'), ['all', 'draft', 'published'], true)
+            ? (string)($in['status'] ?? 'all') : 'all';
+    $where = $status === 'all' ? '' : ' WHERE p.status = ' . db()->quote($status);
+
+    $rows = db()->query(
+        "SELECT p.id, p.slug, p.title, p.excerpt, p.status, p.cover_path,
+                p.published_at, p.updated_at, p.views, p.reading_min,
+                c.name AS cat_name, c.id AS cat_id
+           FROM blog_post p LEFT JOIN blog_category c ON c.id = p.category_id
+           {$where}
+          ORDER BY COALESCE(p.published_at, p.updated_at) DESC LIMIT 200")->fetchAll();
+
+    ok([
+        'posts' => array_map(fn($r) => [
+            'id'          => (string)$r['id'],
+            'slug'        => (string)$r['slug'],
+            'title'       => (string)$r['title'],
+            'excerpt'     => $r['excerpt'],
+            'status'      => (string)$r['status'],
+            'cover'       => $r['cover_path'],
+            'publishedAt' => $r['published_at'],
+            'updatedAt'   => (string)$r['updated_at'],
+            'views'       => (int)$r['views'],
+            'readingMin'  => (int)$r['reading_min'],
+            'category'    => $r['cat_name'],
+            'categoryId'  => $r['cat_id'],
+        ], $rows),
+        'categories' => db()->query(
+            'SELECT id, slug, name FROM blog_category ORDER BY sort_order, name')->fetchAll(PDO::FETCH_ASSOC),
+        'uploads' => blog_uploads_state(),
+    ]);
+
+case 'blog.get':
+    require_super();
+    $st = db()->prepare('SELECT * FROM blog_post WHERE id = ?');
+    $st->execute([id_in($in, 'id', 'نوشته')]);
+    $p = $st->fetch();
+    if (!$p) fail(404, 'not_found', 'نوشته پیدا نشد.');
+    ok(['post' => [
+        'id'         => (string)$p['id'],
+        'slug'       => (string)$p['slug'],
+        'title'      => (string)$p['title'],
+        'excerpt'    => $p['excerpt'],
+        'body'       => (string)$p['body'],
+        'cover'      => $p['cover_path'],
+        'coverAlt'   => $p['cover_alt'],
+        'categoryId' => $p['category_id'],
+        'metaTitle'  => $p['meta_title'],
+        'metaDesc'   => $p['meta_description'],
+        'author'     => (string)$p['author_name'],
+        'status'     => (string)$p['status'],
+        'publishedAt'=> $p['published_at'],
+    ]]);
+
+case 'blog.save':
+    $a = require_super();
+
+    $id    = trim((string)($in['id'] ?? ''));
+    $title = trim((string)($in['title'] ?? ''));
+    if ($title === '') fail(400, 'invalid', 'عنوان نوشته را بنویسید.');
+    if (mb_strlen($title) > 200) fail(400, 'invalid', 'عنوان بلندتر از ۲۰۰ نویسه است.');
+
+    /*
+     * پالایش پیش از بررسیِ خالی‌بودن، عمداً.
+     *
+     * چیزی که فقط <script> است، بعد از پالایش هیچ می‌شود و باید رد
+     * شود — وگرنه نوشتهٔ خالی منتشر می‌شد. ولی معیار «متنِ خالی»
+     * نیست بلکه «HTMLِ خالی»: نوشته‌ای که فقط تصویر دارد متن ندارد و
+     * باز هم نوشته است.
+     */
+    $body = blog_clean_html((string)($in['body'] ?? ''));
+    if ($body === '') fail(400, 'invalid', 'متن نوشته خالی است.');
+
+    $slug = blog_slug((string)($in['slug'] ?? ''), $title, $id);
+    $cat  = trim((string)($in['categoryId'] ?? ''));
+    if ($cat !== '') {
+        $chk = db()->prepare('SELECT id FROM blog_category WHERE id = ?');
+        $chk->execute([$cat]);
+        if (!$chk->fetchColumn()) fail(404, 'not_found', 'دسته پیدا نشد.');
+    }
+
+    $excerpt = mb_substr(trim((string)($in['excerpt'] ?? '')), 0, 400);
+    if ($excerpt === '') {
+        // چکیده خالی یعنی فهرست و کارت اشتراک‌گذاری بی‌متن می‌مانند؛
+        // اولین جملهٔ متن بهتر از هیچ است
+        $excerpt = mb_substr(trim(preg_replace('/\s+/u', ' ', strip_tags($body))), 0, 180);
+    }
+
+    $now = now_utc();
+    $data = [
+        'slug'             => $slug,
+        'title'            => $title,
+        'excerpt'          => $excerpt,
+        'body'             => $body,
+        'cover_path'       => blog_safe_file((string)($in['cover'] ?? '')),
+        'cover_alt'        => mb_substr(trim((string)($in['coverAlt'] ?? '')), 0, 200) ?: null,
+        'category_id'      => $cat ?: null,
+        'meta_title'       => mb_substr(trim((string)($in['metaTitle'] ?? '')), 0, 200) ?: null,
+        'meta_description' => mb_substr(trim((string)($in['metaDesc'] ?? '')), 0, 300) ?: null,
+        'author_name'      => mb_substr(trim((string)($in['author'] ?? '')), 0, 120) ?: 'تیم تاکورا',
+        'reading_min'      => blog_reading_minutes($body),
+        'updated_at'       => $now,
+    ];
+
+    if ($id !== '') {
+        $st = db()->prepare('SELECT id FROM blog_post WHERE id = ?');
+        $st->execute([$id]);
+        if (!$st->fetchColumn()) fail(404, 'not_found', 'نوشته پیدا نشد.');
+        $set = implode(', ', array_map(fn($k) => "{$k} = ?", array_keys($data)));
+        db()->prepare("UPDATE blog_post SET {$set} WHERE id = ?")
+            ->execute(array_merge(array_values($data), [$id]));
+        audit('blog.updated', $a['id'], ['post' => $id, 'slug' => $slug]);
+    } else {
+        $id = new_id();
+        $data['id']         = $id;
+        $data['author_admin'] = $a['id'];
+        $data['status']     = 'draft';
+        $data['created_at'] = $now;
+        $cols = implode(', ', array_keys($data));
+        $qs   = implode(',', array_fill(0, count($data), '?'));
+        db()->prepare("INSERT INTO blog_post ({$cols}) VALUES ({$qs})")
+            ->execute(array_values($data));
+        audit('blog.created', $a['id'], ['post' => $id, 'slug' => $slug]);
+    }
+    ok(['id' => $id, 'slug' => $slug, 'readingMin' => $data['reading_min']]);
+
+case 'blog.publish':
+    $a  = require_super();
+    $id = id_in($in, 'id', 'نوشته');
+    $on = !empty($in['on']);
+
+    $st = db()->prepare('SELECT slug, published_at FROM blog_post WHERE id = ?');
+    $st->execute([$id]);
+    $p = $st->fetch();
+    if (!$p) fail(404, 'not_found', 'نوشته پیدا نشد.');
+
+    if ($on) {
+        /*
+         * published_at فقط بار اول نوشته می‌شود.
+         *
+         * نوشته‌ای که برای اصلاح یک غلط املایی از انتشار درآمده و
+         * دوباره منتشر می‌شود، تاریخ اصلی‌اش را نگه می‌دارد. وگرنه هر
+         * ویرایش کوچک، نوشته را در گوگل «تازه» نشان می‌داد و ترتیب
+         * زمانی وبلاگ بی‌معنا می‌شد.
+         */
+        db()->prepare("UPDATE blog_post SET status = 'published',
+                              published_at = COALESCE(published_at, ?), updated_at = ?
+                        WHERE id = ?")->execute([now_utc(), now_utc(), $id]);
+    } else {
+        db()->prepare("UPDATE blog_post SET status = 'draft', updated_at = ? WHERE id = ?")
+            ->execute([now_utc(), $id]);
+    }
+    audit($on ? 'blog.published' : 'blog.unpublished', $a['id'],
+          ['post' => $id, 'slug' => (string)$p['slug']]);
+    ok(['status' => $on ? 'published' : 'draft']);
+
+case 'blog.delete':
+    $a  = require_owner();
+    $id = id_in($in, 'id', 'نوشته');
+    $st = db()->prepare('SELECT slug, cover_path FROM blog_post WHERE id = ?');
+    $st->execute([$id]);
+    $p = $st->fetch();
+    if (!$p) fail(404, 'not_found', 'نوشته پیدا نشد.');
+
+    db()->prepare('DELETE FROM blog_post WHERE id = ?')->execute([$id]);
+    // تصویر شاخص هم می‌رود؛ فایل بی‌صاحب روی هاست اشتراکی جا می‌گیرد
+    if ($p['cover_path']) blog_delete_upload((string)$p['cover_path']);
+    audit('blog.deleted', $a['id'], ['post' => $id, 'slug' => (string)$p['slug']]);
+    ok();
+
+case 'blog.upload':
+    $a = require_super();
+
+    $dir = blog_upload_dir();
+    if ($dir === null) {
+        fail(500, 'no_upload_dir',
+            'پوشهٔ تصویرهای وبلاگ پیدا نشد یا نوشتنی نیست. '
+          . 'blog_upload_dir را در config.php تنظیم کنید.');
+    }
+
+    $raw  = (string)($in['data'] ?? '');
+    $name = (string)($in['name'] ?? 'image');
+    if ($raw === '') fail(400, 'invalid', 'فایلی نیامده.');
+
+    /*
+     * تصویر به‌صورت data-URI می‌آید، نه multipart.
+     *
+     * ویرایشگر در مرورگر فایل را با FileReader می‌خواند و همان‌جا
+     * پیش‌نمایش می‌دهد؛ فرستادن همان رشته یعنی یک مسیر به‌جای دو، و
+     * نیازی به فرم چندبخشی که با بدنهٔ JSON بقیهٔ API نمی‌خواند.
+     * قیمتش سی‌وسه درصد حجم بیشتر است که برای تصویر یک‌مگابایتی
+     * قابل تحمل است.
+     */
+    if (!preg_match('#^data:image/(png|jpeg|jpg|webp|gif);base64,#i', $raw, $m)) {
+        fail(400, 'bad_type', 'فقط PNG، JPEG، WebP و GIF پذیرفته می‌شود.');
+    }
+    $ext  = strtolower($m[1] === 'jpeg' ? 'jpg' : $m[1]);
+    $bin  = base64_decode(substr($raw, strpos($raw, ',') + 1), true);
+    if ($bin === false) fail(400, 'invalid', 'فایل خراب است.');
+    if (strlen($bin) > 3 * 1024 * 1024) {
+        fail(413, 'too_big', 'حجم تصویر بیشتر از ۳ مگابایت است.');
+    }
+
+    /*
+     * نوع فایل از خودِ بایت‌ها خوانده می‌شود، نه از چیزی که فرستنده
+     * گفته. پسوند و MIME هر دو از سمت کاربر می‌آیند و هر دو دروغ
+     * می‌گویند؛ getimagesizefromstring به محتوا نگاه می‌کند.
+     */
+    $info = @getimagesizefromstring($bin);
+    if ($info === false || empty($info[2])) {
+        fail(400, 'bad_image', 'این فایل تصویر نیست.');
+    }
+    $realExt = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg',
+                IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif'][$info[2]] ?? null;
+    if ($realExt === null) fail(400, 'bad_type', 'قالب تصویر پشتیبانی نمی‌شود.');
+    $ext = $realExt;
+
+    // نام فایل از نام اصلی الهام می‌گیرد ولی هرگز از آن ساخته نمی‌شود
+    $base = blog_slugify(pathinfo($name, PATHINFO_FILENAME));
+    $base = $base !== '' ? mb_substr($base, 0, 60) : 'image';
+    $file = $base . '-' . substr(bin2hex(random_bytes(4)), 0, 8) . '.' . $ext;
+
+    if (@file_put_contents($dir . '/' . $file, $bin) === false) {
+        fail(500, 'write_failed', 'نوشتن فایل ممکن نشد. دسترسی پوشه را بررسی کنید.');
+    }
+    audit('blog.upload', $a['id'], ['file' => $file, 'bytes' => strlen($bin)]);
+    ok(['file' => $file, 'url' => blog_upload_url() . '/' . $file,
+        'width' => (int)$info[0], 'height' => (int)$info[1]]);
+
+case 'blog.categorySave':
+    $a    = require_super();
+    $name = trim((string)($in['name'] ?? ''));
+    if ($name === '') fail(400, 'invalid', 'نام دسته را بنویسید.');
+    $id   = trim((string)($in['id'] ?? ''));
+    $slug = blog_slugify((string)($in['slug'] ?? '') ?: $name);
+    if ($slug === '') fail(400, 'invalid', 'نشانی دسته نامعتبر است.');
+
+    $dup = db()->prepare('SELECT id FROM blog_category WHERE slug = ? AND id <> ?');
+    $dup->execute([$slug, $id ?: '-']);
+    if ($dup->fetchColumn()) fail(409, 'slug_taken', 'دستهٔ دیگری همین نشانی را دارد.');
+
+    $desc = mb_substr(trim((string)($in['description'] ?? '')), 0, 300) ?: null;
+    $sort = (int)($in['sortOrder'] ?? 0);
+
+    if ($id !== '') {
+        db()->prepare('UPDATE blog_category SET slug=?, name=?, description=?, sort_order=? WHERE id=?')
+            ->execute([$slug, $name, $desc, $sort, $id]);
+    } else {
+        $id = new_id();
+        db()->prepare('INSERT INTO blog_category (id,slug,name,description,sort_order,created_at) VALUES (?,?,?,?,?,?)')
+            ->execute([$id, $slug, $name, $desc, $sort, now_utc()]);
+    }
+    audit('blog.category_saved', $a['id'], ['category' => $id, 'slug' => $slug]);
+    ok(['id' => $id, 'slug' => $slug]);
+
 default:
     fail(400, 'unknown_action', 'درخواست نامشخص.');
+}
+
+/* ═════════════════════ کمکی‌های وبلاگ ═════════════════════ */
+
+/**
+ * پالایش HTML نوشته، با فهرست سفید.
+ *
+ * نویسنده سوپرادمین است و به او اعتماد داریم — ولی اعتماد به آدم،
+ * اعتماد به مرورگرِ اوست: افزونه‌ای که در contenteditable چیزی
+ * می‌چسباند، یا متنی که از Word کپی شده و صد تگ اضافه دارد. و اگر
+ * روزی حسابی لو برود، اسکریپت ذخیره‌شده به *همهٔ* بازدیدکننده‌ها
+ * می‌رسد، نه فقط به مهاجم.
+ *
+ * پالایش سرِ ورودی انجام می‌شود نه خروجی: خروجی چند جا دارد — صفحهٔ
+ * نوشته، خوراک RSS، پیش‌نمایش پنل — و یکی‌شان بالاخره فراموش می‌شد.
+ */
+function blog_clean_html(string $html): string
+{
+    $html = trim($html);
+    if ($html === '') return '';
+
+    // بی‌DOM هیچ پالایش قابل‌اتکایی ممکن نیست؛ رد کردن، بهتر از
+    // ذخیرهٔ HTMLی است که کسی نخوانده باشدش
+    if (!class_exists('DOMDocument')) {
+        fail(500, 'no_dom', 'افزونهٔ dom در PHP فعال نیست و متن نوشته پالوده نمی‌شود.');
+    }
+
+    $allowed = [
+        'p' => [], 'br' => [], 'strong' => [], 'b' => [], 'em' => [], 'i' => [],
+        'u' => [], 's' => [], 'h2' => [], 'h3' => [], 'h4' => [],
+        'ul' => [], 'ol' => [], 'li' => [], 'blockquote' => [],
+        'a' => ['href', 'title', 'rel', 'target'],
+        'img' => ['src', 'alt', 'width', 'height', 'loading', 'decoding'],
+        'figure' => [], 'figcaption' => [],
+        'table' => [], 'thead' => [], 'tbody' => [], 'tr' => [], 'th' => [], 'td' => [],
+        'code' => [], 'pre' => [], 'hr' => [], 'span' => [], 'div' => [],
+    ];
+
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $prev = libxml_use_internal_errors(true);
+    // meta برای اینکه DOMDocument بایت‌ها را latin1 نخواند و فارسی خراب نشود
+    $doc->loadHTML('<?xml encoding="UTF-8"><meta charset="utf-8"><div id="tk-root">'
+                   . $html . '</div>', LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+
+    $root = $doc->getElementById('tk-root');
+    if (!$root) return '';
+
+    blog_clean_node($root, $allowed);
+
+    $out = '';
+    foreach ($root->childNodes as $child) $out .= $doc->saveHTML($child);
+    return trim($out);
+}
+
+/** پیمایش بازگشتی: تگ ناشناخته باز می‌شود، صفتِ ناشناخته می‌رود */
+function blog_clean_node(DOMNode $node, array $allowed): void
+{
+    // از آخر به اول، چون حذف گره فهرست زنده را جابه‌جا می‌کند
+    for ($i = $node->childNodes->length - 1; $i >= 0; $i--) {
+        $child = $node->childNodes->item($i);
+        if (!$child) continue;
+
+        if ($child->nodeType === XML_TEXT_NODE) continue;
+
+        if ($child->nodeType !== XML_ELEMENT_NODE) {
+            // توضیح HTML، CDATA، دستور پردازش — هیچ‌کدام جایی ندارند
+            $node->removeChild($child);
+            continue;
+        }
+
+        /** @var DOMElement $child */
+        $tag = strtolower($child->tagName);
+
+        if (!isset($allowed[$tag])) {
+            /*
+             * تگ ناشناخته حذف می‌شود ولی *فرزندانش* می‌مانند.
+             *
+             * <font> دور یک پاراگراف — که Word می‌گذارد — نباید کل
+             * پاراگراف را ببرد. استثنا script و style است: محتوایشان
+             * هم باید برود، وگرنه کد به متن تبدیل می‌شود و در صفحه
+             * ظاهر می‌شود.
+             */
+            if ($tag === 'script' || $tag === 'style' || $tag === 'iframe') {
+                $node->removeChild($child);
+                continue;
+            }
+            blog_clean_node($child, $allowed);
+            while ($child->firstChild) {
+                $node->insertBefore($child->firstChild, $child);
+            }
+            $node->removeChild($child);
+            continue;
+        }
+
+        // صفت‌ها: هرچه در فهرست نیست می‌رود — از جمله on* و style
+        for ($j = $child->attributes->length - 1; $j >= 0; $j--) {
+            $attr = $child->attributes->item($j);
+            if (!$attr) continue;
+            $an = strtolower($attr->nodeName);
+            if (!in_array($an, $allowed[$tag], true)) {
+                $child->removeAttribute($attr->nodeName);
+                continue;
+            }
+            if ($an === 'href' || $an === 'src') {
+                /*
+                 * رد بر پایهٔ اسکیم، نه پذیرش بر پایهٔ شکل.
+                 *
+                 * نسخهٔ اول فهرست سفیدی از شکل‌ها داشت — https:// و /
+                 * و ./ و # — و «uploads/x.png» را که ساده‌ترین مسیر
+                 * نسبی ممکن است می‌انداخت بیرون، یعنی تصویرِ سالمِ
+                 * خودِ وبلاگ حذف می‌شد.
+                 *
+                 * قاعدهٔ درست ساده‌تر است: هر چیزی که *اسکیم* دارد
+                 * فقط وقتی می‌ماند که http یا https باشد؛ هر چیزی که
+                 * اسکیم ندارد، ارجاع نسبی است و بی‌خطر. javascript: و
+                 * data: و vbscript: همه اسکیم دارند و همه می‌روند،
+                 * بدون اینکه لازم باشد نامشان را بشماریم.
+                 *
+                 * نویسه‌های کنترلی پیش از بررسی پاک می‌شوند: مرورگر
+                 * «java	script:» را اجرا می‌کند، پس ما هم باید
+                 * همان‌طور بخوانیمش.
+                 */
+                $v = preg_replace('/[ - ]/', '', $attr->nodeValue ?? '') ?? '';
+                $ok = !preg_match('#^[a-z][a-z0-9+.\-]*:#i', $v)
+                   || preg_match('#^https?:#i', $v);
+                if (!$ok) $child->removeAttribute($attr->nodeName);
+            }
+        }
+
+        // لینک بیرونی: rel امن، تا صفحهٔ مقصد نتواند به تب ما دست بزند
+        if ($tag === 'a' && $child->hasAttribute('href')) {
+            $href = $child->getAttribute('href');
+            if (preg_match('#^https?://#i', $href)
+                && stripos($href, 'talkora.ir') === false) {
+                $child->setAttribute('rel', 'nofollow noopener');
+                $child->setAttribute('target', '_blank');
+            }
+        }
+        // تصویرِ درون متن همیشه تنبل بار می‌شود؛ سرعت صفحه عامل رتبه است
+        if ($tag === 'img') {
+            $child->setAttribute('loading', 'lazy');
+            $child->setAttribute('decoding', 'async');
+            if (!$child->hasAttribute('alt')) $child->setAttribute('alt', '');
+        }
+
+        blog_clean_node($child, $allowed);
+    }
+}
+
+/**
+ * نشانی نوشته: فارسیِ تمیز، یکتا.
+ *
+ * فینگلیش نمی‌شود — کلیدواژهٔ فارسی در نشانی، همان چیزی است که
+ * می‌خواهیم گوگل ببیند (migrations/012).
+ */
+function blog_slugify(string $s): string
+{
+    $s = trim($s);
+    // ارقام فارسی و عربی به لاتین، تا نشانی یک شکل داشته باشد
+    $s = strtr($s, ['۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5',
+                    '۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
+                    '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5',
+                    '٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
+                    'ي'=>'ی', 'ك'=>'ک', 'ۀ'=>'ه', 'أ'=>'ا', 'إ'=>'ا', 'آ'=>'آ']);
+    // نیم‌فاصله و فاصله هر دو خط تیره می‌شوند
+    $s = str_replace(["\u{200c}", "\u{200f}", "\u{200e}"], ' ', $s);
+    $s = preg_replace('/[^\p{L}\p{N}]+/u', '-', $s) ?? '';
+    $s = trim($s, '-');
+    $s = preg_replace('/-{2,}/', '-', $s) ?? '';
+    return mb_strtolower(mb_substr($s, 0, 170));
+}
+
+/** slug یکتا؛ اگر گرفته باشد، شمارنده می‌گیرد */
+function blog_slug(string $wanted, string $title, string $excludeId): string
+{
+    $base = blog_slugify($wanted !== '' ? $wanted : $title);
+    if ($base === '') $base = 'نوشته';
+
+    $st = db()->prepare('SELECT id FROM blog_post WHERE slug = ? AND id <> ?');
+    for ($n = 0; $n < 50; $n++) {
+        $try = $n === 0 ? $base : $base . '-' . ($n + 1);
+        $st->execute([$try, $excludeId ?: '-']);
+        if (!$st->fetchColumn()) return $try;
+    }
+    fail(409, 'slug_taken', 'نشانی یکتا ساخته نشد. نشانی را دستی بدهید.');
+}
+
+/**
+ * زمان خواندن، به دقیقه.
+ *
+ * ۲۰۰ کلمه در دقیقه برای فارسی محافظه‌کارانه است. عدد دقیق نیست و
+ * قرار هم نیست باشد — کارش این است که خواننده پیش از شروع بداند چه
+ * چیزی در انتظارش است.
+ */
+function blog_reading_minutes(string $html): int
+{
+    $words = preg_split('/\s+/u', trim(strip_tags($html))) ?: [];
+    return max(1, min(255, (int)ceil(count(array_filter($words)) / 200)));
+}
+
+/** نام فایل تصویر، بدون هیچ مسیری */
+function blog_safe_file(string $name): ?string
+{
+    $name = basename(trim($name));
+    if ($name === '' || $name === '.' || $name === '..') return null;
+    return preg_match('/^[\p{L}\p{N}._-]{1,120}$/u', $name) ? $name : null;
+}
+
+/**
+ * پوشهٔ تصویرها.
+ *
+ * پنل سوپرادمین روی admin.talkora.ir است و وبلاگ روی talkora.ir —
+ * دو httpdocs جدا. روی پلسک هر دو زیر یک کاربر و یک خانه‌اند، پس
+ * مسیر نسبی کار می‌کند؛ ولی چون چیدمان هاست می‌تواند فرق کند،
+ * config.php حرف آخر را می‌زند.
+ *
+ * @return string|null مسیر نوشتنی، یا null اگر پیدا نشد
+ */
+function blog_upload_dir(): ?string
+{
+    $c = cfg();
+    $candidates = [];
+    if (!empty($c['blog_upload_dir'])) $candidates[] = rtrim((string)$c['blog_upload_dir'], '/\\');
+    // چیدمان پیش‌فرض پلسک: ~/admin.talkora.ir/api/ کنار ~/httpdocs/
+    $candidates[] = __DIR__ . '/../../httpdocs/blog/uploads';
+    // چیدمان توسعه: همین مخزن
+    $candidates[] = __DIR__ . '/../../site/blog/uploads';
+
+    foreach ($candidates as $d) {
+        if (is_dir($d) && is_writable($d)) return realpath($d) ?: $d;
+    }
+    return null;
+}
+
+function blog_upload_url(): string
+{
+    $c = cfg();
+    if (!empty($c['blog_upload_url'])) return rtrim((string)$c['blog_upload_url'], '/');
+    return 'https://talkora.ir/blog/uploads';
+}
+
+/** وضعیت پوشه، برای نشان‌دادن در پنل پیش از آنکه کسی آپلود کند */
+/**
+ * نشانی تمیز واقعاً کار می‌کند؟
+ *
+ * حدس نمی‌زنیم: یک نشانیِ واقعیِ نوشته گرفته می‌شود و کد پاسخ خوانده.
+ * اگر ۲۰۰ نبود یعنی .htaccess خوانده نشده — و آن‌وقت باید
+ * blog_pretty_urls را در config.php خاموش کرد تا نشانی‌ها به شکل
+ * ?slug= برگردند و دست‌کم کار کنند.
+ */
+function blog_pretty_check(): array
+{
+    $c = cfg();
+    $on = !array_key_exists('blog_pretty_urls', $c) || (bool)$c['blog_pretty_urls'];
+    if (!$on) {
+        return ['state' => 'warn',
+                'detail' => 'شکل ?slug= — کار می‌کند ولی برای سئو ضعیف‌تر است.'];
+    }
+
+    $base = rtrim((string)($c['site_url'] ?? 'https://talkora.ir'), '/');
+    $st = null;
+    try { $st = db()->query("SELECT slug FROM blog_post WHERE status='published' LIMIT 1"); }
+    catch (Throwable $e) { /* پایین */ }
+    $slug = $st ? $st->fetchColumn() : false;
+    if ($slug === false) {
+        return ['state' => 'warn',
+                'detail' => 'هنوز نوشتهٔ منتشرشده‌ای نیست، پس نشانی آزموده نشد.'];
+    }
+
+    $url  = $base . '/blog/' . rawurlencode((string)$slug);
+    $code = http_head_code($url);
+    if ($code === 200) {
+        return ['state' => 'ok', 'detail' => 'نشانی تمیز کار می‌کند — ' . $url];
+    }
+    return ['state' => 'bad',
+            'detail' => "نشانی تمیز پاسخ {$code} داد. اگر هاست .htaccess را نمی‌خواند، "
+                      . 'blog_pretty_urls را در config.php روی false بگذارید.'];
+}
+
+/** کد پاسخ یک نشانی، بی‌آنکه بدنه‌اش را بگیرد */
+function http_head_code(string $url): int
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [CURLOPT_NOBODY => true, CURLOPT_RETURNTRANSFER => true,
+                                CURLOPT_TIMEOUT => 6, CURLOPT_FOLLOWLOCATION => false]);
+        curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        return $code;
+    }
+    $ctx = stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 6,
+                                             'ignore_errors' => true]]);
+    $h = @get_headers($url, false, $ctx);
+    if (!$h || !preg_match('/\s(\d{3})\s/', (string)$h[0], $m)) return 0;
+    return (int)$m[1];
+}
+
+function blog_uploads_state(): array
+{
+    $d = blog_upload_dir();
+    return ['ok' => $d !== null, 'dir' => $d, 'url' => blog_upload_url()];
+}
+
+function blog_delete_upload(string $file): void
+{
+    $safe = blog_safe_file($file);
+    $dir  = blog_upload_dir();
+    if (!$safe || !$dir) return;
+    $p = $dir . '/' . $safe;
+    if (is_file($p)) @unlink($p);
 }
 
 /* ── بخش‌بندی مخاطبان پلتفرم ──
