@@ -764,17 +764,23 @@ def main() -> int:
 
     # وبلاگ: صفحه‌های سمت‌سرور، شیوه‌نامه، و پوشهٔ تصویرها.
     #
-    # uploads خالی کپی می‌شود ولی .htaccess‌اش می‌رود: پوشه‌ای که فایل
+    # uploads خالی کپی می‌شود ولی محافظش می‌رود: پوشه‌ای که فایل
     # آپلودی می‌گیرد و PHP اجرا می‌کند، بدترین سوراخ ممکن است.
+    #
+    # هر دو صورتِ محافظ می‌رود — .htaccess برای آپاچی و web.config
+    # برای IIS. هاست فعلی ویندوز است و .htaccess را نمی‌خواند؛ اگر
+    # فقط یکی را می‌فرستادیم، روی نصب بعدی بی‌سروصدا بی‌اثر می‌شد.
     blog_src = ROOT / "site" / "blog"
     blog_out = site_out / "blog"
     blog_out.mkdir()
     for f in sorted(blog_src.glob("*.php")):
         shutil.copy2(f, blog_out / f.name)
     shutil.copy2(blog_src / ".htaccess", blog_out / ".htaccess")
+    shutil.copy2(blog_src / "web.config", blog_out / "web.config")
     shutil.copytree(blog_src / "assets", blog_out / "assets")
     (blog_out / "uploads").mkdir()
     shutil.copy2(blog_src / "uploads" / ".htaccess", blog_out / "uploads" / ".htaccess")
+    shutil.copy2(blog_src / "uploads" / "web.config", blog_out / "uploads" / "web.config")
     (site_out / "راهنمای-آپلود.txt").write_text(SITE_GUIDE, encoding="utf-8")
 
     # سایت هم یک api کوچک می‌گیرد: تنظیماتی که ادمین عوض می‌کند و فرم دمو.
