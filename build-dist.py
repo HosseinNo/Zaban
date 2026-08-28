@@ -767,9 +767,17 @@ def main() -> int:
     # uploads خالی کپی می‌شود ولی محافظش می‌رود: پوشه‌ای که فایل
     # آپلودی می‌گیرد و PHP اجرا می‌کند، بدترین سوراخ ممکن است.
     #
-    # هر دو صورتِ محافظ می‌رود — .htaccess برای آپاچی و web.config
-    # برای IIS. هاست فعلی ویندوز است و .htaccess را نمی‌خواند؛ اگر
-    # فقط یکی را می‌فرستادیم، روی نصب بعدی بی‌سروصدا بی‌اثر می‌شد.
+    # بازنویسی نشانی‌ها هر دو صورت را دارد — .htaccess برای آپاچی و
+    # web.config برای IIS. هاست فعلی ویندوز است و .htaccess را
+    # نمی‌خواند؛ اگر فقط یکی را می‌فرستادیم، روی نصب بعدی بی‌سروصدا
+    # بی‌اثر می‌شد.
+    #
+    # ولی uploads فقط .htaccess دارد. نسخهٔ IIS‌اش امتحان شد و روی
+    # این هاست کل پوشه را ۵۰۰ کرد: تفویضِ requestFiltering در آن سطح
+    # بسته است — با <remove> هم درست نشد. یک ۵۰۰ در پوشهٔ تصویرها
+    # هر تصویر شاخصِ هر نوشته را می‌شکند، که بدتر از نداشتنِ آن لایه
+    # است. محافظ اصلی جای دیگری است: blog_safe_file() نام فایل را
+    # محدود می‌کند و آپلود فقط تصویر می‌پذیرد.
     blog_src = ROOT / "site" / "blog"
     blog_out = site_out / "blog"
     blog_out.mkdir()
@@ -780,7 +788,6 @@ def main() -> int:
     shutil.copytree(blog_src / "assets", blog_out / "assets")
     (blog_out / "uploads").mkdir()
     shutil.copy2(blog_src / "uploads" / ".htaccess", blog_out / "uploads" / ".htaccess")
-    shutil.copy2(blog_src / "uploads" / "web.config", blog_out / "uploads" / "web.config")
     (site_out / "راهنمای-آپلود.txt").write_text(SITE_GUIDE, encoding="utf-8")
 
     # سایت هم یک api کوچک می‌گیرد: تنظیماتی که ادمین عوض می‌کند و فرم دمو.
