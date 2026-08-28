@@ -107,7 +107,7 @@ case 'audiences':
                        WHERE k.__I__' . $where . " AND k.status <> 'archived'
                        ORDER BY k.name", $args);
     foreach ($classes as $c) {
-        $out[] = ['key' => 'class:' . $c['id'], 'label' => 'کلاس ' . $c['name'],
+        $out[] = ['key' => 'class:' . $c['id'], 'label' => class_label((string)$c['name']),
                   'count' => audience_count('class', (string)$c['id'])];
     }
 
@@ -181,7 +181,11 @@ case 'send':
     }
 
     $targets = audience_users($type, $arg);
-    if (!$targets) fail(400, 'no_targets', 'این مخاطب الان هیچ عضوی ندارد.');
+    if (!$targets) {
+        // چون فرستنده از فهرست کنار می‌رود، «خالی» می‌تواند یعنی
+        // «فقط خودت» — و آن‌وقت پیام «عضوی ندارد» گیج‌کننده است
+        fail(400, 'no_targets', 'این مخاطب کسی جز خودتان ندارد.');
+    }
 
     $me  = ctx()['user'];
     $nid = new_id();
@@ -283,6 +287,22 @@ function audience_parse(string $a): array
     fail(400, 'bad_audience', 'مخاطب نامشخص است.');
 }
 
+/**
+ * نام خوانای یک کلاس برای فهرست مخاطبان.
+ *
+ * «کلاس» را جلوی نام می‌گذارد، مگر خودِ نام از همان کلمه شروع شده
+ * باشد. آموزشگاه‌ها کلاس‌هایشان را «کلاس الف» صدا می‌زنند، نه «الف»،
+ * و نتیجه‌اش «کلاس کلاس الف» می‌شد — چیزی که فرستنده در فهرست
+ * مخاطبان می‌دید و در سابقهٔ ارسال هم ثبت می‌شد.
+ */
+function class_label(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') return 'کلاس —';
+    // «کلاسِ» و «کلاس‌های» هم همین‌جا می‌افتند
+    return mb_substr($name, 0, 4) === 'کلاس' ? $name : 'کلاس ' . $name;
+}
+
 function audience_label(string $type, string $arg): string
 {
     if ($type === 'role') {
@@ -291,7 +311,7 @@ function audience_label(string $type, string $arg): string
     }
     if ($type === 'class') {
         $k = t_one('SELECT name FROM klass WHERE __I__ AND id = ?', [$arg]);
-        return 'کلاس ' . ($k['name'] ?? '—');
+        return class_label((string)($k['name'] ?? '—'));
     }
     return 'همهٔ اعضای آموزشگاه';
 }
@@ -328,7 +348,20 @@ function audience_users(string $type, string $arg): array
         "SELECT DISTINCT m.user_id AS uid FROM membership m
           WHERE m.__I__ AND m.status = 'active'
             AND (m.expires_at IS NULL OR m.expires_at > UTC_TIMESTAMP())" . $where, $args);
-    return array_values(array_map(fn($r) => (string)$r['uid'], $rows));
+
+    /*
+     * فرستنده اعلان خودش را نمی‌گیرد.
+     *
+     * مسیر کلاس این را از اول رعایت می‌کرد (مدرسِ کلاس را وقتی خودش
+     * فرستاده بود کنار می‌گذاشت) ولی «همهٔ اعضا» و «همهٔ مدرسان» نه —
+     * پس مدیری که به کل آموزشگاه خبر می‌داد، زنگ خودش هم قرمز می‌شد و
+     * باید اعلان خودش را «خوانده» می‌کرد. شمار گیرنده هم یکی بیشتر
+     * گزارش می‌شد از آنچه واقعاً به کسی رسیده.
+     */
+    $me = my_id();
+    return array_values(array_filter(
+        array_map(fn($r) => (string)$r['uid'], $rows),
+        fn($uid) => $uid !== $me));
 }
 
 function audience_count(string $type, string $arg): int

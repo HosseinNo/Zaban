@@ -171,3 +171,16 @@ function system_role_id(string $role): string
     }
     return $cache[$role] = (string)$id;
 }
+
+/**
+ * مقدار can_host_meeting برای عضویت تازه — مدیر از ابتدا دارد.
+ *
+ * دوقلوی panel/api/_perm.php است، به همان دلیل system_role_id بالا:
+ * بستهٔ سوپرادمین جدا منتشر می‌شود و panel/api/ را نمی‌بیند. اگر
+ * قاعده عوض شد، هر دو را عوض کنید — tests/membership-meeting-access.py
+ * هر دو را با هم می‌سنجد.
+ */
+function default_can_host_meeting(string $role): int
+{
+    return $role === 'manager' ? 1 : 0;
+}

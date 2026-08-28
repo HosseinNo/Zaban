@@ -26,9 +26,7 @@ const PROVIDERS    = ['bbb', 'meet', 'skyroom', 'custom', 'jitsi'];
 function class_join_url(string $classId, string $provider, ?string $clientUrl): ?string
 {
     if ($provider === 'jitsi') {
-        if (!can_host_meeting()) {
-            fail(403, 'meeting_not_allowed', 'اجازهٔ ساخت جلسهٔ میت را ندارید. از مدیر آموزشگاه بخواهید فعالش کند.');
-        }
+        if (!jitsi_allowed()) fail(403, 'meeting_not_allowed', jitsi_denied_message());
         return jitsi_room_url($classId);
     }
     return $clientUrl;

@@ -4312,7 +4312,7 @@ function fieldsClass(c){
       </select></div>
   </div>
   <div class="fld"><label for="clProv">ارائه‌دهندهٔ کلاس آنلاین</label>
-    <select id="clProv" onchange="onClProvChange()">${provList.map(function(p){
+    <select id="clProv">${provList.map(function(p){
       return '<option value="'+p+'"'+(curProv===p?" selected":"")+'>'+PROV_FA[p]+'</option>';}).join("")}
     </select>
     <span class="hint" id="clProvNote">${PROV_NOTE[curProv]}</span></div>
@@ -4359,6 +4359,21 @@ function modalClass(id){
       <button class="btn btn--g" data-act="close">انصراف</button>
       <button class="btn btn--p" data-act="cl-save" data-id="${id||""}">${c?"ذخیره":"ساخت کلاس"}</button>
     </div>`,true);
+
+  /*
+   * شنونده اینجا بسته می‌شود، نه با onchange درون‌خطی.
+   *
+   * کل این اسکریپت داخل یک IIFE است، پس onClProvChange سراسری نیست و
+   * صفتِ onchange="onClProvChange()" به ReferenceError می‌خورد — بی‌صدا،
+   * چون مرورگر خطای شنوندهٔ درون‌خطی را فقط در کنسول می‌نویسد.
+   *
+   * نتیجه‌اش این بود: مدیری که «جلسهٔ میت» را انتخاب می‌کرد، همچنان
+   * فیلد «لینک ثابت جلسه» را می‌دید با راهنمای «برای کلاس آنلاین لازم
+   * است» — لینکی که جیتسی خودش می‌سازد و اصلاً نباید تایپ شود. و متن
+   * راهنما هم مال ارائه‌دهندهٔ قبلی می‌ماند.
+   */
+  var pv=el("clProv");
+  if(pv){ pv.addEventListener("change",onClProvChange); onClProvChange(); }
 }
 
 function modalPeople(id){

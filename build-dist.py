@@ -642,6 +642,42 @@ def check_external(folder: pathlib.Path) -> list:
     return bad
 
 
+def check_inline_handlers(folder: pathlib.Path) -> list:
+    """
+    شنوندهٔ درون‌خطی که تابعِ داخل IIFE را صدا می‌زند، بی‌صدا می‌شکند.
+
+    هر سه پنل، کل جاوااسکریپتشان را در یک (function(){...})() می‌پیچند.
+    صفت‌هایی مثل onchange="foo()" اسم را فقط در دامنهٔ سراسری می‌گردند،
+    و foo آنجا نیست — پس ReferenceError می‌دهد که مرورگر فقط در کنسول
+    می‌نویسد و کاربر هیچ نشانه‌ای نمی‌بیند.
+
+    یک‌بار همین افتاد: در فرم کلاس، onchange="onClProvChange()" هرگز
+    اجرا نشد. مدیری که «جلسهٔ میت» را انتخاب می‌کرد همچنان فیلد «لینک
+    ثابت جلسه» را می‌دید — لینکی که سرور خودش می‌سازد — با راهنمای
+    «برای کلاس آنلاین لازم است»، و متن راهنما هم مال ارائه‌دهندهٔ قبلی
+    می‌ماند.
+
+    فراخوانی‌هایی که فقط به سراسری‌های خودِ مرورگر دست می‌زنند (مثل
+    event.stopPropagation()) مشکلی ندارند و رد می‌شوند.
+    """
+    safe = re.compile(r"^\s*(?:event|this|window|return\s+false)\b[\w.()\s;]*$")
+    bad = []
+    for f in sorted(folder.rglob("*.html")):
+        text = f.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        for m in re.finditer(r'\bon[a-z]+\s*=\s*"([^"]*)"', text):
+            body = m.group(1)
+            if safe.match(body):
+                continue
+            line = text[: m.start()].count("\n") + 1
+            # توضیحِ خودِ همین قاعده نباید به آن گیر کند: خطی که با
+            # * یا // شروع می‌شود کامنت است، نه نشانه‌گذاری
+            if re.match(r"\s*(\*|//|/\*)", lines[line - 1]):
+                continue
+            bad.append(f"{f.relative_to(folder)}:{line}  {m.group(0)[:70]}")
+    return bad
+
+
 def check_permissions(root: pathlib.Path) -> list:
     """
     یکپارچگی داده‌های پایهٔ دسترسی را می‌سنجد.
@@ -872,6 +908,16 @@ def main() -> int:
         print("خطا: ارجاع به دامنهٔ خارجی:", file=sys.stderr)
         for b in bad:
             print("   ", b, file=sys.stderr)
+        return 1
+
+    inline = (check_inline_handlers(site_out) + check_inline_handlers(panel_out)
+              + check_inline_handlers(admin_out))
+    if inline:
+        print("خطا: شنوندهٔ درون‌خطی که تابعِ داخل IIFE را صدا می‌زند:", file=sys.stderr)
+        for b in inline:
+            print("   ", b, file=sys.stderr)
+        print("    با addEventListener ببندید — صفت درون‌خطی آن تابع را نمی‌بیند.",
+              file=sys.stderr)
         return 1
 
     if (panel_out / "api" / "config.php").exists():

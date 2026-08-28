@@ -74,14 +74,13 @@ case 'start':
     if ($s['status'] === 'cancelled') fail(409, 'cancelled', 'این جلسه لغو شده.');
 
     /*
-     * جلسهٔ میت مجوز صریح می‌خواهد، مگر برای کسی که محدوده‌اش کل
-     * آموزشگاه است (مدیر). همان قاعدهٔ قبلی، ولی بر پایهٔ محدوده تا
-     * نقش سفارشی هم درست بیفتد.
+     * جلسهٔ میت مجوز می‌خواهد. قاعده‌اش در jitsi_allowed() است، همان
+     * که classes.php هنگام ساخت کلاس صدا می‌زند — پیش از این هرکدام
+     * جداگانه تصمیم می‌گرفتند و نتیجه‌شان یکی نبود: اینجا مدیر را از
+     * کلید خاموشیِ آموزشگاه هم معاف می‌کرد.
      */
-    if ((string)$cl['provider'] === 'jitsi'
-        && scope_rank(perm_scope('session.start_meeting') ?? 'own') < scope_rank('institute')
-        && !can_host_meeting()) {
-        fail(403, 'meeting_not_allowed', 'اجازهٔ شروع جلسهٔ میت را ندارید. از مدیر آموزشگاه بخواهید فعالش کند.');
+    if ((string)$cl['provider'] === 'jitsi' && !jitsi_allowed()) {
+        fail(403, 'meeting_not_allowed', jitsi_denied_message());
     }
 
     // لینک: اگر مدرس لینک تازه داد همان، وگرنه لینک ثابت کلاس

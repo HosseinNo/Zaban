@@ -458,6 +458,12 @@ CREATE TABLE IF NOT EXISTS impersonation_ticket (
 
 ALTER TABLE institute  ADD COLUMN jitsi_enabled    TINYINT(1) NOT NULL DEFAULT 1;
 ALTER TABLE membership ADD COLUMN can_host_meeting TINYINT(1) NOT NULL DEFAULT 0;
+
+-- این UPDATE فقط مدیرهای همان لحظه را می‌گیرد، نه مدیرهای بعدی.
+-- سال‌ها تنها چیزی بود که «مدیر از ابتدا دارد» را پیاده می‌کرد، و
+-- برای هر آموزشگاهی که بعداً ساخته شد کار نمی‌کرد (مهاجرت ۰۱۳).
+-- حالا مسئولیتش با کد است: default_can_host_meeting($role) در هر
+-- INSERT INTO membership، با نگهبانِ tests/membership-meeting-access.py.
 UPDATE membership SET can_host_meeting = 1 WHERE role = 'manager';
 
 

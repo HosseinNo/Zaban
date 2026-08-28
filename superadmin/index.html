@@ -412,6 +412,8 @@ var S={view:"dash",settings:null,leads:null,stats:null,events:null,
        codes:null,health:null,issued:null,smsTest:null,busy:false,err:"",
        institutes:null,instQ:"",instStatus:"",instDetail:null,
        userQ:"",userResults:null,userDetail:null,
+       userFilter:{status:"all",role:"all",instituteId:"",page:1,limit:50},
+       userMeta:null,userStats:null,userBusy:false,
        reasonModal:null,
        notifData:null,notifSent:[],notifBusy:false,
        blog:null,blogEdit:null,blogBusy:false,
@@ -665,26 +667,110 @@ function viewInstituteDetail(){
 }
 
 /* ── کاربران و نقش‌ها ── */
+var ROLE_FA={manager:"مدیر",teacher:"مدرس",student:"زبان‌آموز"};
+
 function viewUsers(){
   if(S.userDetail)return viewUserDetail();
+  if(S.userResults===null&&!S.userBusy)doUserLoad(false);
+
+  var f=S.userFilter, st=S.userStats, m=S.userMeta;
+  /* S.institutes خودش آرایه است، نه پوشش. برای فهرست کشویی لازم
+     است و اگر هنوز نیامده، همین‌جا می‌آید — کاربر نباید مجبور شود
+     اول صفحهٔ آموزشگاه‌ها را باز کند تا این پالایه پر شود. */
+  var insts=S.institutes||[];
+  if(S.institutes===null&&API.live&&!S.instLoading){
+    S.instLoading=true;
+    doInstSearch().then(function(){S.instLoading=false;render();});
+  }
+
+  /* پالایه‌ای که چیزی را می‌بندد باید دیده شود؛ وگرنه کاربر فهرست
+     ناقص را کامل می‌پندارد و می‌گوید «فلانی نیست». */
+  var narrowed=(S.userQ||"")!==""||f.status!=="all"||f.role!=="all"||f.instituteId!=="";
+
   return h`
-  <div class="search">
-    <div class="fld"><input id="userQ" type="text" placeholder="نام یا شمارهٔ موبایل…" value="${esc(S.userQ)}"></div>
-    <button class="btn btn--p" data-a="userSearch">جست‌وجو</button>
+  ${st?h`<div class="grid g4" style="margin-block-end:16px">
+    ${suKpi("همهٔ کاربران",st.total,"ثبت‌نام‌شده")}
+    ${suKpi("مدیر",st.managers,"دست‌کم یک آموزشگاه")}
+    ${suKpi("مدرس",st.teachers,"")}
+    ${suKpi("زبان‌آموز",st.students,"")}
+  </div>`:""}
+
+  <div class="card" style="margin-block-end:16px">
+    <div class="card-b">
+      <div class="grid g4" style="align-items:end">
+        <div class="fld"><label for="userQ">نام یا موبایل</label>
+          <input id="userQ" type="text" placeholder="خالی = همه" value="${esc(S.userQ)}"></div>
+        <div class="fld"><label for="ufRole">نقش</label>
+          <select id="ufRole">
+            <option value="all"${f.role==="all"?" selected":""}>همه</option>
+            <option value="manager"${f.role==="manager"?" selected":""}>مدیر</option>
+            <option value="teacher"${f.role==="teacher"?" selected":""}>مدرس</option>
+            <option value="student"${f.role==="student"?" selected":""}>زبان‌آموز</option>
+            <option value="none"${f.role==="none"?" selected":""}>بدون آموزشگاه${st?" ("+fa(st.orphans)+")":""}</option>
+          </select></div>
+        <div class="fld"><label for="ufStatus">وضعیت</label>
+          <select id="ufStatus">
+            <option value="all"${f.status==="all"?" selected":""}>همه</option>
+            <option value="active"${f.status==="active"?" selected":""}>فعال</option>
+            <option value="suspended"${f.status==="suspended"?" selected":""}>مسدود${st?" ("+fa(st.suspended)+")":""}</option>
+          </select></div>
+        <div class="fld"><label for="ufInst">آموزشگاه</label>
+          <select id="ufInst">
+            <option value="">همه</option>
+            ${insts.map(function(i){
+              return '<option value="'+esc(i.id)+'"'+(f.instituteId===i.id?" selected":"")+'>'
+                   + esc(i.name)+'</option>';}).join("")}
+          </select>
+          ${insts.length?"":'<span class="hint">اول صفحهٔ آموزشگاه‌ها را باز کنید</span>'}</div>
+      </div>
+      <div class="row" style="gap:8px;margin-block-start:12px">
+        <button class="btn btn--p btn--sm" data-a="userFilter">اعمال</button>
+        ${narrowed?h`<button class="btn btn--g btn--sm" data-a="userFilterClear">پاک‌کردن پالایه‌ها</button>`:""}
+        <span class="muted" style="font-size:12.5px;margin-inline-start:auto">
+          ${S.userBusy?"در حال گرفتن…":m?fa(m.total)+" کاربر"+(narrowed?" با این پالایه":""):""}</span>
+      </div>
+    </div>
   </div>
-  ${!S.userResults?'<div class="card"><div class="empty">حداقل دو حرف یا رقم وارد کنید و جست‌وجو بزنید.</div></div>':
-    !S.userResults.length?'<div class="card"><div class="empty"><b>کسی پیدا نشد</b></div></div>':
+
+  ${S.userResults===null?'<div class="card"><div class="empty">در حال بارگذاری…</div></div>':
+    !S.userResults.length?h`<div class="card"><div class="empty">
+        <b>کسی با این پالایه نیست</b>
+        ${narrowed?'<p>پالایه‌ها را باز کنید تا همهٔ کاربران دیده شوند.</p>':""}</div></div>`:
     h`<div class="card"><div class="tbl-wrap"><table>
-      <thead><tr><th>نام</th><th>موبایل</th><th>عضویت</th><th>وضعیت</th><th></th></tr></thead>
+      <thead><tr><th>نام</th><th>موبایل</th><th>نقش</th><th>آموزشگاه</th>
+                 <th>آخرین ورود</th><th>وضعیت</th><th></th></tr></thead>
       <tbody>${S.userResults.map(function(u){
         return h`<tr class="click" data-openuser="${u.id}">
-          <td><b>${esc(u.name)}</b></td>
+          <td><b>${esc(u.name)}</b>
+            <br><span class="muted" style="font-size:11.5px">از ${jDateTime(u.createdAt)}</span></td>
           <td class="num" dir="ltr" style="text-align:end">${fa(u.phone)}</td>
-          <td class="num">${fa(u.memberships)} آموزشگاه</td>
+          <td>${(u.roles||[]).length
+                ? u.roles.map(function(r){
+                    return '<span class="pill p-mute">'+esc(ROLE_FA[r]||r)+'</span>';}).join(" ")
+                : '<span class="pill p-bad">بدون آموزشگاه</span>'}</td>
+          <td>${u.institutes?esc(u.institutes):'<span class="muted">—</span>'}</td>
+          <td class="num">${u.lastLoginAt?jDateTime(u.lastLoginAt):'<span class="muted">هرگز</span>'}</td>
           <td>${u.status==="active"?'<span class="pill p-ok">فعال</span>':'<span class="pill p-bad">مسدود</span>'}</td>
           <td><button class="btn btn--sm btn--g" data-openuser="${u.id}">مشاهده</button></td>
         </tr>`;}).join("")}
-      </tbody></table></div></div>`}`;
+      </tbody></table></div>
+      ${m&&m.pages>1?h`<div class="row" style="gap:8px;padding:12px 16px;align-items:center">
+        <button class="btn btn--g btn--sm" data-a="userPage" data-p="${m.page-1}"
+                ${m.page<=1?"disabled":""}>قبلی</button>
+        <span class="muted" style="font-size:12.5px">صفحهٔ ${fa(m.page)} از ${fa(m.pages)}</span>
+        <button class="btn btn--g btn--sm" data-a="userPage" data-p="${m.page+1}"
+                ${m.page>=m.pages?"disabled":""}>بعدی</button>
+      </div>`:""}
+    </div>`}`;
+}
+
+/* کارت آمار کوچک — همان شکلِ بقیهٔ پنل، بدون وابستگی به kpi() پنل مدیر */
+function suKpi(label,n,hint){
+  return h`<div class="card" style="padding:14px 16px">
+    <div class="muted" style="font-size:12.5px">${esc(label)}</div>
+    <div class="num" style="font-size:24px;font-weight:700;line-height:1.4">${fa(n)}</div>
+    ${hint?h`<div class="muted" style="font-size:11.5px">${esc(hint)}</div>`:""}
+  </div>`;
 }
 
 
@@ -753,7 +839,7 @@ function viewUserDetail(){
   if(!d)return '<div class="card"><div class="empty">در حال بارگذاری…</div></div>';
   var u=d.user;
   return h`
-  <button class="back" data-a="userBack">← بازگشت به جست‌وجو</button>
+  <button class="back" data-a="userBack">← بازگشت به فهرست کاربران</button>
   ${accessPanel(d)}
   <div class="card"><div class="card-h"><h3>${esc(u.name)}</h3>
       ${u.status==="active"?'<span class="pill p-ok">فعال</span>':'<span class="pill p-bad">مسدود</span>'}</div>
@@ -1726,13 +1812,33 @@ function doInstOpen(id){
     render();
   });
 }
-function doUserSearch(){
-  if(mb2(S.userQ)<2){toast("حداقل دو حرف یا رقم وارد کنید");return;}
-  if(!API.live){S.userResults=demoUsers(S.userQ);render();return;}
-  call({action:"users.search",q:S.userQ}).then(function(r){
-    if(r.ok)S.userResults=r.users; else toast(r.message||"جست‌وجو ناموفق بود");
+/*
+ * فهرست کاربران — بی‌شرط بار می‌شود، نه فقط وقتی کسی چیزی تایپ کند.
+ *
+ * نسخهٔ قبلی تا دو حرف وارد نمی‌شد هیچ نشان نمی‌داد، و سوپرادمینی که
+ * می‌خواست بداند اصلاً چند نفر ثبت‌نام کرده‌اند باید نام کسی را حدس
+ * می‌زد. حالا پالایه‌ها فهرست را باریک می‌کنند، نه اینکه بسازندش.
+ */
+function doUserLoad(resetPage){
+  if(resetPage)S.userFilter.page=1;
+  if(!API.live){S.userResults=demoUsers(S.userQ);S.userMeta=null;render();return;}
+  S.userBusy=true;
+  var f=S.userFilter;
+  call({action:"users.list",q:S.userQ,status:f.status,role:f.role,
+        instituteId:f.instituteId,page:f.page,limit:f.limit}).then(function(r){
+    S.userBusy=false;
+    if(r.ok){
+      S.userResults=r.users;
+      S.userMeta={total:r.total,page:r.page,pages:r.pages,limit:r.limit};
+    }else toast(r.message||"فهرست نیامد");
     render();
   });
+  // آمار بالای صفحه یک‌بار می‌آید؛ با پالایه عوض نمی‌شود
+  if(!S.userStats){
+    call({action:"users.stats"}).then(function(r){
+      if(r.ok){S.userStats=r.stats;render();}
+    });
+  }
 }
 function mb2(s){return (s||"").length;}
 function doUserOpen(id){
@@ -2190,8 +2296,23 @@ document.addEventListener("click",function(e){
     return;
   }
 
-  if(a==="userSearch"){
-    S.userQ=(el("userQ")||{}).value||""; doUserSearch();
+  if(a==="userFilter"){
+    S.userQ=(el("userQ")||{}).value||"";
+    S.userFilter.role=(el("ufRole")||{}).value||"all";
+    S.userFilter.status=(el("ufStatus")||{}).value||"all";
+    S.userFilter.instituteId=(el("ufInst")||{}).value||"";
+    doUserLoad(true);
+    return;
+  }
+  if(a==="userFilterClear"){
+    S.userQ="";
+    S.userFilter={status:"all",role:"all",instituteId:"",page:1,limit:S.userFilter.limit};
+    doUserLoad(true);
+    return;
+  }
+  if(a==="userPage"){
+    var pg=parseInt(b.dataset.p,10);
+    if(pg>=1){S.userFilter.page=pg;doUserLoad(false);}
     return;
   }
   if(a==="userBack"){S.userDetail=null;render();return;}
@@ -2324,7 +2445,8 @@ document.addEventListener("keydown",function(e){
     if(btn)btn.click();
   }
   if(e.key==="Enter"&&e.target.id==="instQ"){document.querySelector("[data-a='instSearch']").click();}
-  if(e.key==="Enter"&&e.target.id==="userQ"){document.querySelector("[data-a='userSearch']").click();}
+  if(e.key==="Enter"&&e.target.id==="userQ"){
+    var ub=document.querySelector("[data-a='userFilter']"); if(ub)ub.click();}
 });
 
 /* ══════════ بالا آمدن ══════════ */

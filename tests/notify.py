@@ -103,7 +103,15 @@ print("\n═══ ۲. مخاطب‌های مدیر ═══")
 r = post(mgr, "notify.php", {"action": "audiences"})
 auds = {a["key"]: a for a in r[1].get("audiences", [])}
 check("institute" in auds, "مدیر «همهٔ آموزشگاه» را دارد", str(list(auds)))
-check(auds.get("institute", {}).get("count") == 6, "شمار همهٔ اعضا شش است", str(auds.get("institute")))
+# پنج، نه شش: فرستنده خودش در فهرست نیست.
+#
+# آموزشگاه شش عضو دارد و یکی‌شان همین مدیری است که دارد می‌فرستد.
+# مسیر کلاس از اول همین کار را می‌کرد (مدرسِ کلاس را وقتی خودش
+# فرستاده بود کنار می‌گذاشت) ولی «همهٔ اعضا» نه — پس مدیر زنگ خودش
+# را قرمز می‌دید و باید اعلان خودش را «خوانده» می‌کرد.
+check(auds.get("institute", {}).get("count") == 5,
+      "شمار همهٔ اعضا پنج است — مدیر خودش را نمی‌شمارد",
+      str(auds.get("institute")))
 check(auds.get("role:student", {}).get("count") == 3, "سه زبان‌آموز", str(auds.get("role:student")))
 check(auds.get("role:teacher", {}).get("count") == 2, "دو مدرس", str(auds.get("role:teacher")))
 check(r[1].get("canSms") is False, "پیامک وعده داده نمی‌شود", str(r[1].get("canSms")))

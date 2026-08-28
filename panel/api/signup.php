@@ -207,17 +207,18 @@ case 'register':
             $db->prepare('INSERT INTO institute (id, name, owner_user_id, phone, created_at) VALUES (?,?,?,?,?)')
                ->execute([$iid, $instName, $uid, $phone, $now]);
             $db->prepare(
-                'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at)
-                 VALUES (?,?,?,?,?,?,?)'
-            )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', $now]);
+                'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, can_host_meeting, created_at)
+                 VALUES (?,?,?,?,?,?,?,?)'
+            )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active',
+                        default_can_host_meeting('manager'), $now]);
             $outcome = 'manager';
 
         } elseif ($mode === 'code') {
             $db->prepare(
-                'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, granted_reason, created_at)
-                 VALUES (?,?,?,?,?,?,?,?)'
+                'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, can_host_meeting, granted_reason, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?)'
             )->execute([new_id(), (string)$inst['id'], $uid, $wanted, system_role_id($wanted),
-                        'active', 'پیوستن با کد', $now]);
+                        'active', default_can_host_meeting($wanted), 'پیوستن با کد', $now]);
             $outcome = 'joined';
 
         } else {

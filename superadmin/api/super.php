@@ -230,8 +230,9 @@ case 'institutes.create':
     $iid = new_id();
     $db->prepare('INSERT INTO institute (id, name, owner_user_id, phone, city, term_weeks, status, created_at) VALUES (?,?,?,?,?,?,?,?)')
        ->execute([$iid, $name, $uid, $phone ?: null, $city ?: null, 12, 'active', now_utc()]);
-    $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at) VALUES (?,?,?,?,?,?,?)')
-       ->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', now_utc()]);
+    $db->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, can_host_meeting, created_at) VALUES (?,?,?,?,?,?,?,?)')
+       ->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active',
+                  default_can_host_meeting('manager'), now_utc()]);
 
     audit('super.institute_created', $a['id'], ['institute' => $iid, 'name' => $name, 'ownerPhone' => $phone]);
     ok(['id' => $iid]);
@@ -355,6 +356,140 @@ case 'institutes.setJitsiEnabled':
 
 /* ═════════════════════ کاربران و نقش‌ها ═════════════════════ */
 
+/*
+ * فهرست کاربران — پیش‌فرض همه، با پالایه.
+ *
+ * users.search پایین‌تر دو حرف لازم دارد و تا وقتی چیزی تایپ نشود
+ * هیچ نمی‌دهد. برای «این کاربر را پیدا کن» درست است، ولی برای
+ * سوپرادمینی که می‌خواهد بداند اصلاً چند نفر ثبت‌نام کرده‌اند، یا چه
+ * کسانی هیچ آموزشگاهی ندارند، بی‌فایده — باید نام کسی را حدس می‌زد
+ * تا چیزی ببیند.
+ *
+ * پس این یکی بی‌شرط شروع می‌کند و پالایه‌ها آن را باریک می‌کنند.
+ * صفحه‌بندی واقعی دارد، نه LIMIT خالی: با ده هزار کاربر، «۵۰ تای
+ * اول» یعنی بقیه اصلاً وجود ندارند.
+ */
+case 'users.list':
+    require_super();
+    $q       = s_in($in, 'q', 160);
+    $status  = enum_in($in, 'status', ['all', 'active', 'suspended'], 'all');
+    $role    = enum_in($in, 'role', ['all', 'manager', 'teacher', 'student', 'none'], 'all');
+    $instId  = s_in($in, 'instituteId', 32);
+    $limit   = i_in($in, 'limit', 50, 10, 200);
+    $page    = i_in($in, 'page', 1, 1, 100000);
+
+    $where = ' WHERE 1=1';
+    $args  = [];
+
+    if ($q !== '') {
+        // ارقام فارسی هم پیدا شوند: کاربر «۰۹۱۲» را از پنل کپی می‌کند
+        $like   = '%' . en_digits($q) . '%';
+        $where .= ' AND (u.phone LIKE ? OR u.full_name LIKE ?)';
+        array_push($args, $like, $like);
+    }
+    if ($status !== 'all') {
+        $where .= ' AND u.status = ?';
+        $args[] = $status;
+    }
+    /*
+     * «none» یعنی کاربری که هیچ عضویت فعالی ندارد.
+     *
+     * همان‌هایی که ثبت‌نام کرده‌اند و در هیچ آموزشگاهی نیستند —
+     * درخواستشان رد شده، یا نیمه‌کاره رها کرده‌اند. تا امروز هیچ راهی
+     * برای دیدنشان نبود.
+     */
+    if ($role === 'none') {
+        $where .= ' AND NOT EXISTS (SELECT 1 FROM membership m
+                                     WHERE m.user_id = u.id AND m.status = \'active\')';
+    } elseif ($role !== 'all') {
+        $where .= ' AND EXISTS (SELECT 1 FROM membership m
+                                 WHERE m.user_id = u.id AND m.status = \'active\' AND m.role = ?)';
+        $args[] = $role;
+    }
+    if ($instId !== '') {
+        $where .= ' AND EXISTS (SELECT 1 FROM membership m
+                                 WHERE m.user_id = u.id AND m.status = \'active\'
+                                   AND m.institute_id = ?)';
+        $args[] = $instId;
+    }
+
+    $cnt = db()->prepare('SELECT COUNT(*) FROM app_user u' . $where);
+    $cnt->execute($args);
+    $total = (int)$cnt->fetchColumn();
+
+    $pages  = max(1, (int)ceil($total / $limit));
+    $page   = min($page, $pages);
+    $offset = ($page - 1) * $limit;
+
+    /*
+     * نقش‌ها با GROUP_CONCAT در همان کوئری می‌آیند، نه یک پرس‌وجو
+     * به‌ازای هر ردیف. پنجاه کاربر یعنی پنجاه رفت‌وبرگشت اضافه به
+     * دیتابیس، و روی هاست اشتراکی همین می‌شود چند ثانیه انتظار.
+     */
+    $sql = 'SELECT u.id, u.phone, u.full_name, u.status, u.created_at, u.last_login_at,
+                   (SELECT COUNT(*) FROM membership m
+                     WHERE m.user_id = u.id AND m.status = \'active\') AS memberships,
+                   (SELECT GROUP_CONCAT(DISTINCT m.role ORDER BY m.role SEPARATOR \',\')
+                      FROM membership m
+                     WHERE m.user_id = u.id AND m.status = \'active\') AS roles,
+                   (SELECT GROUP_CONCAT(DISTINCT i.name ORDER BY i.name SEPARATOR \' · \')
+                      FROM membership m JOIN institute i ON i.id = m.institute_id
+                     WHERE m.user_id = u.id AND m.status = \'active\') AS institutes
+              FROM app_user u' . $where
+         /*
+          * u.id در ترتیب لازم است، وگرنه صفحه‌بندی می‌لنگد.
+          *
+          * created_at دقتش ثانیه است و یکتا نیست: چند نفر که در یک
+          * ثانیه ثبت‌نام کرده‌اند — یا کاربرانی که با هم ساخته شده‌اند
+          * — ترتیب تعریف‌شده‌ای بین خودشان ندارند. MySQL آزاد است هر
+          * بار جور دیگری برگرداندشان، و آن‌وقت با LIMIT/OFFSET یک نفر
+          * در صفحهٔ ۱ و ۲ هر دو می‌آید و یک نفر دیگر اصلاً دیده نمی‌شود.
+          *
+          * tests/superadmin-users.py همین را می‌سنجد: هم‌پوشانی
+          * صفحه‌ها باید صفر باشد.
+          */
+         . ' ORDER BY u.created_at DESC, u.id DESC LIMIT ' . $limit . ' OFFSET ' . $offset;
+
+    $st = db()->prepare($sql);
+    $st->execute($args);
+
+    ok([
+        'users' => array_map(fn($r) => [
+            'id'          => (string)$r['id'],
+            'phone'       => (string)$r['phone'],
+            'name'        => (string)$r['full_name'],
+            'status'      => (string)$r['status'],
+            'createdAt'   => (string)$r['created_at'],
+            'lastLoginAt' => $r['last_login_at'],
+            'memberships' => (int)$r['memberships'],
+            'roles'       => $r['roles'] ? explode(',', (string)$r['roles']) : [],
+            'institutes'  => $r['institutes'] ? (string)$r['institutes'] : null,
+        ], $st->fetchAll()),
+        'total' => $total,
+        'page'  => $page,
+        'pages' => $pages,
+        'limit' => $limit,
+    ]);
+
+/*
+ * آماری که بالای همان صفحه می‌نشیند. جدا از users.list است چون با هر
+ * صفحه و هر پالایه عوض نمی‌شود و نباید دوباره حساب شود.
+ */
+case 'users.stats':
+    require_super();
+    $row = db()->query(
+        'SELECT (SELECT COUNT(*) FROM app_user) AS total,
+                (SELECT COUNT(*) FROM app_user WHERE status = \'active\') AS active,
+                (SELECT COUNT(*) FROM app_user WHERE status <> \'active\') AS suspended,
+                (SELECT COUNT(DISTINCT user_id) FROM membership WHERE status = \'active\' AND role = \'manager\') AS managers,
+                (SELECT COUNT(DISTINCT user_id) FROM membership WHERE status = \'active\' AND role = \'teacher\') AS teachers,
+                (SELECT COUNT(DISTINCT user_id) FROM membership WHERE status = \'active\' AND role = \'student\') AS students,
+                (SELECT COUNT(*) FROM app_user u
+                  WHERE NOT EXISTS (SELECT 1 FROM membership m
+                                     WHERE m.user_id = u.id AND m.status = \'active\')) AS orphans'
+    )->fetch();
+    ok(['stats' => array_map('intval', $row)]);
+
 case 'users.search':
     require_super();
     $q = s_in($in, 'q', 160);
@@ -441,8 +576,9 @@ case 'membership.add':
         $mid = (string)$existing['id'];
     } else {
         $mid = new_id();
-        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, created_at) VALUES (?,?,?,?,?,?,?)')
-            ->execute([$mid, $inst['id'], $u['id'], $role, system_role_id($role), 'active', now_utc()]);
+        db()->prepare('INSERT INTO membership (id, institute_id, user_id, role, role_id, status, can_host_meeting, created_at) VALUES (?,?,?,?,?,?,?,?)')
+            ->execute([$mid, $inst['id'], $u['id'], $role, system_role_id($role), 'active',
+                       default_can_host_meeting($role), now_utc()]);
     }
     audit('super.membership_granted', $a['id'], ['user' => $u['id'], 'institute' => $inst['id'], 'role' => $role]);
     ok(['membershipId' => $mid]);
@@ -1123,9 +1259,10 @@ case 'demo.approve':
         )->execute([$iid, (string)($lead['institute'] ?: $lead['name']), $uid, $phone, 12, 'trial', $until, now_utc()]);
 
         $db->prepare(
-            'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, expires_at, granted_by, granted_reason, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?)'
-        )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active', $until,
+            'INSERT INTO membership (id, institute_id, user_id, role, role_id, status, can_host_meeting, expires_at, granted_by, granted_reason, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+        )->execute([new_id(), $iid, $uid, 'manager', system_role_id('manager'), 'active',
+                    default_can_host_meeting('manager'), $until,
                     $a['id'], 'دورهٔ آزمایشی ' . $days . ' روزه', now_utc()]);
 
         $db->prepare(
