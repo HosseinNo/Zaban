@@ -391,6 +391,7 @@ CREATE TABLE IF NOT EXISTS demo_lead (
   phone      VARCHAR(20)  NOT NULL,
   email      VARCHAR(160) NULL,
   institute  VARCHAR(160) NULL,
+  city       VARCHAR(120) NULL,          -- «شهر و تعداد شعبه» از فرم دمو
   students   VARCHAR(40)  NULL,
   note       TEXT         NULL,
   status     VARCHAR(16)  NOT NULL DEFAULT 'new',   -- new | contacted | won | lost

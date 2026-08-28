@@ -670,13 +670,13 @@ body.lt{
 <body>
 
 
-<div class="lt" id="lt-root" dir="rtl" lang="fa">
+<div class="lt" id="top" dir="rtl" lang="fa">
 
 
 <!-- ═══ هدر ═══ -->
 <header class="hdr">
   <div class="wrap">
-    <a href="#" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
+    <a href="#top" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
     <nav class="nav">
       <a href="#modules">امکانات</a>
       <a href="#roles">برای چه کسانی</a>
@@ -1479,7 +1479,7 @@ body.lt{
   <div class="wrap">
     <div class="ftr-grid">
       <div>
-        <a href="#" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
+        <a href="#top" class="logo"><span class="logo-mark">ت</span> تاکورا</a>
         <p class="ftr-about">سامانهٔ یکپارچهٔ مدیریت آموزشگاه‌های زبان: ثبت‌نام، کلاس، شهریه، حضور و غیاب و گزارش، در یک جا.</p>
         <div class="badges">
           <div class="badge">نماد اعتماد<br>الکترونیکی</div>
@@ -1511,18 +1511,16 @@ body.lt{
         <ul>
           <li><a href="mailto:info@talkora.ir" data-contact-email dir="ltr">info@talkora.ir</a></li>
           <li hidden><a href="#" data-contact-phone class="num" dir="ltr"></a></li>
-          <li><a href="#">راهنما و پشتیبانی</a></li>
-          <li><a href="#">وبلاگ</a></li>
+          <li><a href="#faq">راهنما و پرسش‌های پرتکرار</a></li>
+          <li><a href="/blog/">وبلاگ</a></li>
         </ul>
       </div>
     </div>
     <div class="ftr-btm">
       <span>© <span class="num">۱۴۰۵</span> تاکورا، همهٔ حقوق محفوظ است.</span>
-      <span class="sp">
-        <a href="#">قوانین</a>
-        <a href="#">حریم خصوصی</a>
-        <a href="#">بازگشت وجه</a>
-      </span>
+      <!-- قوانین، حریم خصوصی و بازگشت وجه: تا وقتی صفحه‌شان نوشته
+           نشده، لینکی هم نمی‌گذاریم. لینکی که هیچ‌جا نمی‌رود، برای
+           محصولی که پول می‌گیرد بدتر از نبودنش است. -->
     </div>
   </div>
 </footer>
@@ -1817,8 +1815,12 @@ body.lt{
           phone: phone,
           institute: (document.getElementById("f-inst")||{}).value || "",
           students: (document.getElementById("f-count")||{}).value || "",
-          email: (document.getElementById("f-email")||{}).value || "",
-          note: (document.getElementById("f-note")||{}).value || "",
+          /* f-msg و f-city، نه f-note و f-email — آن دو شناسه اصلاً
+             در فرم نیستند، پس همیشه رشتهٔ خالی می‌رفت و پاسخِ
+             «بزرگ‌ترین دردسر امروزتان چیست؟» بی‌صدا دور ریخته می‌شد؛
+             همان چیزی که فروش با آن تماس را شروع می‌کند. */
+          city: (document.getElementById("f-city")||{}).value || "",
+          note: (document.getElementById("f-msg")||{}).value || "",
           website: (document.getElementById("f-website")||{}).value || ""
         })
       }).then(function(r){ return r.json(); })

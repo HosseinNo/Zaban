@@ -1407,7 +1407,9 @@ function viewLeads(){
         <td class="num" dir="ltr" style="text-align:end">${fa(l.phone)}
             ${l.email?'<br><span dir="ltr">'+esc(l.email)+'</span>':""}
             ${l.mailed?"":'<br><span class="pill p-bad">ایمیل نرفت</span>'}</td>
-        <td>${esc(l.institute||"—")}${l.students?'<br><span class="muted">'+esc(l.students)+'</span>':""}</td>
+        <td>${esc(l.institute||"—")}
+          ${l.city?'<br><span class="muted">'+esc(l.city)+'</span>':""}
+          ${l.students?'<br><span class="muted">'+esc(l.students)+'</span>':""}</td>
         <td class="num">${jDateTime(l.at)}</td>
         <td><span class="pill p-${LEAD_CLS[l.status]||"mute"}">${LEAD_FA[l.status]||l.status}</span></td>
         <td>

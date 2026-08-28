@@ -2261,7 +2261,7 @@ V["m/live"]=function(){
 V["m/students"]=function(){
   return h`<div class="card">
     <div class="card-h"><h3>زبان‌آموزان</h3>
-      <div class="r"><span class="pill p-mute num">۸ نفر از ۴۱۲</span>
+      <div class="r"><span class="pill p-mute num">${fa(DB.students.length)} نفر</span>
         <button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button></div></div>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب</th><th>وضعیت</th></tr></thead>
@@ -2627,6 +2627,16 @@ V["compose"]=function(){
 };
 
 V["m/finance"]=function(){
+  /*
+   * هیچ نقطهٔ پایانی مالی وجود ندارد — نه در bootstrap.php، نه جای
+   * دیگر. اعداد این صفحه («۶۱۲ میلیون وصول‌شده»، «۳۷ نفر بدهکار»)
+   * لیترال ثابت بودند و در حالت زنده به مدیر واقعی نشان داده می‌شدند.
+   * مدیری که روی این عدد تصمیم بگیرد، روی چیزی تصمیم گرفته که وجود
+   * ندارد. تا وقتی داده نیست، صادقانه می‌گوییم نیست.
+   */
+  if(API.live)return notBuilt(
+    "شهریه، اقساط و گزارش مالی هنوز به سامانه وصل نشده‌اند. "+
+    "هر عددی که اینجا نشان داده می‌شد ساختگی بود، پس تا وصل‌شدنشان چیزی نشان نمی‌دهیم.");
   return h`
   <div class="grid g3" style="margin-bottom:16px">
     ${kpi("وصول‌شده","۶۱۲ میلیون","تومان، این ترم")}
@@ -2834,7 +2844,20 @@ V["m/reports"]=function(){
   </div>`;
 };
 
-function notBuilt(){
+/*
+ * دو حالت، دو حقیقت متفاوت.
+ *
+ * متن قبلی همیشه می‌گفت «در نسخهٔ نمایشی ساخته نشده؛ روی نصب واقعی
+ * کار می‌کند». روی نصب واقعی همین جمله دقیقاً وارونه بود: کاربر
+ * می‌خواند که این بخش برایش کار می‌کند، در حالی که همان‌جا و همان
+ * لحظه کار نمی‌کرد.
+ */
+function notBuilt(why){
+  if(API.live){
+    return '<div class="card"><div class="empty"><b>این بخش هنوز آماده نیست</b>'+
+      '<p>'+(why||"در نسخه‌های بعدی اضافه می‌شود. تا آن موقع چیزی اینجا ثبت نمی‌شود.")+
+      '</p></div></div>';
+  }
   return '<div class="card"><div class="empty"><b>این بخش در نسخهٔ نمایشی ساخته نشده</b>'+
   '<p>روی نصب واقعی با دادهٔ آموزشگاه خودتان کار می‌کند.</p></div></div>';
 }

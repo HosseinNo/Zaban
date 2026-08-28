@@ -753,7 +753,8 @@ case 'leads':
         'counts' => $counts,
         'leads'  => array_map(fn($r) => [
             'id' => (string)$r['id'], 'name' => (string)$r['name'], 'phone' => (string)$r['phone'],
-            'email' => $r['email'], 'institute' => $r['institute'], 'students' => $r['students'],
+            'email' => $r['email'], 'institute' => $r['institute'],
+            'city' => $r['city'], 'students' => $r['students'],
             'note' => $r['note'], 'status' => (string)$r['status'], 'adminNote' => $r['admin_note'],
             'mailed' => (bool)$r['mailed'], 'at' => (string)$r['created_at'],
             'instituteId' => $r['institute_id'], 'trialDays' => $r['trial_days'] !== null ? (int)$r['trial_days'] : null,
