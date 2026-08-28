@@ -757,10 +757,20 @@ try{ document.documentElement.setAttribute("dir","rtl");
 
 /* ══════════ کمکی‌ها ══════════ */
 var FA=["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
-function fa(n){return String(n).replace(/[0-9]/g,function(d){return FA[+d];});}
+/* null و undefined به «—» تبدیل می‌شوند، نه به رشتهٔ «null».
+   سرور برای شاگردی که هنوز نمره یا حضوری ندارد عمداً null می‌دهد
+   (bootstrap.php)، و بدون این محافظ، کلمهٔ انگلیسی null وسط جدول
+   فارسی چاپ می‌شد. */
+function fa(n){
+  if(n===null||n===undefined||n==="")return "—";
+  return String(n).replace(/[0-9]/g,function(d){return FA[+d];});
+}
 function faG(n){return fa(String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"٬"));}
 function money(n){return faG(n)+" تومان";}
-function esc(s){return String(s).replace(/[&<>"']/g,function(c){
+/* null/undefined به رشتهٔ خالی، نه به «null». سرور برای توضیح
+   خالیِ تکلیف null می‌دهد و بدون این، کلمهٔ null در متن چاپ می‌شد. */
+function esc(s){if(s===null||s===undefined)return "";
+  return String(s).replace(/[&<>"']/g,function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function el(id){return document.getElementById(id);}
 function h(strings){var out=strings[0];
@@ -1294,6 +1304,7 @@ var NAV={
   {r:"t/tools",t:"ابزار حین کلاس",i:"cog"},
   {r:"t/assignments",t:"تکالیف",i:"file",badge:2,perm:"assignment.view"},
   {r:"t/grading",t:"صف تصحیح",i:"check",badge:6,perm:"assignment.grade"},
+  {r:"compose",t:"فرستادن اعلان",i:"bell",perm:"notify.send"},
   {g:"آموزشی"},
   {r:"t/gradebook",t:"دفتر نمره",i:"grid",perm:"assignment.grade"},
   {r:"t/payroll",t:"کارکرد و حقوق من",i:"wallet",perm:"finance.payout.view"},
@@ -1304,8 +1315,8 @@ var NAV={
   {r:"s",t:"خانه",i:"home"},
   {r:"s/classes",t:"کلاس‌های من",i:"book",perm:"class.view"},
   {r:"s/assignments",t:"تکالیف",i:"file",badge:2,perm:"assignment.view"},
-  {r:"s/exams",t:"آزمون‌ها",i:"check",badge:1},
-  {r:"s/grades",t:"نمرات و پیشرفت",i:"chart"},
+  {r:"s/exams",t:"آزمون‌ها",i:"check"},
+  {r:"s/grades",t:"نمرات و پیشرفت",i:"chart",perm:"assignment.view"},
   {g:"مالی و اداری"},
   {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1,perm:"finance.tuition.view"},
   {r:"s/schedule",t:"برنامهٔ کلاسی",i:"cal"},
@@ -1318,6 +1329,7 @@ var NAV={
   {r:"m/enrol",t:"ثبت‌نام زبان‌آموز",i:"users",perm:"enrolment.create"},
   {r:"m/students",t:"زبان‌آموزان",i:"users",perm:"member.view"},
   {r:"m/join",t:"پیوستن و درخواست‌ها",i:"users",perm:"member.approve"},
+  {r:"compose",t:"فرستادن اعلان",i:"bell",perm:"notify.send"},
   {g:"آموزشی"},
   {r:"m/term",t:"ترم‌ساز",i:"cal",perm:"term.view"},
   {r:"m/classes",t:"کلاس‌ها",i:"book",perm:"class.view"},
@@ -1343,6 +1355,7 @@ var ICONS={
  award:'<circle cx="12" cy="9" r="6"/><path d="M9 14.5 8 22l4-2 4 2-1-7.5"/>',
  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/>',
  video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/>',
+ bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
  cog:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 3V3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15.6 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 21 9h0a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'
 };
 function icon(n,sz){return '<svg class="ico" width="'+(sz||18)+'" height="'+(sz||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[n]||"")+'</svg>';}
@@ -1547,7 +1560,7 @@ V["t/classes"]=function(){
               <div class="bar" style="width:70px"><i style="width:${Math.round(c.enrolled/c.cap*100)}%"></i></div></td>
           <td class="num">${fa(c.attendance)}٪</td>
           <td class="num">${fa(c.avg)}</td>
-          <td><button class="btn btn--g btn--sm" data-nav="t/attendance">حضور و غیاب</button></td>
+          <td><button class="btn btn--g btn--sm" data-act="cls-att" data-id="${c.id}">حضور و غیاب</button></td>
         </tr>`;}).join("")}
       </tbody></table></div>
   </div>`;
@@ -1776,28 +1789,39 @@ function rubTotal(sid){
 V["t/gradebook"]=function(){
   return h`
   <div class="card">
-    <div class="card-h"><h3>دفتر نمرهٔ ${esc(DB.classes[0].name)}</h3>
-      <div class="r"><button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button>
-        <button class="btn btn--p btn--sm" data-act="publish-grades">انتشار نمرات</button></div></div>
-    <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>زبان‌آموز</th><th>تکالیف<div class="muted">۲۰٪</div></th>
-        <th>آزمونک<div class="muted">۱۵٪</div></th><th>میان‌ترم<div class="muted">۲۵٪</div></th>
-        <th>پایان‌ترم<div class="muted">۳۰٪</div></th><th>مشارکت<div class="muted">۱۰٪</div></th>
-        <th>نمرهٔ کل</th><th>وضعیت</th></tr></thead>
+    <div class="card-h"><h3>دفتر نمره</h3>
+      <span class="muted" style="font-size:12.5px">همهٔ کلاس‌های شما</span></div>
+    ${DB.students.length===0?'<div class="empty"><b>هنوز زبان‌آموزی ندارید</b></div>'
+    :h`<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>زبان‌آموز</th><th>میانگین نمره</th><th>حضور</th><th>وضعیت</th></tr></thead>
       <tbody>${DB.students.map(function(s){
-        var g=s.grade, pass=g>=12;
+        /*
+         * فقط چیزی که سرور واقعاً می‌دهد.
+         *
+         * پیش از این، همین یک عدد به پنج ستون تبدیل می‌شد — «آزمونک»
+         * می‌شد نمرهٔ کل به‌علاوهٔ ۰٫۳ و «میان‌ترم» منهای ۱ — و کنار
+         * دادهٔ واقعی به مدرس نشان داده می‌شد. سرور تفکیک تکلیف/
+         * میان‌ترم/پایان‌ترم را اصلاً ندارد (bootstrap.php فقط
+         * AVG(score) می‌دهد)، پس آن ستون‌ها ساختگی بودند.
+         *
+         * grade و att هم می‌توانند null باشند — شاگردی که هنوز نمره
+         * نگرفته. توجه: g.toFixed(1) روی null می‌ترکید و چون render()
+         * هیچ try/catch ندارد، کل صفحه به‌روز نمی‌شد و مدرس روی صفحهٔ
+         * قبلی می‌ماند، بی هیچ پیام خطایی.
+         */
+        var g=s.grade;
+        var has=(g!==null&&g!==undefined);
         return h`<tr>
           <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
-          <td class="num">${fa((g-0.5).toFixed(1))}</td><td class="num">${fa((g+0.3).toFixed(1))}</td>
-          <td class="num">${fa((g-1).toFixed(1))}</td><td class="num">${fa(g.toFixed(1))}</td>
-          <td class="num">${fa(Math.min(20,Math.round(s.att/5)))}</td>
-          <td class="num" style="font-weight:700">${fa(g.toFixed(1))}</td>
-          <td>${pass?pill("قبول","ok"):pill("مشروط","bad")}</td></tr>`;}).join("")}
-      </tbody></table></div>
+          <td class="num" style="font-weight:700">${has?fa(g.toFixed(1)):"—"}</td>
+          <td class="num">${s.att==null?"—":fa(s.att)+"٪"}</td>
+          <td>${!has?'<span class="muted">هنوز نمره‌ای ندارد</span>'
+                 :g>=12?pill("قبول","ok"):pill("مشروط","bad")}</td></tr>`;}).join("")}
+      </tbody></table></div>`}
   </div>
   <p class="muted" style="font-size:12.5px;margin-top:11px">
-    نمرهٔ کل از ضریب بخش‌ها محاسبه می‌شود. جمع ضرایب باید دقیقاً <span class="num">۱۰۰</span> باشد
-    وگرنه به‌جای عدد، هشدار نشان داده می‌شود.</p>`;
+    «میانگین نمره» میانگین همهٔ تکالیفِ نمره‌خوردهٔ زبان‌آموز است.
+    تفکیک میان‌ترم و پایان‌ترم هنوز در سامانه ثبت نمی‌شود.</p>`;
 };
 
 V["t/schedule"]=V["t/materials"]=function(){
@@ -1894,8 +1918,20 @@ V["s/assignments"]=function(){
     <button class="tab on">همه</button><button class="tab">تحویل‌نشده</button>
     <button class="tab">تحویل‌شده</button><button class="tab">نمره‌خورده</button></div>
   ${DB.assignments.map(function(a){
-    var mine=DB.submissions.filter(function(x){return x.aid===a.id&&x.sid==="s1";})[0];
-    var st=a.id==="a3"?pill("نمره ۱۸ از ۲۰","ok"):mine?pill("تحویل شد","info"):
+    /*
+     * فیلتر sid==="s1" و شرط a.id==="a3" شناسه‌های دادهٔ نمایشی بودند.
+     * در حالت زنده شناسه‌ها هش ۳۲تایی‌اند، پس هیچ‌وقت برابر نمی‌شدند:
+     * زبان‌آموزی که واقعاً تحویل داده و حتی نمره گرفته بود، همیشه
+     * «تحویل‌نشده» می‌دید و دوباره ارسال می‌کرد.
+     *
+     * فیلتر sid اصلاً لازم نیست — bootstrap.php برای زبان‌آموز فقط
+     * پاسخ‌های خودِ او را می‌فرستد (WHERE s.student_user_id = ?).
+     * همان کاری که liveStudent() در صفحهٔ خانه می‌کند.
+     */
+    var mine=(DB.submissions||[]).filter(function(x){
+      return x.aid===a.id&&(!API.live?x.sid==="s1":true);})[0];
+    var st=(mine&&mine.score!=null)?pill("نمره "+fa(mine.score)+" از ۲۰","ok"):
+           mine?pill("تحویل شد","info"):
            a.dueIn<0?pill("تحویل نشد","bad"):pill("تحویل‌نشده","warn");
     return h`<div class="asg">
       <span class="ic t-${a.type}">${typeIcon(a.type)}</span>
@@ -1906,13 +1942,54 @@ V["s/assignments"]=function(){
           ${a.extendedTo?h`<span class="pill p-warn">تمدیدشده</span>`:""}
           <span class="num">${fa(a.max)} نمره</span></div></div>
       <div class="rt">${st}
-        ${a.id==="a3"?'<button class="btn btn--g btn--sm" data-nav="s/grades">دیدن بازخورد</button>'
+        ${(mine&&mine.score!=null)?'<button class="btn btn--g btn--sm" data-nav="s/grades">دیدن بازخورد</button>'
           :mine?'<button class="btn btn--g btn--sm" data-act="noop">مشاهدهٔ تحویل</button>'
           :'<button class="btn btn--p btn--sm" data-act="open-sub" data-aid="'+a.id+'">'+
             (a.type==="speaking"?"ضبط و ارسال":"نوشتن و ارسال")+'</button>'}</div></div>`;}).join("")}`;
 };
 
+/*
+ * نمرات زبان‌آموز از دادهٔ واقعی.
+ *
+ * سرور برای زبان‌آموز فقط پاسخ‌های خودش را می‌فرستد، با score و
+ * feedback. تفکیک میان‌ترم/پایان‌ترم هنوز در سامانه نیست، پس ادعایش
+ * را هم نمی‌کنیم — فقط تکالیف نمره‌خورده و میانگینشان.
+ */
+function liveSGrades(){
+  var subs=(DB.submissions||[]).filter(function(x){return x.score!=null;});
+  var avg=subs.length
+    ? Math.round((subs.reduce(function(t,x){return t+x.score;},0)/subs.length)*10)/10
+    : null;
+  return h`
+  <div class="grid g2" style="margin-bottom:14px">
+    ${kpi("میانگین نمره",avg==null?"—":fa(avg),"از ۲۰")}
+    ${kpi("تکلیف نمره‌خورده",fa(subs.length),"از "+fa((DB.assignments||[]).length)+" تکلیف")}
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>نمرهٔ تکالیف</h3></div>
+    ${subs.length===0?'<div class="empty"><b>هنوز نمره‌ای ثبت نشده</b>'
+      +'<p>وقتی مدرس تکلیفی را تصحیح کند، اینجا می‌آید.</p></div>'
+    :h`<div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>تکلیف</th><th>نمره</th><th>بازخورد</th><th>تحویل</th></tr></thead>
+      <tbody>${subs.map(function(x){
+        var a=(DB.assignments||[]).filter(function(y){return y.id===x.aid;})[0];
+        return h`<tr>
+          <td><b>${esc(a?a.title:"—")}</b></td>
+          <td class="num" style="font-weight:700">${fa(x.score)}</td>
+          <td>${x.feedback?esc(x.feedback):'<span class="muted">—</span>'}</td>
+          <td class="num">${x.at?jDateTime(x.at):"—"}${x.late?' <span class="pill p-bad">تأخیر</span>':""}</td>
+        </tr>`;}).join("")}
+      </tbody></table></div>`}
+  </div>`;
+}
+
 V["s/grades"]=function(){
+  /* کل این صفحه اعداد ثابت بود — «۱۷٫۵ از ۲۰»، «حضور ۹۴٪»، بازخورد
+     «Unit 3 Grammar quiz» — بدون هیچ ارجاعی به داده. در حالت زنده به
+     زبان‌آموز نمرهٔ کسی که وجود ندارد نشان می‌داد. دادهٔ واقعی در
+     DB.submissions هست (score و feedback از bootstrap)، پس همان را
+     نشان می‌دهیم. */
+  if(API.live)return liveSGrades();
   return h`
   <div class="grid g2" style="margin-bottom:14px">
     ${kpi("نمرهٔ جاری ترم","۱۷٫۵","از ۲۰",null,87)}
@@ -2357,10 +2434,14 @@ function notifPanel(){
       ${S.notif.unread?h`<button class="btn btn--q btn--sm" data-act="ntf-all">همه را خواندم</button>`:""}
     </div>
     <div class="ntf-list" id="notifList">${notifListHtml()}</div>
-    ${navVisible({perm:"notify.send"})?h`
-      <div class="ntf-f"><button class="btn btn--p btn--sm btn--b" data-act="ntf-compose">
-        فرستادن اعلان تازه</button></div>`:""}
   </div>`;
+  /*
+   * دکمهٔ «فرستادن اعلان تازه» از اینجا برداشته شد.
+   *
+   * زنگوله صندوق ورودی است و باید همان‌جا بماند — کلیک رویش نباید
+   * صفحه را عوض کند. فرستادن اعلان حالا یک مورد در منوی اصلی است
+   * (NAV، برای مدرس و مدیر)، جایی که بقیهٔ کارها هم هستند.
+   */
 }
 
 
@@ -4152,6 +4233,12 @@ V["t/tools"]=function(){
 
 /* ══════════ آزمون ══════════ */
 V["s/exams"]=function(){
+  /* آزمون‌ها هیچ بک‌اندی ندارد: DB.exam هرگز از سرور پر نمی‌شود و
+     ارسال/تایمر/نمره‌دهی فقط در مرورگر است. متن نتیجه هم می‌گفت
+     «این سطح روی پروندهٔ شما ثبت شد» که دروغ بود. */
+  if(API.live)return '<div class="card"><div class="empty">'
+    +'<b>آزمون تعیین سطح هنوز ساخته نشده</b>'
+    +'<p>بانک سؤال و ثبت نتیجه هنوز به بک‌اند وصل نیست.</p></div></div>';
   return h`
   <div class="asg">
     <span class="ic t-quiz">${typeIcon("quiz")}</span>
@@ -4175,6 +4262,7 @@ V["s/exams"]=function(){
 };
 
 V["s/exam"]=function(){
+  if(API.live)return V["s/exams"]();
   var ex=S.exam, E=DB.exam;
   if(ex.done){
     var right=0;
@@ -4875,6 +4963,9 @@ document.addEventListener("click",function(e){
   if(goq){S.exam.i=+goq.dataset.goq;render();return;}
 
   /* ویرایش ردیف ترم‌ساز */
+  /* هشدار: این «act» تابع سراسری act(file,body,...) را در کل همین
+     تابع می‌پوشاند. اگر لازم شد از اینجا درخواستی بفرستید، doAct()
+     را صدا بزنید نه act() — یک بار همین ثبت نمره را خاموش کرد. */
   var act=t.closest("[data-act]");
   if(!act)return;
   var a=act.dataset.act;
@@ -5455,14 +5546,27 @@ document.addEventListener("click",function(e){
     toast(msg,function(){S.att=snap;toast("ثبت برگردانده شد");});
     go("t");
   }
-  else if(a==="open-sub"){modalSubmit(act.dataset.aid);}
+  else if(a==="open-sub"){
+    /* در حالت زنده مودالِ واقعی، نه مودال نمایشی.
+       modalSubmit یک نمای دمو است که دکمهٔ ارسالش (send-text/send-audio)
+       هیچ درخواستی نمی‌فرستد و فقط پیام موفقیت نشان می‌دهد — یعنی متن
+       یا فایل زبان‌آموز گم می‌شد و او فکر می‌کرد تحویل داده. مسیر واقعی
+       modalAnswer + sub-send است که همین‌جا هم استفاده می‌شود. */
+    if(API.live)modalAnswer(act.dataset.aid);
+    else modalSubmit(act.dataset.aid);
+  }
   else if(a==="send-text"){
+    /* فقط در نسخهٔ نمایشی به اینجا می‌رسد؛ مسیر زنده از sub-send
+       می‌رود. ادعای «پیامک رسید» هم برداشته شد: هیچ پیامکی فرستاده
+       نمی‌شود و بند P.4 فقط سرویس وریفای را مجاز می‌داند. */
+    if(API.live){toast("این مسیر در حالت زنده استفاده نمی‌شود.");return;}
     closeModal(); S.subDraft="";
-    toast("تکلیف ارسال شد. رسید تحویل برایتان پیامک شد.");
+    toast("تکلیف ارسال شد (نسخهٔ نمایشی — ذخیره نمی‌شود).");
   }
   else if(a==="send-audio"){
+    if(API.live){toast("ارسال صوتی هنوز به بک‌اند وصل نیست.");return;}
     closeModal();
-    toast("فایل صوتی ارسال شد ("+clock(S.rec.sec)+")");
+    toast("فایل صوتی ارسال شد ("+clock(S.rec.sec)+") — نسخهٔ نمایشی.");
   }
   else if(a==="g-next"||a==="g-save"){
     if(API.live){
@@ -5470,7 +5574,11 @@ document.addEventListener("click",function(e){
       if(a==="g-save"){
         var scRaw=enDigits(((el("gScore")||{}).value||"").trim());
         if(scRaw===""||isNaN(+scRaw)){toast("نمره را وارد کنید");return;}
-        act("assignments.php",
+        /* doAct نه act — داخل این تابع، «act» متغیر محلیِ عنصرِ
+           کلیک‌شده است و تابع سراسری را می‌پوشاند. با act(...) اینجا
+           TypeError می‌خورد، بی‌صدا: نه درخواستی می‌رفت، نه پیام خطایی
+           می‌آمد؛ مدرس فکر می‌کرد نمره ثبت شد. */
+        doAct("assignments.php",
           {action:"grade",id:act.dataset.id,score:scRaw,feedback:(el("fb")||{}).value||""},
           "نمره ثبت شد");
         return;
@@ -5489,10 +5597,24 @@ document.addEventListener("click",function(e){
     else{toast("همهٔ تکالیف تصحیح شد. برای انتشار نمرات به دفتر نمره بروید.");go("t/gradebook");}
   }
   else if(a==="g-prev"){if(S.grade.idx>0){S.grade.idx--;render();}}
-  else if(a==="publish-grades"){toast("نمرات منتشر شد و به زبان‌آموزها اطلاع داده شد.");}
+  else if(a==="publish-grades"){
+    /* در حالت زنده هیچ اکشنی سمت سرور ندارد. تا وقتی ندارد، نباید
+       بگوید «منتشر شد و اطلاع داده شد» — مدرس روی همین حرف حساب
+       می‌کند و پیگیری نمی‌کند. */
+    toast(API.live?"انتشار نمرات هنوز به بک‌اند وصل نیست."
+                  :"نمرات منتشر شد و به زبان‌آموزها اطلاع داده شد.");
+  }
   else if(a==="pay"){toast("در محصول واقعی، اینجا به درگاه پرداخت منتقل می‌شوید.");}
   else if(a==="upload-receipt"){toast("فیش آپلود شد و به صف تأیید مالی رفت.");}
-  else if(a==="new-assignment"){toast("فرم ساخت تکلیف بر اساس نوع، در سند R تعریف شده است.");}
+  else if(a==="new-assignment"){
+    /* همین قابلیت از داشبورد (ag-new) کامل کار می‌کند؛ این دکمه فقط
+       به آن وصل نبود. اگر مدرس بیش از یک کلاس دارد، اول باید کلاس را
+       انتخاب کند — پس به فهرست کلاس‌ها می‌بریمش. */
+    var mine=(DB.classes||[]);
+    if(mine.length===1)modalAssignment(mine[0].id);
+    else if(mine.length===0)toast("اول باید کلاسی داشته باشید.");
+    else {toast("کلاس را انتخاب کنید"); go("t/classes");}
+  }
   else if(a==="go-teacher"){go("t");}
   else if(a==="open-student"){S.selStudentId=act.dataset.id;go("m/student");}
   else if(a==="ob-do"){
@@ -5629,6 +5751,25 @@ document.addEventListener("click",function(e){
     });
   }
   else if(a==="meet-leave"){leaveMeet();}
+  else if(a==="cls-att"){
+    /*
+     * حضور و غیاب per-جلسه است، نه per-کلاس.
+     *
+     * این دکمه قبلاً با data-nav به V["t/attendance"] می‌رفت: یک نمای
+     * دمو که همیشه DB.classes[0] را نشان می‌داد (نه کلاسی که کلیک شده)،
+     * همهٔ شاگردهای همهٔ کلاس‌ها را در یک فهرست می‌ریخت، و دکمهٔ ثبتش
+     * فقط toast می‌زد — هیچ چیزی ذخیره نمی‌شد.
+     *
+     * مسیر واقعی از کارت جلسه در پیشخوان می‌گذرد (se-att → openAttendance
+     * → attendance.php). پس مدرس را به همان‌جا می‌بریم.
+     */
+    if(!API.live){go("t/attendance");return;}
+    var tod=(DB.sessions||[]).filter(function(x){
+      return x.cls===act.dataset.id&&x.status!=="cancelled";});
+    if(tod.length===1){openAttendance(tod[0].id);return;}
+    toast(tod.length?"جلسه را از پیشخوان انتخاب کنید":"این کلاس هنوز جلسه‌ای ندارد");
+    if(tod.length)go("t");
+  }
   else if(a==="se-att"){openAttendance(act.dataset.id);}
   else if(a==="att-save"){
     var marks=Object.keys(S.attNow||{}).map(function(k){return {id:k,status:S.attNow[k]};});

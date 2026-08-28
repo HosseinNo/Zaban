@@ -39,12 +39,37 @@ function session_window(array $s): array
     return [$start - 15 * 60, $start + 4 * 3600];
 }
 
+/**
+ * آیا این کاربر همین حالا حق دیدن لینک جلسه را دارد؟
+ *
+ * قاعده (سند Q): زبان‌آموز لینک را فقط از ۱۵ دقیقه پیش از شروع تا
+ * پایان جلسه می‌بیند. مدرس و مدیر همیشه.
+ *
+ * این تابع لازم شد چون قاعده فقط در اکشن join اجرا می‌شد، ولی همان
+ * لینک خام از دو جای دیگر هم بیرون می‌رفت — bootstrap.php و همین
+ * اکشن list. یعنی در همان لحظه‌ای که join می‌گفت «هنوز زود است»،
+ * لینک واقعی از قبل در مرورگر بود.
+ */
+function may_see_join_url(array $s): bool
+{
+    if (scope_rank(perm_scope('class.view') ?? 'own') >= scope_rank('own_classes')) {
+        return true;
+    }
+    [$from, $to] = session_window($s);
+    $now = time();
+    return $now >= $from && $now <= $to;
+}
+
 switch ($action) {
 
 /* ─────────── فهرست جلسه‌های یک کلاس ─────────── */
 case 'list':
     $cl = own_class(s_in($in, 'classId', 32));
     $rows = t_all('SELECT * FROM class_session WHERE __I__ AND class_id = ? ORDER BY seq', [$cl['id']]);
+    // لینک هر جلسه فقط در پنجرهٔ خودش، مگر برای مدرس و مدیر
+    foreach ($rows as $i => $r) {
+        if (!may_see_join_url($r)) $rows[$i]['join_url'] = null;
+    }
 
     // چند نفر برای هر جلسه حضور خورده — تا رابط کاربری بداند کدام جلسه ثبت نشده
     $marked = [];

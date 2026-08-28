@@ -210,6 +210,8 @@ case 'extend':
  */
 case 'status':
     require_perm('assignment.view');
+    // وضعیت تحویل و نمرهٔ کل کلاس — زبان‌آموز فقط سهم خودش را دارد
+    require_class_staff('assignment.view');
     $a = own('assignment', s_in($in, 'id', 32), 'تکلیف');
     own_class((string)$a['class_id'], 'assignment.view');
 

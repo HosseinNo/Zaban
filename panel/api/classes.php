@@ -191,7 +191,10 @@ case 'withdraw':
 
 /* ─────────── فهرست زبان‌آموزان یک کلاس ─────────── */
 case 'roster':
-    $cl = own_class(s_in($in, 'classId', 32));
+    // نام و تلفن هم‌کلاسی‌ها؛ همان قاعدهٔ attendance|get و assignments|status
+    require_perm('enrolment.view');
+    require_class_staff('enrolment.view');
+    $cl = own_class(s_in($in, 'classId', 32), 'enrolment.view');
     $rows = t_all(
         'SELECT u.id, u.full_name, u.phone FROM enrolment e JOIN app_user u ON u.id = e.student_user_id
           WHERE e.__I__ AND e.class_id = ? AND e.status = ? ORDER BY u.full_name',

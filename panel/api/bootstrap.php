@@ -101,6 +101,15 @@ $rooms = t_all('SELECT id, name, capacity FROM room WHERE __I__ ORDER BY name');
 $roomName = [];
 foreach ($rooms as $r) $roomName[(string)$r['id']] = (string)$r['name'];
 
+/*
+ * زبان‌آموز لینک ثابت کلاس را نمی‌گیرد.
+ *
+ * جلسه‌ها پنجرهٔ زمانی دارند (پایین‌تر)، ولی این لینک همیشگی است و
+ * اگر فرستاده شود، همان قاعده را از راه دیگری دور می‌زند: کافی است
+ * زبان‌آموز یک بار پنل را باز کند تا لینک همیشگی کلاس را داشته باشد.
+ */
+$seeClassUrl = scope_rank(perm_scope('class.view') ?? 'own') >= scope_rank('own_classes');
+
 $classes = [];
 foreach ($rows as $r) {
     $id  = (string)$r['id'];
@@ -121,7 +130,7 @@ foreach ($rows as $r) {
         'cap'        => (int)$r['capacity'],
         'enrolled'   => $enrolCount[$id] ?? 0,
         'provider'   => (string)$r['provider'],
-        'joinUrl'    => $r['join_url'],
+        'joinUrl'    => $seeClassUrl ? $r['join_url'] : null,
         'price'      => (int)$r['price'],
         'status'     => (string)$r['status'],
         'avg'        => $avgOf[$id] ?? null,
@@ -194,7 +203,23 @@ if ($classIds) {
           ORDER BY session_date, start_time LIMIT 200",
         array_merge($classIds, [gmdate('Y-m-d', time() - 7 * 86400), 'live'])
     );
+    /*
+     * لینک جلسه برای زبان‌آموز فقط در پنجرهٔ خودش (۱۵ دقیقه قبل تا
+     * ۴ ساعت بعد) بیرون می‌رود. مدرس و مدیر همیشه می‌بینند.
+     *
+     * پیش از این، این حلقه لینک خام را بی‌قید می‌فرستاد. یعنی
+     * sessions.php|join درست می‌گفت «هنوز زود است» ولی همان لینک از
+     * قبل در پاسخ bootstrap نشسته بود و در مرورگر زبان‌آموز بود —
+     * قاعده فقط در یک نقطه اجرا می‌شد، نه در منبع داده.
+     */
+    $staff = scope_rank(perm_scope('class.view') ?? 'own') >= scope_rank('own_classes');
+    $now   = time();
     foreach ($sRows as $r) {
+        $url = $r['join_url'];
+        if (!$staff && $url) {
+            $start = strtotime((string)$r['session_date'] . ' ' . (string)$r['start_time'] . ':00 UTC');
+            if ($now < $start - 15 * 60 || $now > $start + 4 * 3600) $url = null;
+        }
         $sessions[] = [
             'id'       => (string)$r['id'],
             'cls'      => (string)$r['class_id'],
@@ -202,7 +227,7 @@ if ($classIds) {
             'date'     => (string)$r['session_date'],
             'time'     => (string)$r['start_time'],
             'status'   => (string)$r['status'],
-            'joinUrl'  => $r['join_url'],
+            'joinUrl'  => $url,
             'note'     => $r['note'],
         ];
     }

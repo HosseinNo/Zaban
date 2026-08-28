@@ -27,8 +27,11 @@ switch ($action) {
 
 /* ─────────── فهرست حضور یک جلسه ─────────── */
 case 'get':
+    // فهرست کل کلاس است، نه ردیف خودِ درخواست‌دهنده
+    require_perm('attendance.view');
+    require_class_staff('attendance.view');
     $s  = own('class_session', s_in($in, 'id', 32), 'جلسه');
-    $cl = own_class((string)$s['class_id']);
+    $cl = own_class((string)$s['class_id'], 'attendance.view');
 
     $rows = t_all(
         'SELECT u.id, u.full_name, a.status, a.note
