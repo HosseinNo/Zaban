@@ -186,6 +186,11 @@ case 'institutes.get':
             'status' => (string)$inst['status'], 'suspendedReason' => $inst['suspended_reason'],
             'createdAt' => (string)$inst['created_at'],
             'jitsiEnabled' => (bool)$inst['jitsi_enabled'],
+            'activeFrom' => $inst['active_from'],
+            'activeTo'   => $inst['active_to'],
+            'daysLeft'   => $inst['active_to']
+                ? (int)floor((strtotime((string)$inst['active_to'] . ' 23:59:59 UTC') - time()) / 86400)
+                : null,
         ],
         'members' => array_map(fn($r) => [
             'membershipId' => (string)$r['id'], 'userId' => (string)$r['user_id'],
@@ -253,6 +258,92 @@ case 'institutes.reactivate':
  * کلید اصلی پنل میت برای یک آموزشگاه — کل قابلیت را روشن یا خاموش
  * می‌کند، جدا از مجوز تک‌تک اعضا (membership.setMeetingAccess پایین‌تر).
  * خاموش‌کردن این، فوراً جلوی ساخت جلسهٔ تازه را می‌گیرد، حتی برای مدیر.
+ */
+/* ─────────── بازهٔ فعالیت آموزشگاه ───────────
+ *
+ * قرارداد از تاریخی تا تاریخی است. تا امروز فقط تعلیق دستی وجود
+ * داشت، یعنی روزی که قرارداد تمام می‌شد، اگر کسی یادش می‌رفت،
+ * آموزشگاه سال‌ها رایگان کار می‌کرد.
+ *
+ * نکتهٔ مهم: نوشتن active_to خودش چیزی را نمی‌بندد. بستن کار دستور
+ * جاروست. اگر همین‌جا می‌بست، سوپرادمینی که تاریخ گذشته را برای
+ * *ثبت سابقه* وارد می‌کند، ناخواسته آموزشگاهِ فعال را قطع می‌کرد.
+ */
+case 'institutes.setWindow':
+    $a = require_super();
+    $inst = require_institute(id_in($in, 'id', 'آموزشگاه'));
+
+    $from = date_in_super($in, 'from');
+    $to   = date_in_super($in, 'to');
+    if ($from && $to && $to < $from) {
+        fail(400, 'bad_dates', 'تاریخ پایان قرارداد نمی‌تواند پیش از شروع باشد.');
+    }
+
+    db()->prepare('UPDATE institute SET active_from = ?, active_to = ? WHERE id = ?')
+        ->execute([$from, $to, $inst['id']]);
+    audit('super.institute_window', $a['id'],
+          ['institute' => $inst['id'], 'from' => $from, 'to' => $to]);
+
+    // چند روز مانده — همان عددی که پنل سوپرادمین نشان می‌دهد
+    $left = null;
+    if ($to) {
+        $left = (int)floor((strtotime($to . ' 23:59:59 UTC') - time()) / 86400);
+    }
+    ok(['from' => $from, 'to' => $to, 'daysLeft' => $left]);
+
+
+/* ─────────── جاروی قراردادهای تمام‌شده ───────────
+ *
+ * همان الگوی demo.sweep: یک دستور که هر بار باز کردن پنل سوپرادمین
+ * صدا زده می‌شود. کرون‌جاب لازم ندارد و روی هاست اشتراکی هم کار
+ * می‌کند.
+ *
+ * فقط آموزشگاه‌های *فعال* را می‌بندد. آموزشگاهی که سوپرادمین دستی
+ * تعلیق کرده، دلیل تعلیقش نباید با متن خودکار بازنویسی شود.
+ */
+case 'institutes.sweepExpired':
+    $a = require_super();
+    /*
+     * پیام تعلیق تاریخ ندارد، عمداً.
+     *
+     * نسخهٔ اول active_to را داخل متن می‌گذاشت و مدیر «قرارداد در
+     * 2025-06-01 به پایان رسید» می‌دید — تاریخ میلادی، وسط جمله‌ای
+     * فارسی، در صفحه‌ای که فقط شمسی نشان می‌دهد (بند P.2). تبدیل هم
+     * اینجا شدنی نیست چون SQL تقویم شمسی ندارد.
+     *
+     * تاریخ دقیق جای دیگری هست: سوپرادمین آن را در پروندهٔ آموزشگاه
+     * می‌بیند و آنجا شمسی نمایش داده می‌شود.
+     */
+    $st = db()->prepare(
+        "UPDATE institute
+            SET status = 'suspended',
+                suspended_reason = 'قرارداد آموزشگاه به پایان رسیده. برای تمدید تماس بگیرید.'
+          WHERE status = 'active' AND active_to IS NOT NULL AND active_to < CURDATE()");
+    $st->execute();
+    $n = $st->rowCount();
+    if ($n > 0) audit('super.institutes_expired', $a['id'], ['count' => $n]);
+
+    // آن‌هایی که تا دو هفتهٔ دیگر تمام می‌شوند — برای هشدار در پیشخوان
+    $soon = db()->query(
+        "SELECT id, name, active_to,
+                DATEDIFF(active_to, CURDATE()) AS days_left
+           FROM institute
+          WHERE status = 'active' AND active_to IS NOT NULL
+            AND active_to BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
+          ORDER BY active_to LIMIT 50")->fetchAll();
+
+    ok([
+        'suspended' => $n,
+        'endingSoon' => array_map(fn($r) => [
+            'id'       => (string)$r['id'],
+            'name'     => (string)$r['name'],
+            'activeTo' => (string)$r['active_to'],
+            'daysLeft' => (int)$r['days_left'],
+        ], $soon),
+    ]);
+
+/*
+ * کلید اصلی پنل میت برای یک آموزشگاه.
  */
 case 'institutes.setJitsiEnabled':
     $a = require_super();

@@ -54,8 +54,9 @@ case 'create':
     db()->prepare(
         'INSERT INTO klass (id, institute_id, term_id, name, level, teacher_user_id, room_id,
                             day_pattern, start_time, duration_min, capacity, total_sessions,
+                            starts_on, ends_on, midterm_on, final_on,
                             mode, provider, join_url, price, status, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     )->execute([
         $id, inst_id(), $term['id'] ?? null, $name, s_in($in, 'level', 40),
         $teacherId, $roomId ?: null,
@@ -64,6 +65,7 @@ case 'create':
         i_in($in, 'duration', 90, 15, 480),
         i_in($in, 'cap', 12, 1, 200),
         i_in($in, 'totalSessions', 20, 1, 60),
+        ...class_dates_in($in, null),
         enum_in($in, 'mode', MODES, 'in_person'),
         $provider, $joinUrl,
         i_in($in, 'price', 0, 0, 9999999999),
@@ -94,7 +96,9 @@ case 'update':
 
     db()->prepare(
         'UPDATE klass SET name=?, level=?, teacher_user_id=?, room_id=?, day_pattern=?, start_time=?,
-                          duration_min=?, capacity=?, total_sessions=?, mode=?, provider=?, join_url=?, price=?
+                          duration_min=?, capacity=?, total_sessions=?,
+                          starts_on=?, ends_on=?, midterm_on=?, final_on=?,
+                          mode=?, provider=?, join_url=?, price=?
           WHERE id=? AND institute_id=?'
     )->execute([
         s_in($in, 'name', 160) ?: (string)$cl['name'],
@@ -105,6 +109,7 @@ case 'update':
         i_in($in, 'duration', (int)$cl['duration_min'], 15, 480),
         $newCap,
         i_in($in, 'totalSessions', (int)$cl['total_sessions'], 1, 60),
+        ...class_dates_in($in, $cl),
         enum_in($in, 'mode', MODES, (string)$cl['mode']),
         $provider, $joinUrl,
         i_in($in, 'price', (int)$cl['price'], 0, 9999999999),
@@ -211,4 +216,48 @@ function member_or_null(array $in, string $key, string $role): ?string
     $m = t_one('SELECT user_id FROM membership WHERE __I__ AND user_id = ? AND role = ? AND status = ?', [$id, $role, 'active']);
     if (!$m) fail(404, 'not_found', 'مدرس پیدا نشد.');
     return (string)$m['user_id'];
+}
+
+/**
+ * چهار تاریخ کلاس، اعتبارسنجی‌شده و به ترتیبِ ستون‌ها.
+ *
+ * @param array|null $cur ردیف فعلی کلاس، یا null در ساخت
+ * @return array{0:?string,1:?string,2:?string,3:?string}
+ */
+function class_dates_in(array $in, ?array $cur): array
+{
+    $get = function (string $key, string $col) use ($in, $cur): ?string {
+        // در ویرایش، کلیدی که فرستاده نشده یعنی «دست نزن»؛ کلیدِ خالی
+        // یعنی «پاکش کن». این دو باید از هم جدا باشند، وگرنه هر ذخیرهٔ
+        // جزئی تاریخ‌های قبلی را می‌شوید.
+        if (!array_key_exists($key, $in)) return $cur ? ($cur[$col] ?? null) : null;
+        return date_in($in, $key);
+    };
+
+    $start = $get('startsOn',  'starts_on');
+    $end   = $get('endsOn',    'ends_on');
+    $mid   = $get('midtermOn', 'midterm_on');
+    $fin   = $get('finalOn',   'final_on');
+
+    /*
+     * ترتیب تاریخ‌ها بررسی می‌شود، نه فقط شکلشان.
+     *
+     * «پایان پیش از شروع» یا «آزمون پایان‌ترم پیش از میان‌ترم» غلط
+     * تایپی است، نه تصمیم. اگر همین‌جا نگیریمش، بعداً به شکل «۰ جلسه
+     * مانده» یا کارنامه‌ای با ترتیب وارونه بیرون می‌زند و کسی نمی‌فهمد
+     * از کجا آمده.
+     */
+    if ($start && $end && $end < $start) {
+        fail(400, 'bad_dates', 'تاریخ پایان کلاس نمی‌تواند پیش از شروع باشد.');
+    }
+    foreach ([['میان‌ترم', $mid], ['پایان‌ترم', $fin]] as [$label, $d]) {
+        if (!$d) continue;
+        if ($start && $d < $start) fail(400, 'bad_dates', "تاریخ آزمون {$label} پیش از شروع کلاس است.");
+        if ($end   && $d > $end)   fail(400, 'bad_dates', "تاریخ آزمون {$label} بعد از پایان کلاس است.");
+    }
+    if ($mid && $fin && $fin < $mid) {
+        fail(400, 'bad_dates', 'آزمون پایان‌ترم نمی‌تواند پیش از میان‌ترم باشد.');
+    }
+
+    return [$start, $end, $mid, $fin];
 }

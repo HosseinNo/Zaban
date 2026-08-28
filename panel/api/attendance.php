@@ -40,6 +40,34 @@ case 'get':
         [$s['id'], $cl['id'], 'active']
     );
 
+    /*
+     * شمار غیبتِ هر نفر تا امروز، در همین کلاس.
+     *
+     * مدرس موقع زدن «غایب» باید بداند این چندمین غیبت است. بدون آن،
+     * زبان‌آموزی که دارد از کلاس می‌افتد فقط وقتی دیده می‌شود که
+     * گزارش پایان ترم را کسی باز کند — یعنی وقتی دیگر کاری نمی‌شود
+     * کرد.
+     *
+     * یک پرس‌وجوی گروهی برای کل کلاس، نه یکی به‌ازای هر نفر: کلاس
+     * بیست‌نفره یعنی بیست رفت‌وبرگشت به دیتابیس در هر بار باز کردن
+     * صفحه، آن هم روی هاست اشتراکی.
+     */
+    $absRows = t_all(
+        "SELECT a.student_user_id AS uid, a.status AS st, COUNT(*) AS n
+           FROM attendance a JOIN class_session cs ON cs.id = a.session_id
+          WHERE a.__I__ AND cs.class_id = ? AND a.session_id <> ?
+          GROUP BY a.student_user_id, a.status",
+        [$cl['id'], $s['id']]);
+    $absent = [];
+    $late   = [];
+    $seen   = [];
+    foreach ($absRows as $r) {
+        $u = (string)$r['uid'];
+        $seen[$u] = ($seen[$u] ?? 0) + (int)$r['n'];
+        if ($r['st'] === 'absent') $absent[$u] = (int)$r['n'];
+        if ($r['st'] === 'late')   $late[$u]   = (int)$r['n'];
+    }
+
     ok([
         'session' => [
             'id'     => (string)$s['id'],
@@ -56,6 +84,10 @@ case 'get':
             'status' => $r['status'] ?: 'present',
             'saved'  => $r['status'] !== null,
             'note'   => $r['note'],
+            // تا پیش از این جلسه، در همین کلاس
+            'absences' => $absent[(string)$r['id']] ?? 0,
+            'lates'    => $late[(string)$r['id']] ?? 0,
+            'marked'   => $seen[(string)$r['id']] ?? 0,
         ], $rows),
     ]);
 

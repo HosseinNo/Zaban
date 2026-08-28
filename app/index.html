@@ -314,6 +314,16 @@ body.lt{margin:0;background:var(--paper);color:var(--ink);
 .rrow .nm{flex:1;font-size:14.5px;min-inline-size:0}
 .rrow .nm small{display:block;font-size:11.5px;color:var(--ink-3)}
 .rrow[data-st="absent"] .nm>span{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+/* شمار غیبت کنار نام؛ از سه به بالا قرمز */
+.rrow .abs{display:block;font-size:11.5px;font-weight:700;color:var(--ink-3)}
+.rrow .rt{flex:none}
+.asg-sum{display:flex;gap:18px;padding:12px 14px;border-radius:var(--r2);
+  background:var(--surface-2);font-size:14px;margin-block-end:12px}
+.asg-sum .down b{color:var(--bad)}
+.asg-people{max-block-size:min(360px,46vh);overflow-y:auto;border:1px solid var(--line);
+  border-radius:var(--r2);margin-block-start:6px}
+.rrow .abs.warn{color:var(--warn)}
+.rrow .abs.bad{color:var(--bad)}
 .seg{display:flex;gap:3px;background:var(--surface-2);padding:3px;border-radius:100px;flex:none}
 .seg button{padding:5px 11px;border-radius:100px;font-size:12.5px;font-weight:700;color:var(--ink-3);min-block-size:30px}
 .seg button.on{background:var(--surface);box-shadow:var(--sh-sm);color:var(--ink)}
@@ -1093,6 +1103,7 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
           فرمی می‌افتد که نام آموزشگاه می‌خواهد. */
        auth:{step:1,mode:"pass",phone:"",inst:"",name:"",user:"",code:"",err:"",busy:false,cool:0,tick:null,expires:300,wantPass:false,newPass:"",p1:"",p2:"",newInst:false},
        notif:{open:false,unread:0,items:[],timer:null},
+       asgStat:null,
        compose:{audience:"",title:"",body:"",kind:"info",busy:false,err:"",
                 auds:null,sent:null,loading:false},
        join:{loaded:false,busy:false,code:null,reqs:[]},
@@ -1190,7 +1201,10 @@ function applyBootstrap(d){
             teacher:c.teacher,teacherId:c.teacherId,
             session:c.session,total:c.total,cap:c.cap,enrolled:c.enrolled,
             provider:c.provider,joinUrl:c.joinUrl,price:c.price,status:c.status,
-            avg:c.avg,attendance:c.attendance};
+            avg:c.avg,attendance:c.attendance,
+            startsOn:c.startsOn,endsOn:c.endsOn,
+            midtermOn:c.midtermOn,finalOn:c.finalOn,
+            remaining:c.remaining,expired:!!c.expired};
   });
 
   DB.students=(d.students||[]).map(function(s){
@@ -1205,9 +1219,13 @@ function applyBootstrap(d){
   DB.sessions=d.sessions||[];
 
   DB.assignments=(d.assignments||[]).map(function(a){
+    /* شمارش روزها از مهلت مؤثر است: تکلیفی که تمدید شده، «مهلت
+       گذشته» نیست حتی اگر مهلت اصلی‌اش گذشته باشد */
+    var eff=a.effective||a.due;
     return {id:a.id,cls:a.cls,title:a.title,type:a.type,desc:a.desc,
-            due:a.due?jDate(a.due):"بدون مهلت",dueISO:a.due,
-            dueIn:a.due?daysUntil(a.due):null,
+            due:eff?jDate(eff):"بدون مهلت",dueISO:a.due,
+            extendedTo:a.extendedTo,extendNote:a.extendNote,effISO:eff,
+            dueIn:eff?daysUntil(eff):null,
             max:a.max,submitted:a.submitted,graded:a.graded,total:a.total,status:a.status};
   });
 
@@ -1600,6 +1618,7 @@ V["t/assignments"]=function(){
         <div class="metaline m">
           <span>${typeName(a.type)}</span>
           <span class="num">مهلت ${a.due}</span>
+          ${a.extendedTo?h`<span class="pill p-warn">تمدیدشده</span>`:""}
           <span class="num">${fa(a.max)} نمره</span>
         </div>
         <div class="bar" style="max-width:220px;margin-top:9px"><i style="width:${Math.round(a.submitted/a.total*100)}%"></i></div>
@@ -1608,8 +1627,9 @@ V["t/assignments"]=function(){
       </div>
       <div class="rt">
         ${a.dueIn<0?pill("مهلت گذشته","mute"):a.dueIn<=4?pill(fa(a.dueIn)+" روز مانده","warn"):pill(fa(a.dueIn)+" روز مانده","ok")}
-        ${pend>0?'<button class="btn btn--p btn--sm" data-nav="t/grading">تصحیح '+fa(pend)+' مورد</button>'
-                :'<button class="btn btn--g btn--sm" data-act="noop">مشاهده</button>'}
+        ${pend>0?'<button class="btn btn--p btn--sm" data-nav="t/grading">تصحیح '+fa(pend)+' مورد</button>':""}
+        <button class="btn btn--g btn--sm" data-act="asg-open" data-id="${esc(a.id)}">
+          کی داده؟</button>
       </div></div>`;}).join("")}`;
 };
 
@@ -1883,6 +1903,7 @@ V["s/assignments"]=function(){
         <p class="muted" style="font-size:13px;margin-top:5px;line-height:1.85">${esc(a.desc)}</p>
         <div class="metaline m" style="margin-top:7px">
           <span>${typeName(a.type)}</span><span class="num">مهلت ${a.due}</span>
+          ${a.extendedTo?h`<span class="pill p-warn">تمدیدشده</span>`:""}
           <span class="num">${fa(a.max)} نمره</span></div></div>
       <div class="rt">${st}
         ${a.id==="a3"?'<button class="btn btn--g btn--sm" data-nav="s/grades">دیدن بازخورد</button>'
@@ -2513,7 +2534,7 @@ V["m/classes"]=function(){
       </div>`:h`
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>کلاس</th><th>مدرس</th><th>روز و ساعت</th><th>ظرفیت</th>
-                 <th>پیشرفت</th><th>وضعیت</th><th></th></tr></thead>
+                 <th>پیشرفت</th><th>بازه و آزمون‌ها</th><th>وضعیت</th><th></th></tr></thead>
       <tbody>${cs.map(function(c){
         var full=c.enrolled>=c.cap;
         return h`<tr>
@@ -2525,8 +2546,16 @@ V["m/classes"]=function(){
           <td class="num">${fa(c.enrolled)} از ${fa(c.cap)}
               ${full?'<br>'+pill("پر","warn"):""}</td>
           <td class="num">${c.total?fa(c.session)+" از "+fa(c.total):"—"}
+              ${c.remaining>0?'<br><span class="muted num">'+fa(c.remaining)+' جلسه مانده</span>':""}
               ${c.attendance!=null?'<br><span class="muted num">حضور '+fa(c.attendance)+'٪</span>':""}</td>
-          <td>${c.status==="published"?pill("منتشر شده","ok")
+          <td style="font-size:12.5px">
+            ${c.startsOn||c.endsOn
+              ? h`<span class="num">${c.startsOn?jDate(c.startsOn):"؟"} تا ${c.endsOn?jDate(c.endsOn):"؟"}</span>`
+              : '<span class="muted">—</span>'}
+            ${c.midtermOn?h`<br><span class="muted num">میان‌ترم ${jDate(c.midtermOn)}</span>`:""}
+            ${c.finalOn?h`<br><span class="muted num">پایان‌ترم ${jDate(c.finalOn)}</span>`:""}</td>
+          <td>${c.expired?pill("منقضی","mute")
+                :c.status==="published"?pill("منتشر شده","ok")
                 :c.status==="closed"?pill("بسته","mute"):pill("پیش‌نویس","warn")}</td>
           <td style="white-space:nowrap">
             <button class="btn btn--g btn--sm" data-act="cl-edit" data-id="${c.id}">ویرایش</button>
@@ -4241,6 +4270,36 @@ function fieldsClass(c){
     <div class="fld"><label for="clTotal">تعداد جلسه</label>
       <input id="clTotal" type="text" inputmode="numeric" value="${fa(c.total||20)}"></div>
   </div>
+
+  ${/*
+     * چهار تاریخ کلاس.
+     *
+     * هر چهارتا اختیاری‌اند: کلاسی که هنوز تاریخش معلوم نیست هم باید
+     * ساخته شود. ولی وقتی پر شدند، سرور ترتیبشان را می‌سنجد — پایان
+     * پیش از شروع، یا پایان‌ترم پیش از میان‌ترم، خطای تایپی است نه
+     * تصمیم.
+     */""}
+  <div class="grid g2">
+    <div class="fld"><label for="clStart">شروع کلاس</label>
+      <input id="clStart" class="jdate" type="text" readonly autocomplete="off"
+             data-iso="${esc(c.startsOn||"")}" value="${c.startsOn?jFull(c.startsOn):""}"
+             placeholder="انتخاب کنید"></div>
+    <div class="fld"><label for="clEnd">پایان کلاس</label>
+      <input id="clEnd" class="jdate" type="text" readonly autocomplete="off"
+             data-iso="${esc(c.endsOn||"")}" value="${c.endsOn?jFull(c.endsOn):""}"
+             placeholder="انتخاب کنید">
+      <span class="hint">بعد از این تاریخ، کلاس در فهرست‌های جاری نمی‌آید.</span></div>
+  </div>
+  <div class="grid g2">
+    <div class="fld"><label for="clMid">آزمون میان‌ترم</label>
+      <input id="clMid" class="jdate" type="text" readonly autocomplete="off"
+             data-iso="${esc(c.midtermOn||"")}" value="${c.midtermOn?jFull(c.midtermOn):""}"
+             placeholder="انتخاب کنید"></div>
+    <div class="fld"><label for="clFinal">آزمون پایان‌ترم</label>
+      <input id="clFinal" class="jdate" type="text" readonly autocomplete="off"
+             data-iso="${esc(c.finalOn||"")}" value="${c.finalOn?jFull(c.finalOn):""}"
+             placeholder="انتخاب کنید"></div>
+  </div>
   <div class="grid g2">
     <div class="fld"><label for="clMode">نوع برگزاری</label>
       <select id="clMode">${["in_person","online","hybrid"].map(function(m){
@@ -4282,6 +4341,10 @@ function readClass(){
     cap:+enDigits(v("clCap"))||12, totalSessions:+enDigits(v("clTotal"))||20,
     mode:v("clMode"), roomId:v("clRoom"), provider:v("clProv"),
     joinUrl:v("clUrl").trim(),
+    /* dateVal مقدار میلادی را از data-iso می‌خواند؛ رشتهٔ خالی یعنی
+       «پاکش کن»، که سرور آن را از «نفرستادن» جدا می‌شناسد */
+    startsOn:dateVal("clStart"), endsOn:dateVal("clEnd"),
+    midtermOn:dateVal("clMid"), finalOn:dateVal("clFinal"),
     price:(+enDigits(v("clPrice").replace(/[٬,\s]/g,""))||0)*10
   };
 }
@@ -4803,6 +4866,51 @@ document.addEventListener("click",function(e){
 
 
 
+
+
+  /* ── تکلیف: تمدید و فهرست تحویل ── */
+  if(a==="asg-open"){ openAsgStatus(act.dataset.id); return; }
+  if(a==="asg-extend"||a==="asg-unextend"){
+    var body={action:"extend",id:act.dataset.id};
+    if(a==="asg-extend"){
+      var iso=dateVal("exDate");
+      if(!iso){toast("تاریخ تمدید را انتخاب کنید");return;}
+      body.toDate=iso;
+      body.toTime="23:59";
+      body.note=((el("exNote")||{}).value||"").trim();
+    }
+    apiCall("assignments.php",body).then(function(r){
+      if(!r.ok){toast(r.message||"انجام نشد");return;}
+      toast(a==="asg-extend"
+        ? "مهلت تمدید شد"+(r.noLongerLate?"، "+fa(r.noLongerLate)+" تحویل دیگر دیر نیست":"")
+        : "تمدید برداشته شد");
+      openAsgStatus(body.id);
+      reload();
+    });
+    return;
+  }
+  if(a==="asg-remind"){
+    /*
+     * یادآوری از همان سامانهٔ اعلان می‌رود، نه یک مسیر جدا.
+     *
+     * مخاطبش کل کلاس است نه فقط نداده‌ها — چون اعلان به فهرستِ
+     * ثابتِ لحظهٔ ارسال می‌رود و «نداده‌ها» تا فردا عوض می‌شود.
+     * متن روشن می‌کند که برای چه کسی است.
+     */
+    var d=S.asgStat;
+    if(!d)return;
+    var cls=(DB.assignments.filter(function(x){return x.id===d.assignment.id;})[0]||{}).cls;
+    if(!cls){toast("کلاس این تکلیف پیدا نشد");return;}
+    var miss=d.students.filter(function(s){return !s.submitted;}).map(function(s){return s.name;});
+    apiCall("notify.php",{action:"send",audience:"class:"+cls,kind:"warn",
+      title:"یادآوری تکلیف: "+d.assignment.title,
+      body:"این تکلیف را هنوز تحویل نداده‌اید: "+miss.join("، ")
+         +(d.assignment.effective?"\nمهلت تا "+jDateTime(d.assignment.effective)+".":"")
+    }).then(function(r){
+      toast(r.ok?"یادآوری به "+fa(r.recipients)+" نفر رفت":(r.message||"فرستاده نشد"));
+    });
+    return;
+  }
 
   /* ── اعلان ── */
   if(a==="ntf-bell"){
@@ -5543,6 +5651,81 @@ function loadMembers(then){
   });
 }
 
+/* ══════════ تکلیف: کی داده، کی نداده ══════════
+ *
+ * تا امروز مدرس فقط صف تصحیح را می‌دید — یعنی کسانی که *داده‌اند*.
+ * کسی که نداده هیچ‌جا دیده نمی‌شد، و همان‌ها هستند که باید یادآوری
+ * شوند.
+ */
+
+function openAsgStatus(aid){
+  apiCall("assignments.php",{action:"status",id:aid}).then(function(r){
+    if(!r.ok){toast(r.message||"باز نشد");return;}
+    S.asgStat=r;
+    drawAsgStatus();
+  });
+}
+
+function drawAsgStatus(){
+  var d=S.asgStat, a=d.assignment;
+  var missing=d.students.filter(function(s){return !s.submitted;});
+
+  openModal(h`
+    <div class="modal-h"><h3>${esc(a.title)}</h3>
+      <button class="ib x" data-act="close" aria-label="بستن">✕</button></div>
+    <div class="modal-b">
+      <div class="asg-sum">
+        <span><b class="num">${fa(d.submitted)}</b> تحویل داده</span>
+        <span class="${missing.length?"down":""}"><b class="num">${fa(d.missing)}</b> نداده</span>
+      </div>
+
+      ${a.dueAt?h`<p class="muted" style="font-size:13px;line-height:1.9">
+        مهلت: <span class="num">${jDateTime(a.dueAt)}</span>
+        ${a.extendedTo?h`<br>تمدید تا <b class="num">${jDateTime(a.extendedTo)}</b>${
+          a.extendNote?h` — ${esc(a.extendNote)}`:""}`:""}</p>`
+       :h`<p class="muted" style="font-size:13px">این تکلیف مهلت ندارد.</p>`}
+
+      ${a.dueAt?h`
+      <div class="fld" style="margin-top:12px">
+        <label for="exDate">${a.extendedTo?"تغییر تمدید":"تمدید مهلت"}</label>
+        <input id="exDate" class="jdate" type="text" readonly autocomplete="off"
+               data-iso="${esc(a.extendedTo?String(a.extendedTo).slice(0,10):"")}"
+               value="${a.extendedTo?jFull(String(a.extendedTo).slice(0,10)):""}"
+               placeholder="تاریخ تازه را انتخاب کنید">
+      </div>
+      <div class="fld">
+        <label for="exNote">چرا؟</label>
+        <input id="exNote" type="text" maxlength="255" value="${esc(a.extendNote||"")}"
+               placeholder="مثلاً: قطعی سامانه در شب مهلت">
+        <span class="hint">در پروندهٔ تکلیف می‌ماند و بعداً معلوم است چرا تمدید شده.</span>
+      </div>
+      <div class="r" style="gap:8px;margin-block:2px 14px">
+        <button class="btn btn--p btn--sm" data-act="asg-extend" data-id="${esc(a.id)}">
+          ثبت تمدید</button>
+        ${a.extendedTo?h`<button class="btn btn--g btn--sm" data-act="asg-unextend"
+          data-id="${esc(a.id)}">برداشتن تمدید</button>`:""}
+      </div>`:""}
+
+      <div class="asg-people">${d.students.map(function(s){
+        return h`<div class="rrow" data-st="${s.submitted?"":"absent"}">
+          <span class="av">${initials(s.name)}</span>
+          <span class="nm"><span>${esc(s.name)}</span>
+            <small>${s.submitted
+              ? jDateTime(s.at)+(s.late?" · با تأخیر":"")+(s.hasFile?" · فایل":"")
+              : "هنوز تحویل نداده"}</small></span>
+          <span class="rt">${s.submitted
+            ? (s.graded?pill(fa(s.score)+" از "+fa(a.max),"ok")
+                       :pill("منتظر تصحیح","warn"))
+            : pill("نداده","mute")}</span>
+        </div>`;}).join("")}</div>
+    </div>
+    <div class="modal-f">
+      ${missing.length&&navVisible({perm:"notify.send"})?h`
+        <button class="btn btn--g" data-act="asg-remind">یادآوری به ${fa(missing.length)} نفر</button>`:""}
+      <button class="btn btn--p" data-act="close">بستن</button>
+    </div>`,true);
+}
+
 function openAttendance(sessionId){
   apiCall("attendance.php",{action:"get",id:sessionId}).then(function(r){
     if(!r.ok){toast(r.message||"باز نشد");return;}
@@ -5563,11 +5746,41 @@ function drawAttendance(sessionId){
       <p class="muted">${esc(r.className)} · ${jDay(r.session.date)}</p>
       <p style="font-size:13.5px">همه پیش‌فرض حاضرند. فقط غایب‌ها را بزنید.
          ${absent>0?h`<b class="num">${fa(absent)} غایب</b>`:""}</p>
+      ${(function(){
+        /* کسانی که به مرز افتادن رسیده‌اند، بالای فهرست خلاصه می‌شوند —
+           وگرنه در کلاس بیست‌نفره باید دنبال عددهای کوچک بگردی */
+        var risky=r.roster.filter(function(x){return x.absences>=3;});
+        return risky.length?h`<div class="su-note" style="margin-block:4px 12px">
+          <b>${risky.map(function(x){return esc(x.name)+" ("+fa(x.absences)+")";}).join("، ")}</b>
+          — سه غیبت یا بیشتر.</div>`:"";
+      })()}
       ${r.roster.length===0?'<div class="empty"><b>کسی در این کلاس ثبت‌نام نیست</b></div>'
       :h`<div>${r.roster.map(function(s){
         var st=S.attNow[s.id];
-        return h`<div class="att-row">
-          <span class="nm"><b>${esc(s.name)}</b></span>
+        /*
+         * شمار غیبت کنار نام، نه در گزارش پایان ترم.
+         *
+         * مدرس درست همان لحظه‌ای که دارد «غایب» می‌زند باید بداند این
+         * چندمین بار است. سه غیبت یعنی زبان‌آموز دارد از کلاس می‌افتد
+         * و هنوز می‌شود کاری کرد؛ همان عدد در گزارش پایان ترم فقط
+         * توضیح می‌دهد چرا افتاده.
+         */
+        var warn=s.absences>=3?"bad":s.absences>0?"warn":"";
+        /*
+         * .rrow، نه .att-row.
+         *
+         * نمای زنده از .att-row استفاده می‌کرد که هیچ‌جای شیوه‌نامه
+         * تعریف نشده — یعنی ردیف‌ها بدون فاصله و بدون خط جداکننده روی
+         * هم می‌افتادند، و data-st هم اثری نداشت. نمای نمایشی از روز
+         * اول .rrow داشت؛ حالا هر دو یکی‌اند.
+         */
+        return h`<div class="rrow" data-st="${st==="absent"?"absent":""}">
+          <span class="av">${initials(s.name)}</span>
+          <span class="nm"><span>${esc(s.name)}</span>
+            ${s.absences?h`<small class="abs ${warn}">${fa(s.absences)} غیبت${
+                 s.lates?h` · ${fa(s.lates)} تأخیر`:""}</small>`
+             :s.lates?h`<small class="abs warn">${fa(s.lates)} تأخیر</small>`
+             :""}</span>
           <span class="seg" role="group" aria-label="وضعیت ${esc(s.name)}">
             ${[["present","حاضر"],["late","تأخیر"],["absent","غایب"],["excused","موجه"]].map(function(o){
               return '<button class="'+(st===o[0]?"on "+o[0]:"")+'" data-att="'+s.id+'" data-v="'+o[0]+'">'+o[1]+'</button>';

@@ -137,6 +137,8 @@ nav .grp{font-size:11px;color:var(--ink-3);padding:14px 11px 5px;font-weight:700
 .au-err{margin-block:2px 14px;padding:10px 12px;border-radius:10px;font-size:13.5px;
   background:var(--bad-soft);color:var(--bad);border:1px solid currentColor}
 .seg-picks{display:flex;flex-wrap:wrap;gap:8px}
+.jsel{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:7px}
+.jsel select{inline-size:100%}
 .aud{padding:9px 13px;border:1.5px solid var(--line-2);border-radius:10px;text-align:start;
   background:var(--surface);font:inherit;color:inherit;cursor:pointer}
 .aud:hover:not([disabled]){border-color:var(--brand-2)}
@@ -273,6 +275,68 @@ function toJalali(gy,gm,gd){
   var jd=1+((days<186)?(days%31):((days-186)%30));
   return [jy,jm,jd];
 }
+/* ── شمسی → میلادی ──
+ *
+ * پنل سوپرادمین تا امروز فقط تاریخ *نمایش* می‌داد، پس toJalali تنها
+ * چیزی بود که لازم داشت. بازهٔ قرارداد اولین جایی است که اینجا تاریخ
+ * *گرفته* می‌شود، و ورودی شمسی است (بند P.2) در حالی که ستون میلادی
+ * است. این سه تابع همان مسیر برگشت‌اند.
+ */
+var J_MONTHS_S=["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
+                "مهر","آبان","آذر","دی","بهمن","اسفند"];
+function pad2(n){return n<10?"0"+n:""+n;}
+function isJLeapS(jy){var r=((jy%33)+33)%33;
+  return r===1||r===5||r===9||r===13||r===17||r===22||r===26||r===30;}
+function jMonthLenS(jy,jm){return jm<=6?31:(jm<=11?30:(isJLeapS(jy)?30:29));}
+function fromJalaliS(jy,jm,jd){
+  var gy=(jy<=979)?621:1600;
+  jy-=(jy<=979)?0:979;
+  var days=365*jy+~~(jy/33)*8+~~(((jy%33)+3)/4)+78+jd
+         +((jm<7)?(jm-1)*31:((jm-7)*30)+186);
+  gy+=400*~~(days/146097); days%=146097;
+  if(days>36524){gy+=100*~~(--days/36524); days%=36524; if(days>=365)days++;}
+  gy+=4*~~(days/1461); days%=1461;
+  if(days>365){gy+=~~((days-1)/365); days=(days-1)%365;}
+  var gd=days+1;
+  var ml=[0,31,((gy%4===0&&gy%100!==0)||(gy%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
+  var gm; for(gm=0; gm<13 && gd>ml[gm]; gm++) gd-=ml[gm];
+  return gy+"-"+pad2(gm)+"-"+pad2(gd);
+}
+
+/*
+ * سه انتخابگرِ روز/ماه/سال به‌جای تقویم کامل.
+ *
+ * تقویمِ پنل چند صد خط است و اینجا فقط دو تاریخ گرفته می‌شود. سه
+ * کشویی همان کار را می‌کند، روی موبایل هم بهتر است، و هیچ حالت
+ * نامعتبری نمی‌سازد چون روزها از خودِ ماه و سال می‌آیند.
+ */
+function jSelects(prefix, iso, fromYear){
+  var j=null;
+  if(iso){var m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if(m)j=toJalali(+m[1],+m[2],+m[3]);}
+  var now=new Date(), tj=toJalali(now.getFullYear(),now.getMonth()+1,now.getDate());
+  var y0=fromYear||(tj[0]-1);
+  var days=j?jMonthLenS(j[0],j[1]):31;
+  function opt(v,t,on){return '<option value="'+v+'"'+(on?" selected":"")+'>'+t+'</option>';}
+  var d="",mo="",yr="";
+  for(var i=1;i<=days;i++)   d+=opt(i,fa(i),j&&j[2]===i);
+  for(var i=0;i<12;i++)      mo+=opt(i+1,J_MONTHS_S[i],j&&j[1]===i+1);
+  for(var i=y0;i<=y0+12;i++) yr+=opt(i,fa(i),j&&j[0]===i);
+  return '<div class="jsel">'
+       + '<select id="'+prefix+'D" data-jsel="'+prefix+'"><option value="">روز</option>'+d+'</select>'
+       + '<select id="'+prefix+'M" data-jsel="'+prefix+'"><option value="">ماه</option>'+mo+'</select>'
+       + '<select id="'+prefix+'Y" data-jsel="'+prefix+'"><option value="">سال</option>'+yr+'</select>'
+       + '</div>';
+}
+
+/** مقدار میلادی سه انتخابگر، یا رشتهٔ خالی */
+function jSelVal(prefix){
+  function v(i){var n=el(prefix+i); return n?+n.value:0;}
+  var d=v("D"), m=v("M"), y=v("Y");
+  if(!d||!m||!y)return "";
+  return fromJalaliS(y,m,Math.min(d,jMonthLenS(y,m)));
+}
+
 function jDateTime(s){
   if(!s)return "—";
   var m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m)return "—";
@@ -320,6 +384,7 @@ var S={view:"dash",settings:null,leads:null,stats:null,events:null,
        userQ:"",userResults:null,userDetail:null,
        reasonModal:null,
        notifData:null,notifSent:[],notifBusy:false,
+       endingSoon:[],
        notifDraft:{segment:"",title:"",body:"",kind:"info",busy:false,err:""}};
 
 var NAV=[
@@ -399,6 +464,12 @@ function viewDash(){
   ${s.leadsNew>0?h`<div class="note note--w">
     <b>${fa(s.leadsNew)} درخواست دموی رسیدگی‌نشده</b> —
     <button class="btn btn--sm btn--g" data-go="leads">دیدن</button></div>`:""}
+
+  ${(S.endingSoon||[]).length?h`<div class="note note--w">
+    <b>قرارداد ${fa(S.endingSoon.length)} آموزشگاه تا دو هفتهٔ دیگر تمام می‌شود:</b>
+    ${S.endingSoon.map(function(x){
+      return esc(x.name)+" ("+(x.daysLeft===0?"امروز":fa(x.daysLeft)+" روز")+")";}).join("، ")}
+    </div>`:""}
 
   <div class="grid g4" style="margin-block-end:16px">
     ${kpi("آموزشگاه",fa(s.institutes),s.institutesSuspended?fa(s.institutesSuspended)+" معلق":"")}
@@ -498,6 +569,24 @@ function viewInstituteDetail(){
           جلسهٔ میت: ${inst.jitsiEnabled?"فعال":"غیرفعال"}
         </button>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>بازهٔ قرارداد</h3>
+      ${inst.daysLeft==null?'<span class="pill p-mute">تعیین نشده</span>'
+        :inst.daysLeft<0?'<span class="pill p-bad">'+fa(-inst.daysLeft)+' روز گذشته</span>'
+        :inst.daysLeft<=14?'<span class="pill p-warn">'+fa(inst.daysLeft)+' روز مانده</span>'
+        :'<span class="pill p-ok">'+fa(inst.daysLeft)+' روز مانده</span>'}</div>
+    <div class="card-b">
+      <p class="muted" style="font-size:13px;line-height:1.9;margin-block-start:0">
+        بعد از تاریخ پایان، آموزشگاه در اولین باز کردن این پنل خودکار تعلیق می‌شود.
+        خالی گذاشتن یعنی قرارداد پایان ندارد.</p>
+      <div class="grid g2">
+        <div class="fld"><label>شروع قرارداد</label>${jSelects("wFrom",inst.activeFrom)}</div>
+        <div class="fld"><label>پایان قرارداد</label>${jSelects("wTo",inst.activeTo)}</div>
+      </div>
+      <button class="btn btn--p btn--sm" data-a="instWindow" data-id="${inst.id}">ذخیرهٔ بازه</button>
     </div>
   </div>
 
@@ -1310,7 +1399,24 @@ function need(view){
     if(!S.settings&&["pricing","contact","content","trust","sms"].indexOf(view)>=0)S.settings=demoSettings();
     return Promise.resolve();
   }
-  if(view==="dash"&&!S.stats)      return call({action:"stats"}).then(function(r){if(r.ok)S.stats=r.stats;});
+  if(view==="dash"&&!S.stats){
+    /*
+     * جاروی قراردادهای تمام‌شده، همراه آمار پیشخوان.
+     *
+     * کرون‌جاب نداریم و روی هاست اشتراکی هم نمی‌شود داشت. هر بار که
+     * سوپرادمین پیشخوان را باز می‌کند، قراردادهای گذشته بسته می‌شوند
+     * و آن‌هایی که تا دو هفتهٔ دیگر تمام می‌شوند هشدار می‌گیرند. همان
+     * الگوی demo.sweep که از قبل کار می‌کرد.
+     */
+    return Promise.all([
+      call({action:"stats"}).then(function(r){if(r.ok)S.stats=r.stats;}),
+      call({action:"institutes.sweepExpired"}).then(function(r){
+        if(!r.ok)return;
+        S.endingSoon=r.endingSoon||[];
+        if(r.suspended>0)toast(fa(r.suspended)+" آموزشگاه به‌خاطر پایان قرارداد تعلیق شد");
+      })
+    ]);
+  }
   if(view==="institutes"&&!S.institutes&&!S.instDetail) return doInstSearch();
   if(view==="leads"&&!S.leads)     return call({action:"leads"}).then(function(r){if(r.ok)S.leads=r;});
   if(view==="access"&&!S.access)   return call({action:"access.catalogue"}).then(function(r){if(r.ok)S.access=r;});
@@ -1681,6 +1787,19 @@ document.addEventListener("click",function(e){
         toast("رفع تعلیق شد"); doInstOpen(iid);
       });
     }
+    return;
+  }
+  if(a==="instWindow"){
+    var wid=b.dataset.id;
+    var from=jSelVal("wFrom"), to=jSelVal("wTo");
+    call({action:"institutes.setWindow",id:wid,from:from,to:to}).then(function(r){
+      if(!r.ok){toast(r.message||"ذخیره نشد");return;}
+      toast(r.to
+        ? (r.daysLeft>=0 ? "بازه ذخیره شد — "+fa(r.daysLeft)+" روز مانده"
+                         : "بازه ذخیره شد — قرارداد گذشته است")
+        : "بازه بدون تاریخ پایان ذخیره شد");
+      doInstOpen(wid);
+    });
     return;
   }
   if(a==="instJitsiToggle"){

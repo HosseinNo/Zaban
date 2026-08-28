@@ -212,6 +212,23 @@ CREATE TABLE IF NOT EXISTS klass (
   duration_min    SMALLINT UNSIGNED NOT NULL DEFAULT 90,
   capacity        SMALLINT UNSIGNED NOT NULL DEFAULT 12,
   total_sessions  SMALLINT UNSIGNED NOT NULL DEFAULT 20,
+
+  /*
+   * بازهٔ کلاس و تاریخ آزمون‌ها.
+   *
+   * total_sessions می‌گوید کلاس چند جلسه دارد، ولی نه از کِی تا کِی.
+   * برای «چند جلسه مانده» باید جلسه‌های برگزارشده شمرده می‌شد، و برای
+   * «کلاس تمام شده؟» هیچ راهی نبود جز حدس.
+   *
+   * ends_on هم تاریخ پایان است هم تاریخ انقضا: بعد از آن کلاس در
+   * فهرست‌های جاری نمی‌آید ولی داده‌اش می‌ماند — کارنامه و حضور و غیاب
+   * سال‌ها بعد هم باید خوانده شود.
+   */
+  starts_on       DATE         NULL,
+  ends_on         DATE         NULL,
+  midterm_on      DATE         NULL,
+  final_on        DATE         NULL,
+
   mode            VARCHAR(16)  NOT NULL DEFAULT 'in_person', -- in_person | online | hybrid
   provider        VARCHAR(16)  NOT NULL DEFAULT 'meet',      -- bbb | meet | skyroom | custom
   join_url        VARCHAR(500) NULL,
@@ -220,6 +237,7 @@ CREATE TABLE IF NOT EXISTS klass (
   created_at      DATETIME     NOT NULL,
   KEY ix_class_inst (institute_id, status),
   KEY ix_class_teacher (institute_id, teacher_user_id),
+  KEY ix_class_window (institute_id, ends_on),
   CONSTRAINT fk_class_inst FOREIGN KEY (institute_id) REFERENCES institute(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -279,6 +297,22 @@ CREATE TABLE IF NOT EXISTS assignment (
   due_at       DATETIME     NULL,
   max_score    SMALLINT UNSIGNED NOT NULL DEFAULT 20,
   status       VARCHAR(16)  NOT NULL DEFAULT 'open',     -- open | closed
+
+  /*
+   * تمدید مهلت، جدا از خودِ مهلت.
+   *
+   * راه ساده‌تر این بود که due_at عوض شود. آن‌وقت سه چیز از دست
+   * می‌رفت: مهلت اصلی، اینکه اصلاً تمدید شده، و اینکه چرا — و وقتی
+   * زبان‌آموزی می‌پرسید «مگر تا جمعه نبود؟» جوابی نبود.
+   *
+   * تأخیر از روی مهلت *مؤثر* حساب می‌شود نه اصلی: کسی که در مهلت
+   * تمدیدشده تحویل داده، دیرکرد ندارد.
+   */
+  extended_to  DATETIME     NULL,
+  extended_by  CHAR(32)     NULL,
+  extended_at  DATETIME     NULL,
+  extend_note  VARCHAR(255) NULL,
+
   created_by   CHAR(32)     NULL,
   created_at   DATETIME     NOT NULL,
   KEY ix_asg_class (institute_id, class_id),
@@ -382,6 +416,14 @@ CREATE TABLE IF NOT EXISTS demo_lead (
 
 ALTER TABLE institute ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'active';   -- active | suspended
 ALTER TABLE institute ADD COLUMN suspended_reason VARCHAR(255) NULL;
+
+-- بازهٔ قرارداد. active_to خودش چیزی را نمی‌بندد و نباید ببندد؛
+-- بستن کار دستور جاروی super.php است. این ستون فقط می‌گوید قرارداد
+-- تا کِی است — بدون آن، روزی که قرارداد تمام می‌شود اگر کسی یادش
+-- برود، آموزشگاه سال‌ها رایگان کار می‌کند.
+ALTER TABLE institute ADD COLUMN active_from DATE NULL;
+ALTER TABLE institute ADD COLUMN active_to   DATE NULL;
+ALTER TABLE institute ADD KEY ix_inst_active_to (active_to);
 
 CREATE TABLE IF NOT EXISTS impersonation_ticket (
   id             CHAR(32)     NOT NULL PRIMARY KEY,

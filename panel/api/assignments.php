@@ -84,7 +84,15 @@ case 'submit':
     $file = save_upload();
     if ($text === '' && !$file) fail(400, 'empty', 'متن یا فایل پاسخ را بدهید.');
 
-    $late = $a['due_at'] && strtotime((string)$a['due_at'] . ' UTC') < time();
+    /*
+     * تأخیر از روی مهلت *مؤثر* حساب می‌شود.
+     *
+     * اگر مهلت تمدید شده، همان ملاک است. با خواندن due_at خالی،
+     * زبان‌آموزی که در مهلت تمدیدشده تحویل می‌دهد «دیر» ثبت می‌شد و
+     * تمدید عملاً بی‌اثر بود.
+     */
+    $effDue = $a['extended_to'] ?: $a['due_at'];
+    $late = $effDue && strtotime((string)$effDue . ' UTC') < time();
 
     $existing = t_one('SELECT id, file_path FROM submission WHERE __I__ AND assignment_id = ? AND student_user_id = ?', [$a['id'], my_id()]);
 
@@ -131,6 +139,122 @@ case 'grade':
     ok();
 
 /* ─────────── صف تصحیح ─────────── */
+/* ─────────── تمدید مهلت ───────────
+ *
+ * مهلت اصلی دست‌نخورده می‌ماند و تمدید کنارش می‌نشیند. مدرس بعداً
+ * می‌تواند بگوید «مهلت جمعه بود، تا یکشنبه تمدید شد چون سامانه قطع
+ * بود» — چیزی که با عوض‌کردن due_at ممکن نبود.
+ */
+case 'extend':
+    require_perm('assignment.edit');
+    $a = own('assignment', s_in($in, 'id', 32), 'تکلیف');
+    own_class((string)$a['class_id'], 'assignment.edit');
+
+    if (!$a['due_at']) {
+        fail(400, 'no_due', 'این تکلیف مهلت ندارد، پس چیزی برای تمدید نیست.');
+    }
+
+    // مقدار خالی یعنی «تمدید را بردار»
+    $to = date_in($in, 'toDate');
+    if ($to === null) {
+        db()->prepare('UPDATE assignment SET extended_to = NULL, extended_by = NULL,
+                              extended_at = NULL, extend_note = NULL
+                        WHERE id = ? AND institute_id = ?')
+            ->execute([$a['id'], inst_id()]);
+        audit('assignment.extend_cleared', my_id(), ['assignment' => $a['id']]);
+        ok(['extendedTo' => null]);
+    }
+
+    $toAt = $to . ' ' . time_in($in, 'toTime', '23:59') . ':00';
+
+    /*
+     * تمدید باید *بعد* از مهلت اصلی باشد.
+     *
+     * تاریخ زودتر تمدید نیست، جلو کشیدن است — و اگر اجازه‌اش بدهیم،
+     * زبان‌آموزی که دیشب طبق مهلتِ اعلام‌شده تحویل داده، امروز
+     * «دیرکرد» می‌گیرد. کوتاه‌کردن مهلت اگر روزی لازم شد، باید کار
+     * جداگانه و آگاهانه‌ای باشد، نه اثر جانبی این دستور.
+     */
+    if (strtotime($toAt . ' UTC') <= strtotime((string)$a['due_at'] . ' UTC')) {
+        fail(400, 'not_later', 'تاریخ تمدید باید بعد از مهلت اصلی باشد.');
+    }
+
+    db()->prepare('UPDATE assignment SET extended_to = ?, extended_by = ?, extended_at = ?, extend_note = ?
+                    WHERE id = ? AND institute_id = ?')
+        ->execute([$toAt, my_id(), now_utc(), s_in($in, 'note', 255) ?: null,
+                   $a['id'], inst_id()]);
+
+    /*
+     * تحویل‌هایی که فقط به‌خاطر مهلت قدیمی «دیر» بودند، دیگر دیر
+     * نیستند.
+     *
+     * بدون این، تمدید نیمه‌کاره است: مهلت عقب رفته ولی برچسب دیرکرد
+     * روی کارنامهٔ کسی مانده که حالا در مهلت است. برعکسش را نمی‌کنیم —
+     * کسی که هنوز بعد از مهلت تازه تحویل داده، دیر است.
+     */
+    $fixed = db()->prepare('UPDATE submission SET is_late = 0
+                             WHERE institute_id = ? AND assignment_id = ?
+                               AND is_late = 1 AND submitted_at <= ?');
+    $fixed->execute([inst_id(), $a['id'], $toAt]);
+
+    audit('assignment.extended', my_id(),
+          ['assignment' => $a['id'], 'to' => $toAt, 'unlate' => $fixed->rowCount()]);
+    ok(['extendedTo' => $toAt, 'noLongerLate' => $fixed->rowCount()]);
+
+
+/* ─────────── کی داده، کی نداده ───────────
+ *
+ * مدرس تا امروز فقط صف تصحیح را می‌دید — یعنی کسانی که *داده‌اند*.
+ * کسی که نداده هیچ‌جا دیده نمی‌شد، و همان‌ها هستند که باید یادآوری
+ * شوند.
+ */
+case 'status':
+    require_perm('assignment.view');
+    $a = own('assignment', s_in($in, 'id', 32), 'تکلیف');
+    own_class((string)$a['class_id'], 'assignment.view');
+
+    $rows = t_all(
+        'SELECT u.id AS uid, u.full_name, u.first_name_fa, u.last_name_fa,
+                s.id AS sub_id, s.submitted_at, s.is_late, s.score, s.file_name
+           FROM enrolment e
+           JOIN app_user u ON u.id = e.student_user_id
+           LEFT JOIN submission s
+                  ON s.assignment_id = ? AND s.student_user_id = u.id
+                 AND s.institute_id = e.institute_id
+          WHERE e.__I__ AND e.class_id = ? AND e.status = ?
+          ORDER BY (s.id IS NOT NULL), u.full_name',
+        [$a['id'], (string)$a['class_id'], 'active']);
+
+    $due = $a['extended_to'] ?: $a['due_at'];
+    $students = array_map(fn($r) => [
+        'userId'    => (string)$r['uid'],
+        'name'      => trim((string)$r['first_name_fa'] . ' ' . (string)$r['last_name_fa'])
+                       ?: (string)$r['full_name'],
+        'submitted' => $r['sub_id'] !== null,
+        'at'        => $r['submitted_at'] ? (string)$r['submitted_at'] : null,
+        'late'      => (bool)$r['is_late'],
+        'graded'    => $r['score'] !== null,
+        'score'     => $r['score'] !== null ? (float)$r['score'] : null,
+        'hasFile'   => (bool)$r['file_name'],
+    ], $rows);
+
+    $done = count(array_filter($students, fn($s) => $s['submitted']));
+    ok([
+        'assignment' => [
+            'id'         => (string)$a['id'],
+            'title'      => (string)$a['title'],
+            'dueAt'      => $a['due_at'] ? (string)$a['due_at'] : null,
+            'extendedTo' => $a['extended_to'] ? (string)$a['extended_to'] : null,
+            'extendNote' => $a['extend_note'] ? (string)$a['extend_note'] : null,
+            'effective'  => $due ? (string)$due : null,
+            'max'        => (int)$a['max_score'],
+            'status'     => (string)$a['status'],
+        ],
+        'students'  => $students,
+        'submitted' => $done,
+        'missing'   => count($students) - $done,
+    ]);
+
 case 'queue':
     require_perm('assignment.grade');
     /*

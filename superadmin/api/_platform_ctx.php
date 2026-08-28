@@ -142,6 +142,22 @@ function is_last_active_manager(string $instituteId, string $membershipIdToExclu
  * پیش‌فرض ندارد. عمداً پیش‌فرض ندارد — پیش‌فرض یعنی عضویتی که role_id
  * جا افتاده، بی‌صدا مجوزهای نقش دیگری بگیرد.
  */
+/**
+ * تاریخ میلادی YYYY-MM-DD، یا null.
+ *
+ * دوقلوی date_in در panel/api/_ctx.php، با نامی متفاوت تا اگر روزی
+ * دو بسته کنار هم بارگذاری شدند، تعریف تکراری نشود.
+ */
+function date_in_super(array $in, string $key): ?string
+{
+    $v = en_digits(trim((string)($in[$key] ?? '')));
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)
+        && checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
+        return $v;
+    }
+    return null;
+}
+
 function system_role_id(string $role): string
 {
     static $cache = [];

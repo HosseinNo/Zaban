@@ -126,6 +126,20 @@ foreach ($rows as $r) {
         'status'     => (string)$r['status'],
         'avg'        => $avgOf[$id] ?? null,
         'attendance' => $tot > 0 ? (int)round((($attPct[$id] ?? 0) / $tot) * 100) : null,
+
+        'startsOn'   => $r['starts_on'],
+        'endsOn'     => $r['ends_on'],
+        'midtermOn'  => $r['midterm_on'],
+        'finalOn'    => $r['final_on'],
+        /*
+         * «چند جلسه مانده» اینجا حساب می‌شود نه در مرورگر.
+         *
+         * جلسه‌های برگزارشده را فقط سرور می‌شمارد؛ اگر عدد را خام
+         * می‌فرستادیم، هر سه پنل باید همان تفریق را تکرار می‌کردند و
+         * روزی یکی‌شان با بقیه فرق می‌کرد.
+         */
+        'remaining'  => max(0, (int)$r['total_sessions'] - ($doneCount[$id] ?? 0)),
+        'expired'    => $r['ends_on'] !== null && (string)$r['ends_on'] < gmdate('Y-m-d'),
     ];
 }
 $classIds = array_column($classes, 'id');
@@ -246,6 +260,11 @@ if ($classIds) {
             'type'      => (string)$r['type'],
             'desc'      => $r['description'],
             'due'       => $r['due_at'],
+            // مهلت *مؤثر*؛ کارت تکلیف باید همان را بشمارد که ملاک
+            // دیرکرد است، نه مهلت اصلی
+            'extendedTo' => $r['extended_to'],
+            'extendNote' => $r['extend_note'],
+            'effective'  => $r['extended_to'] ?: $r['due_at'],
             'max'       => (int)$r['max_score'],
             'submitted' => $subCount[(string)$r['id']] ?? 0,
             'graded'    => $gradeCount[(string)$r['id']] ?? 0,
