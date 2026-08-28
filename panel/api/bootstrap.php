@@ -350,7 +350,17 @@ ok([
         'weeks' => $term ? (int)$term['weeks'] : (int)$c['institute']['termWeeks'],
         'jitsiEnabled' => $c['institute']['jitsiEnabled'],
     ],
-    'canHostMeeting' => can_host_meeting(),
+    /*
+     * jitsi_allowed() نه can_host_meeting()، تا پنل همان چیزی را نشان
+     * دهد که API واقعاً اجازه می‌دهد.
+     *
+     * پنل با همین مقدار تصمیم می‌گیرد «جلسهٔ میت» را در فهرست
+     * ارائه‌دهنده‌ها بگذارد یا نه. اگر پرچم خام را بفرستیم، مدیری که
+     * مجوز شخصی‌اش نوشته نشده (مهاجرت ۰۱۳ را ببینید) گزینه را اصلاً
+     * نمی‌بیند — با اینکه classes.php درخواستش را می‌پذیرفت. یعنی
+     * دقیقاً همان باگ، این‌بار یک لایه بالاتر.
+     */
+    'canHostMeeting' => jitsi_allowed(),
     'jitsiDomain'    => jitsi_domain(),
     'classes'     => $classes,
     'students'    => $students,
