@@ -735,10 +735,12 @@ case 'saveSettings':
 
 case 'leads':
     require_super();
-    $status = (string)($in['status'] ?? '');
+    // enum_in نه cast مستقیم — ورودی آرایه‌ای Warning چاپ می‌کند و
+    // آن Warning پیش از JSON روی خروجی می‌نشیند
+    $status = enum_in($in, 'status', ['new', 'contacted', 'won', 'lost'], '');
     $sql = 'SELECT * FROM demo_lead';
     $args = [];
-    if (in_array($status, ['new', 'contacted', 'won', 'lost'], true)) {
+    if ($status !== '') {
         $sql .= ' WHERE status = ?'; $args[] = $status;
     }
     $sql .= ' ORDER BY created_at DESC LIMIT 200';

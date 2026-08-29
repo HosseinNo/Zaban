@@ -291,15 +291,43 @@ function own_class(string $id, string $perm = 'class.view'): array
 
 /* ─────────── ورودی ─────────── */
 
+/**
+ * ورودی خام، فقط اگر اسکالر باشد.
+ *
+ * کلاینت می‌تواند به‌جای رشته، آرایه یا شیء بفرستد — از روی اشتباه یا
+ * عمداً. تبدیل آرایه به رشته در PHP یک Warning چاپ می‌کند و آن Warning
+ * *پیش از* بدنهٔ JSON روی خروجی می‌نشیند؛ پاسخ دیگر JSON معتبر نیست و
+ * کلاینت روی r.json() می‌شکند، بی‌آنکه چیزی در رابط کاربری بگوید.
+ */
+function scalar_in(array $in, string $key, $default = '')
+{
+    $v = $in[$key] ?? $default;
+    if (is_array($v) || is_object($v) || $v === null) return $default;
+    if (is_bool($v)) return $v ? '1' : '';
+    return $v;
+}
+
+/**
+ * رشتهٔ ورودی.
+ *
+ * غیراسکالر (آرایه یا شیء) به پیش‌فرض برمی‌گردد، نه به (string) —
+ * تبدیل آرایه به رشته در PHP یک Warning چاپ می‌کند، و آن Warning
+ * *پیش از* بدنهٔ JSON روی خروجی می‌نشیند. نتیجه پاسخی است که دیگر
+ * JSON معتبر نیست و کلاینت روی r.json() می‌شکند — بی‌آنکه چیزی در
+ * رابط کاربری بگوید. کافی است کسی {"q":["a"]} بفرستد.
+ *
+ * null هم عمداً به پیش‌فرض می‌رود: کلاینت گاهی به‌جای حذف کلید،
+ * صریح null می‌فرستد.
+ */
 function s_in(array $in, string $key, int $max = 200, string $default = ''): string
 {
-    $v = trim((string)($in[$key] ?? $default));
+    $v = trim((string)scalar_in($in, $key, $default));
     return mb_substr($v, 0, $max);
 }
 
 function i_in(array $in, string $key, int $default = 0, int $min = 0, int $max = 100000000): int
 {
-    $v = $in[$key] ?? $default;
+    $v = scalar_in($in, $key, $default);
     if (is_string($v)) $v = en_digits($v);
     $v = (int)$v;
     return max($min, min($max, $v));
@@ -316,14 +344,14 @@ function en_digits(string $s): string
 
 function enum_in(array $in, string $key, array $allowed, string $default): string
 {
-    $v = (string)($in[$key] ?? $default);
+    $v = (string)scalar_in($in, $key, $default);
     return in_array($v, $allowed, true) ? $v : $default;
 }
 
 /** HH:MM بیست‌وچهارساعته، با ارقام فارسی هم کار می‌کند */
 function time_in(array $in, string $key, string $default = '18:00'): string
 {
-    $v = en_digits(trim((string)($in[$key] ?? '')));
+    $v = en_digits(trim((string)scalar_in($in, $key)));
     if (preg_match('/^(\d{1,2}):(\d{2})$/', $v, $m)) {
         $h = (int)$m[1]; $mi = (int)$m[2];
         if ($h >= 0 && $h <= 23 && $mi >= 0 && $mi <= 59) {
@@ -336,7 +364,7 @@ function time_in(array $in, string $key, string $default = '18:00'): string
 /** تاریخ میلادی ISO؛ ورودی از کلاینت همیشه میلادی است، تبدیل شمسی در مرورگر */
 function date_in(array $in, string $key, ?string $default = null): ?string
 {
-    $v = en_digits(trim((string)($in[$key] ?? '')));
+    $v = en_digits(trim((string)scalar_in($in, $key)));
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)
         && checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
         return $v;
@@ -353,7 +381,7 @@ function date_in(array $in, string $key, ?string $default = null): ?string
  */
 function join_url_in(array $in, string $key): ?string
 {
-    $v = trim((string)($in[$key] ?? ''));
+    $v = trim((string)scalar_in($in, $key));
     if ($v === '') return null;
     if (mb_strlen($v) > 500) return null;
     $p = parse_url($v);

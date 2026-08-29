@@ -32,9 +32,24 @@ function new_id(): string { return bin2hex(random_bytes(16)); }
 
 function id_ok(string $id): bool { return (bool)preg_match('/^[a-f0-9]{32}$/', $id); }
 
+/**
+ * رشتهٔ ورودی.
+ *
+ * غیراسکالر (آرایه یا شیء) به پیش‌فرض برمی‌گردد، نه به (string) —
+ * تبدیل آرایه به رشته در PHP یک Warning چاپ می‌کند، و آن Warning
+ * *پیش از* بدنهٔ JSON روی خروجی می‌نشیند. نتیجه پاسخی است که دیگر
+ * JSON معتبر نیست و کلاینت روی r.json() می‌شکند — بی‌آنکه چیزی در
+ * رابط کاربری بگوید. کافی است کسی {"q":["a"]} بفرستد.
+ *
+ * null هم عمداً به پیش‌فرض می‌رود: کلاینت گاهی به‌جای حذف کلید،
+ * صریح null می‌فرستد.
+ */
 function s_in(array $in, string $key, int $max = 200, string $default = ''): string
 {
-    $v = trim((string)($in[$key] ?? $default));
+    $raw = $in[$key] ?? $default;
+    if (is_array($raw) || is_object($raw) || $raw === null) $raw = $default;
+    if (is_bool($raw)) $raw = $raw ? '1' : '';
+    $v = trim((string)$raw);
     return mb_substr($v, 0, $max);
 }
 
@@ -44,7 +59,9 @@ function s_in(array $in, string $key, int $max = 200, string $default = ''): str
  */
 function i_in(array $in, string $key, int $default = 0, int $min = 0, int $max = 100000000): int
 {
-    $raw = trim(en_digits((string)($in[$key] ?? '')));
+    $v = $in[$key] ?? '';
+    if (is_array($v) || is_object($v) || $v === null) return $default;
+    $raw = trim(en_digits((string)$v));
     if ($raw === '' || !is_numeric($raw)) return $default;
     return max($min, min($max, (int)$raw));
 }
@@ -52,13 +69,17 @@ function i_in(array $in, string $key, int $default = 0, int $min = 0, int $max =
 /** یکی از مقدارهای مجاز، وگرنه پیش‌فرض — بدون خطا، چون ورودی رابط است */
 function enum_in(array $in, string $key, array $allowed, string $default): string
 {
-    $v = trim((string)($in[$key] ?? ''));
+    $v = $in[$key] ?? '';
+    if (is_array($v) || is_object($v) || $v === null) return $default;
+    $v = trim((string)$v);
     return in_array($v, $allowed, true) ? $v : $default;
 }
 
 function id_in(array $in, string $key, string $what = 'شناسه'): string
 {
-    $v = trim((string)($in[$key] ?? ''));
+    $v = $in[$key] ?? '';
+    if (is_array($v) || is_object($v) || $v === null) $v = '';
+    $v = trim((string)$v);
     if (!id_ok($v)) fail(400, 'invalid_id', "$what نامعتبر است.");
     return $v;
 }
@@ -150,7 +171,9 @@ function is_last_active_manager(string $instituteId, string $membershipIdToExclu
  */
 function date_in_super(array $in, string $key): ?string
 {
-    $v = en_digits(trim((string)($in[$key] ?? '')));
+    $d = $in[$key] ?? '';
+    if (is_array($d) || is_object($d) || $d === null) return null;
+    $v = en_digits(trim((string)$d));
     if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)
         && checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
         return $v;
