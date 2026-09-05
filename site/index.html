@@ -313,7 +313,7 @@ body.lt{
   background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:22px;
   transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
-.mod:hover{border-color:var(--brand); box-shadow:var(--shadow-md); transform:translateY(-2px)}
+.mod:hover{border-color:var(--brand); box-shadow:var(--shadow-md)}
 .mod-ico{
   inline-size:40px; block-size:40px; border-radius:var(--r-md); background:var(--brand-soft); color:var(--brand);
   display:grid; place-items:center; margin-bottom:15px;
@@ -655,16 +655,253 @@ body.lt{
    محتوا به‌صورت پیش‌فرض دیده می‌شود. حالت مخفی فقط وقتی اعمال می‌شود که
    جاوااسکریپت اجرا شده باشد (کلاس js-rv روی ریشه). اگر JS نرسید یا خطا داد،
    هیچ بخشی از صفحه نامرئی نمی‌ماند. */
-.js-rv .rv{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease}
-.js-rv .rv.in{opacity:1; transform:none}
+.js-rv .rv{opacity:0; translate:0 14px; transition:opacity .5s ease, translate .5s ease}
+.js-rv .rv.in{opacity:1; translate:none}
 .notice-bar{background:var(--brand-deep);color:#fff;text-align:center;padding:9px 16px;
             font-size:13.5px;line-height:1.7}
 :root[data-theme="dark"] .notice-bar{color:#131A17}
 
 @media (prefers-reduced-motion:reduce){
-  .js-rv .rv{opacity:1; transform:none; transition:none}
+  .js-rv .rv{opacity:1; translate:none; transition:none}
   *{animation-duration:.001ms !important; transition-duration:.001ms !important}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   صحنهٔ سه‌بعدی هیرو
+   ═══════════════════════════════════════════════════════════════
+
+   عمق واقعی است، نه سایه‌ای که وانمود کند: perspective روی صحنه،
+   preserve-3d روی مرحله، و هر کارت روی translateZ خودش. یعنی وقتی
+   مرحله می‌چرخد، کارت‌ها نسبت به هم جابه‌جا می‌شوند — همان چیزی که
+   چشم «سه‌بعدی» می‌خواند و با سایه‌بازی به دست نمی‌آید.
+
+   چرا سه کارت: قلب محصول همین است — هر نقش فقط چیزی را می‌بیند که
+   به کارش می‌آید. مدیر جلوتر و بزرگ‌تر، مدرس پشتش، زبان‌آموز دورتر.
+   ترتیب Z همان ترتیب دسترسی است.
+
+   بودجهٔ حرکت: فقط transform و opacity متحرک می‌شوند تا روی موبایل
+   هم روی لایهٔ compositor بماند و layout دوباره حساب نشود.
+*/
+
+.stage{
+  position:relative;
+  perspective:1400px;
+  perspective-origin:50% 42%;
+  min-block-size:clamp(340px,42vw,470px);
+  display:grid;
+  place-items:center;
+}
+
+/* شبکهٔ کف — یک صفحه که به عقب خم شده و افق می‌سازد */
+.stage-floor{
+  position:absolute; inset-inline:-18%; block-size:62%; inset-block-end:-6%;
+  transform:rotateX(72deg);
+  transform-origin:50% 100%;
+  background:
+    linear-gradient(var(--line-2) 1px, transparent 1px) 0 0/100% 38px,
+    linear-gradient(90deg, var(--line-2) 1px, transparent 1px) 0 0/38px 100%;
+  opacity:.5;
+  -webkit-mask-image:radial-gradient(120% 80% at 50% 100%, #000 12%, transparent 72%);
+          mask-image:radial-gradient(120% 80% at 50% 100%, #000 12%, transparent 72%);
+  pointer-events:none;
+}
+
+/* هالهٔ رنگی پشت صحنه — عمق را از راه رنگ هم می‌رساند */
+.stage-glow{
+  position:absolute; inline-size:70%; block-size:70%; inset-block-start:4%;
+  background:radial-gradient(circle at 50% 50%, var(--brand-soft), transparent 62%);
+  filter:blur(48px); opacity:.75; pointer-events:none;
+}
+
+.stage-deck{
+  position:relative;
+  inline-size:min(100%,520px);
+  aspect-ratio:1/.94;
+  transform-style:preserve-3d;
+  transform:rotateX(var(--rx,9deg)) rotateY(var(--ry,-13deg));
+  transition:transform .5s cubic-bezier(.2,.7,.3,1);
+}
+
+/* هر کارت روی عمق خودش می‌ایستد */
+.card3{
+  position:absolute; inset-inline-start:0; inset-block-start:0;
+  inline-size:78%;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-lg);
+  padding:14px 15px;
+  transform-style:preserve-3d;
+  will-change:transform;
+}
+.card3::after{                       /* لبهٔ نوری، حجم را نشان می‌دهد */
+  content:""; position:absolute; inset:0; border-radius:inherit;
+  background:linear-gradient(145deg, rgba(255,255,255,.55), transparent 42%);
+  pointer-events:none;
+}
+/* در تاریکی همان شدت، کارت را مه‌آلود می‌کرد و متن سرصفحه را می‌خورد */
+:root[data-theme="dark"] .card3::after{background:linear-gradient(145deg, rgba(255,255,255,.10), transparent 42%)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .card3::after{background:linear-gradient(145deg, rgba(255,255,255,.10), transparent 42%)}
+}
+
+.card3--mgr{
+  inset-block-start:0%;  inset-inline-start:14%;
+  transform:translateZ(80px);
+  z-index:3;
+}
+.card3--tch{
+  inset-block-start:37%; inset-inline-start:-2%;
+  inline-size:66%;
+  transform:translateZ(24px);
+  z-index:2;
+}
+.card3--std{
+  inset-block-start:68%; inset-inline-start:32%;
+  inline-size:60%;
+  transform:translateZ(-38px);
+  z-index:1;
+  opacity:.96;
+}
+
+/* شناور آرام — سه فاز متفاوت تا هم‌زمان بالا و پایین نروند */
+@media (prefers-reduced-motion:no-preference){
+  .card3--mgr{animation:float3 7s ease-in-out infinite}
+  .card3--tch{animation:float3 8.5s ease-in-out -2.2s infinite}
+  .card3--std{animation:float3 9.5s ease-in-out -4.6s infinite}
+}
+@keyframes float3{
+  0%,100%{translate:0 0}
+  50%    {translate:0 -9px}
+}
+
+.c3-head{display:flex;align-items:center;gap:8px;margin-block-end:9px}
+.c3-badge{
+  font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;
+  background:var(--brand-soft);color:var(--brand-deep);white-space:nowrap;
+}
+.c3-title{font-size:12.5px;color:var(--ink-3);font-weight:400}
+
+.c3-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 0;border-block-start:1px solid var(--line);
+  font-size:12.5px;
+}
+.c3-row:first-of-type{border-block-start:0}
+.c3-av{
+  inline-size:22px;block-size:22px;border-radius:50%;flex:none;
+  background:var(--surface-3);color:var(--ink-2);
+  display:grid;place-items:center;font-size:10px;font-weight:700;
+}
+.c3-grow{flex:1;min-inline-size:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c3-pill{
+  font-size:10.5px;padding:2px 7px;border-radius:999px;white-space:nowrap;
+  background:var(--ok-soft);color:var(--ok);
+}
+.c3-pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+.c3-pill.is-live{background:var(--brand-soft);color:var(--brand-deep)}
+
+/* نوار پیشرفت کوچک داخل کارت */
+.c3-bar{block-size:5px;border-radius:99px;background:var(--surface-3);overflow:hidden;margin-block-start:8px}
+.c3-bar i{display:block;block-size:100%;border-radius:inherit;background:var(--brand)}
+
+/* برچسب‌های شناور کنار صحنه */
+.stage-tag{
+  position:absolute;z-index:4;
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:6px 11px;
+  font-size:12px;font-weight:700;color:var(--ink-2);
+  box-shadow:var(--shadow-md);
+  white-space:nowrap;
+}
+.stage-tag i{inline-size:7px;block-size:7px;border-radius:50%;background:var(--brand);flex:none}
+.stage-tag--a{inset-block-start:-4%; inset-inline-start:-13%}
+.stage-tag--b{inset-block-end:0%;    inset-inline-end:-13%}
+
+@media (max-width:900px){
+  .stage{perspective:1000px;min-block-size:clamp(300px,72vw,400px)}
+  .stage-deck{transform:rotateX(6deg) rotateY(-8deg)}
+  .stage-tag{font-size:11px;padding:5px 9px}
+  .stage-tag--a{inset-inline-start:-2%}
+  .stage-tag--b{inset-inline-end:-2%}
+}
+@media (max-width:560px){
+  .stage-deck{transform:none}
+  .card3{position:relative;inline-size:100%!important;inset:auto!important;
+         transform:none!important;margin-block-end:10px;animation:none!important}
+  .stage-deck{aspect-ratio:auto}
+  .stage-floor,.stage-tag{display:none}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   عمق در بقیهٔ صفحه — سامانهٔ «کج‌شدن»
+   ═══════════════════════════════════════════════════════════════
+
+   هیرو صحنهٔ سه‌بعدیِ خودش را دارد. بقیهٔ صفحه به آن اندازه حرکت
+   نمی‌خواهد، وگرنه خواندن سخت می‌شود. پس یک ساز و کار مشترک:
+
+     .tilt-scene  →  perspective می‌دهد (والد)
+     .tilt        →  با --tx/--ty/--tz می‌چرخد (فرزند)
+
+   جاوااسکریپت فقط سه عدد را روی متغیرها می‌نویسد؛ هیچ transform
+   رشته‌ای در JS ساخته نمی‌شود تا CSS همچنان صاحب ظاهر بماند و
+   نسخهٔ موبایل بتواند با یک !important همه را خاموش کند.
+
+   بدون ماوس (لمسی) و با prefers-reduced-motion، JS اصلاً وصل
+   نمی‌شود و این کلاس‌ها بی‌اثرند. */
+
+.tilt-scene{perspective:1200px; perspective-origin:50% 50%}
+
+.tilt{
+  transform:rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) translateZ(var(--tz,0px));
+  transform-style:preserve-3d;
+  transition:transform .35s cubic-bezier(.2,.7,.3,1), box-shadow .25s ease, border-color .18s ease;
+}
+.tilt.is-live{transition:box-shadow .25s ease, border-color .18s ease}  /* حین حرکتِ ماوس، تأخیر نمی‌خواهیم */
+
+/* براقیِ لبه که با کج شدن جابه‌جا می‌شود — حجم را باورپذیر می‌کند */
+.tilt-sheen{position:relative}
+.tilt-sheen::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:radial-gradient(60% 60% at var(--gx,50%) var(--gy,0%),
+             rgba(255,255,255,.30), transparent 68%);
+  opacity:0; transition:opacity .25s ease;
+}
+:root[data-theme="dark"] .tilt-sheen::after{background:radial-gradient(60% 60% at var(--gx,50%) var(--gy,0%), rgba(255,255,255,.10), transparent 68%)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .tilt-sheen::after{background:radial-gradient(60% 60% at var(--gx,50%) var(--gy,0%), rgba(255,255,255,.10), transparent 68%)}
+}
+.tilt-sheen:hover::after{opacity:1}
+
+/* ماژول‌ها: کارت با ماوس کج می‌شود و آیکن جلوتر از متن می‌ایستد */
+.mods{perspective:1400px}
+.mod{transform-style:preserve-3d}
+.mod .mod-ico{transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+.mod:hover .mod-ico{transform:translateZ(34px) scale(1.04)}
+.mod:hover h3{transform:translateZ(16px)}
+.mod h3{transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+
+/* آینهٔ مشکل: بلند شدن ساده، بدون چرخش — این کارت‌ها متن‌محورند */
+.pain{transition:transform .22s ease, box-shadow .22s ease}
+@media (prefers-reduced-motion:no-preference) and (pointer:fine){
+  .pain:hover{transform:translateY(-4px); box-shadow:var(--shadow-md)}
+}
+
+/* تعرفه: پلن پیشنهادی واقعاً جلوتر می‌ایستد، نه فقط پررنگ‌تر */
+.plans{perspective:1500px; perspective-origin:50% 40%}
+.plan--best{transform:translateZ(46px)}
+@media (max-width:900px){.plan--best{transform:none}}
+
+/* ماکت پیشخوان و گوشی‌ها: یک صحنهٔ کوچک برای هرکدام */
+.panel.active{perspective:1600px; perspective-origin:50% 45%}
+.panel .mock, .panel .phone{transform-style:preserve-3d}
+
+@media (max-width:900px){
+  .tilt{transform:none !important}
+  .mod:hover .mod-ico,.mod:hover h3{transform:none}
+}
+
 </style>
 </head>
 <body>
@@ -714,11 +951,12 @@ body.lt{
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <h1 id="heroTitle">ثبت‌نام، کلاس‌بندی، شهریه و حضور و غیاب<br><span class="hl">همه در یک سامانه</span></h1>
+        <h1 id="heroTitle">ثبت‌نام، کلاس، شهریه و کلاس آنلاین<br><span class="hl">همه در یک سامانه</span></h1>
         <p class="hero-sub">
           تاکورا جای فایل اکسل، دفتر حضور و غیاب و گروه واتساپ را می‌گیرد.
           ساخته‌شده برای آموزشگاه‌های زبان ایران: تقویم شمسی، شهریهٔ قسطی،
-          کارت به کارت، پیامک خدماتی و روزهای زوج و فرد.
+          پیامک خدماتی، روزهای زوج و فرد — و کلاس آنلاین که لینکش را
+          خود سامانه می‌سازد.
         </p>
         <div class="hero-cta">
           <a href="https://panel.talkora.ir/#/signup" class="btn btn--primary btn--lg">ثبت‌نام رایگان آموزشگاه</a>
@@ -731,40 +969,82 @@ body.lt{
         </div>
       </div>
 
-      <!-- ویجت زندهٔ حضور و غیاب -->
-      <div class="demo-card rv" id="attendance">
-        <div class="demo-top">
-          <div class="dots"><i></i><i></i><i></i></div>
-          <span class="demo-title">پنل مدرس، حضور و غیاب</span>
-        </div>
-        <div class="demo-head">
-          <div class="cls">American English File 2A</div>
-          <div class="meta metaline">
-            <span>روزهای فرد، <span class="num">۱۸:۰۰</span></span>
-            <span>کلاس <span class="num">۳</span></span>
-            <span>جلسهٔ <span class="num">۷</span> از <span class="num">۲۰</span></span>
+      <!--
+        صحنهٔ سه‌بعدی: سه پنل روی سه عمق.
+        ترتیب Z همان ترتیب دسترسی است — مدیر جلو، مدرس پشتش، زبان‌آموز
+        دورتر. همان چیزی که در بخش «هر نفر فقط چیزی را می‌بیند که به
+        کارش می‌آید» توضیح داده شده، اینجا دیده می‌شود.
+      -->
+      <div class="stage" id="stage" aria-hidden="true">
+        <div class="stage-glow"></div>
+        <div class="stage-floor"></div>
+
+        <div class="stage-deck" id="deck">
+
+          <div class="card3 card3--mgr">
+            <div class="c3-head">
+              <span class="c3-badge">مدیر آموزشگاه</span>
+              <span class="c3-title">پیشخوان امروز</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">ک</span>
+              <span class="c3-grow">کلاس‌های امروز</span>
+              <span class="c3-pill is-live num">۶ کلاس</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">ث</span>
+              <span class="c3-grow">درخواست پیوستن</span>
+              <span class="c3-pill is-warn num">۳ نفر</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">م</span>
+              <span class="c3-grow">مدرس تعیین‌نشده</span>
+              <span class="c3-pill is-warn num">۱ کلاس</span>
+            </div>
+            <div class="c3-bar"><i style="inline-size:72%"></i></div>
           </div>
-        </div>
-        <div class="demo-counts">
-          <span class="chip chip--ok"><span class="num" id="cOk">۶</span> حاضر</span>
-          <span class="chip chip--bad"><span class="num" id="cNo">۰</span> غایب</span>
-          <span class="chip chip--time" id="cTime">برای علامت‌زدن، روی اسم بزنید</span>
-        </div>
-        <div class="roster" id="roster">
-          <button class="st" data-absent="0"><span class="av">س</span><span class="st-name">سینا احمدی</span><span class="st-state">حاضر</span></button>
-          <button class="st" data-absent="0"><span class="av">م</span><span class="st-name">مریم رضایی</span><span class="st-state">حاضر</span></button>
-          <button class="st" data-absent="0"><span class="av">ا</span><span class="st-name">امیر کریمی</span><span class="st-state">حاضر</span></button>
-          <button class="st" data-absent="0"><span class="av">ن</span><span class="st-name">نگار موسوی</span><span class="st-state">حاضر</span></button>
-          <button class="st" data-absent="0"><span class="av">پ</span><span class="st-name">پارسا صادقی</span><span class="st-state">حاضر</span></button>
-          <button class="st" data-absent="0"><span class="av">ه</span><span class="st-name">هستی یزدانی</span><span class="st-state">حاضر</span></button>
-        </div>
-        <div class="demo-foot">
-          <button class="btn btn--primary btn--block" id="submitAtt">ثبت حضور و غیاب</button>
-          <div class="demo-done" id="attDone">
-            <i class="ck"></i><span id="attDoneTxt">ثبت شد</span>
+
+          <div class="card3 card3--tch">
+            <div class="c3-head">
+              <span class="c3-badge">مدرس</span>
+              <span class="c3-title">حضور و غیاب</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">س</span>
+              <span class="c3-grow">سارا محمدی</span>
+              <span class="c3-pill">حاضر</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">ر</span>
+              <span class="c3-grow">رضا کریمی</span>
+              <span class="c3-pill is-warn">تأخیر</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-av">ن</span>
+              <span class="c3-grow">نگار احمدی</span>
+              <span class="c3-pill">حاضر</span>
+            </div>
           </div>
-          <p class="demo-hint">این یک نمونهٔ واقعی است؛ امتحانش کنید.</p>
+
+          <div class="card3 card3--std">
+            <div class="c3-head">
+              <span class="c3-badge">زبان‌آموز</span>
+              <span class="c3-title">کلاس بعدی</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-grow">مکالمهٔ سطح ۲</span>
+              <span class="c3-pill is-live">آنلاین</span>
+            </div>
+            <div class="c3-row">
+              <span class="c3-grow">امروز، <span class="num">۱۸:۰۰</span></span>
+              <span class="c3-pill">ورود به کلاس</span>
+            </div>
+          </div>
+
         </div>
+
+        <span class="stage-tag stage-tag--a"><i></i> کلاس آنلاین، داخل پنل</span>
+        <span class="stage-tag stage-tag--b"><i></i> تقویم شمسی</span>
       </div>
     </div>
   </div>
@@ -995,7 +1275,7 @@ body.lt{
     </p>
 
     <div class="mods">
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <h3>ثبت‌نام و پذیرش</h3>
         <p>از اولین تماس تا نشستن سر کلاس، بدون اینکه سرنخی از دست برود.</p>
@@ -1007,7 +1287,7 @@ body.lt{
         </ul>
       </article>
 
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
         <h3>کلاس و برنامه‌ریزی</h3>
         <p>ترم را یک بار بسازید؛ سال بعد فقط کپی کنید.</p>
@@ -1019,7 +1299,7 @@ body.lt{
         </ul>
       </article>
 
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
         <h3>حضور و غیاب</h3>
         <p>مدرس با موبایل، در راهروی آموزشگاه، در بیست ثانیه.</p>
@@ -1031,7 +1311,7 @@ body.lt{
         </ul>
       </article>
 
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <h3>شهریه و مالی</h3>
         <p>بدانید دقیقاً چقدر طلب دارید؛ نه حدود، دقیق.</p>
@@ -1043,7 +1323,7 @@ body.lt{
         </ul>
       </article>
 
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H7l-3 3z"/></svg></div>
         <h3>اطلاع‌رسانی</h3>
         <p>پیام به مخاطب درست می‌رسد و مدرکش هم می‌ماند.</p>
@@ -1055,7 +1335,7 @@ body.lt{
         </ul>
       </article>
 
-      <article class="mod rv">
+      <article class="mod rv tilt tilt-sheen" data-tilt="7">
         <div class="mod-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
         <h3>گزارش و تحلیل</h3>
         <p>عددی که می‌بینید، قابل کلیک است و می‌توانید تا خودِ ردیف‌ها بروید.</p>
@@ -1097,7 +1377,7 @@ body.lt{
           <li><span class="li-dot"><i class="ck"></i></span><span><b>دسترسی نقش‌محور:</b> مدیر آموزشی عدد مالی نمی‌بیند، مسئول مالی نمره نمی‌بیند.</span></li>
         </ul>
       </div>
-      <div class="mock">
+      <div class="mock tilt tilt-sheen" data-tilt="5">
         <div class="mock-bar metaline"><span>پیشخوان مدیر</span><span class="muted num">شنبه ۱۲ مهر ۱۴۰۵</span><span class="muted num">هفتهٔ ۴ از ۱۲</span></div>
         <div class="mock-body">
           <div class="kpi-row">
@@ -1132,7 +1412,7 @@ body.lt{
         </ul>
       </div>
       <div>
-        <div class="phone">
+        <div class="phone tilt" data-tilt="8">
           <div class="phone-in">
             <div class="phone-top"><span>امروز</span><span class="num">شنبه ۱۲ مهر</span></div>
             <div class="next-card">
@@ -1168,7 +1448,7 @@ body.lt{
         </ul>
       </div>
       <div>
-        <div class="phone">
+        <div class="phone tilt" data-tilt="8">
           <div class="phone-in">
             <div class="phone-top"><span>سلام سینا</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
             <div class="next-card">
@@ -1900,7 +2180,96 @@ body.lt{
     t.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block:"start" });
   });
 
+  /* ── کج‌شدن کارت‌ها با ماوس ──
+     یک شنونده روی document، نه یازده شنونده روی یازده کارت. عنصر هدف
+     از closest("[data-tilt]") پیدا می‌شود؛ عدد صفت هم بیشینهٔ زاویه
+     است، پس هر کارت شدت خودش را دارد بدون اینکه کد تکرار شود.
+
+     خروجی فقط سه متغیر CSS است (--tx/--ty/--tz و --gx/--gy برای براقی)
+     تا ظاهر همچنان در CSS تعریف شود و مدیا-کوئری موبایل بتواند با یک
+     قاعده همه‌شان را خنثی کند. */
+  (function(){
+    var fine = window.matchMedia && matchMedia("(pointer:fine)").matches;
+    if(!fine || reduce) return;
+    if(!document.querySelector("[data-tilt]")) return;
+
+    var cur=null, raf=0, nx=0, ny=0;
+
+    function paint(){
+      raf=0;
+      if(!cur) return;
+      var max = parseFloat(cur.getAttribute("data-tilt")) || 6;
+      cur.style.setProperty("--tx", (-ny*max).toFixed(2)+"deg");
+      cur.style.setProperty("--ty", ( nx*max).toFixed(2)+"deg");
+      cur.style.setProperty("--tz", "14px");
+      cur.style.setProperty("--gx", ((nx+.5)*100).toFixed(1)+"%");
+      cur.style.setProperty("--gy", ((ny+.5)*100).toFixed(1)+"%");
+    }
+
+    function release(el){
+      if(!el) return;
+      el.classList.remove("is-live");
+      el.style.setProperty("--tx","0deg");
+      el.style.setProperty("--ty","0deg");
+      el.style.setProperty("--tz","0px");
+    }
+
+    document.addEventListener("mousemove", function(e){
+      var el = e.target.closest ? e.target.closest("[data-tilt]") : null;
+      if(el !== cur){ release(cur); cur = el; if(cur) cur.classList.add("is-live"); }
+      if(!cur) return;
+      var r = cur.getBoundingClientRect();
+      nx = (e.clientX - r.left)/r.width  - .5;   /* -0.5 .. 0.5 */
+      ny = (e.clientY - r.top )/r.height - .5;
+      if(!raf) raf = requestAnimationFrame(paint);
+    }, {passive:true});
+
+    /* ماوس که از پنجره بیرون برود، mousemove دیگر نمی‌آید */
+    document.addEventListener("mouseleave", function(){ release(cur); cur=null; });
+
+    /* اسکرول با صفحه‌کلید یا چرخ، بدون حرکت ماوس، کارت را کج نگه می‌داشت */
+    window.addEventListener("scroll", function(){ if(cur){ release(cur); cur=null; } }, {passive:true});
+  })();
+
+  /* ── پارالاکس صحنهٔ سه‌بعدی ──
+     مرحله با حرکت ماوس می‌چرخد و چون کارت‌ها روی translateZ متفاوت‌اند،
+     نسبت به هم جابه‌جا می‌شوند. همین اختلافِ حرکت است که مغز آن را
+     «عمق» می‌خواند.
+
+     فقط با اشاره‌گر دقیق (ماوس) فعال می‌شود: روی لمس، انگشت همان جایی
+     است که کاربر می‌خواهد چیزی را بخواند و چرخاندنِ صفحه زیر دستش
+     آزاردهنده است. با prefers-reduced-motion هم اصلاً بسته می‌ماند. */
+  (function(){
+    var stage=document.getElementById("stage"), deck=document.getElementById("deck");
+    if(!stage||!deck) return;
+    var fine = window.matchMedia && matchMedia("(pointer:fine)").matches;
+    var calm = window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches;
+    if(!fine||calm) return;
+
+    var raf=0, tx=9, ty=-13;
+    function apply(){
+      raf=0;
+      deck.style.transform="rotateX("+tx.toFixed(2)+"deg) rotateY("+ty.toFixed(2)+"deg)";
+    }
+    stage.addEventListener("mousemove", function(e){
+      var r=stage.getBoundingClientRect();
+      var px=(e.clientX-r.left)/r.width - .5;      /* -0.5 .. 0.5 */
+      var py=(e.clientY-r.top )/r.height - .5;
+      tx = 9  - py*14;
+      ty = -13 + px*18;
+      if(!raf) raf=requestAnimationFrame(apply);
+    });
+    stage.addEventListener("mouseleave", function(){
+      tx=9; ty=-13;
+      deck.style.transition="transform .6s cubic-bezier(.2,.7,.3,1)";
+      if(!raf) raf=requestAnimationFrame(apply);
+      setTimeout(function(){deck.style.transition="";},620);
+    });
+    stage.addEventListener("mouseenter", function(){ deck.style.transition=""; });
+  })();
+
 })();
+
 </script>
 
 </body>
