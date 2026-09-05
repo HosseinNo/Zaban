@@ -174,13 +174,36 @@ for ep, act, field in PANEL_CASES:
 
 print("\n═══ ۳. سایت عمومی ═══")
 SITE = os.environ.get("TALKORA_SITE_URL", "http://127.0.0.1:8102/api")
-for field in ("name", "phone", "email", "institute", "city", "note"):
+
+# سقف نرخ فرم دمو ۵ درخواست در ساعت است. بدون پاک‌کردنش، از ششمین
+# درخواست به بعد سرور پیش از رسیدن به کد ورودی جواب rate_limited
+# می‌داد — یعنی پاسخِ تمیز، ولی نه به این دلیل که ورودی درست خوانده
+# شده. آزمون آن را «قبول» می‌شمرد و پنج میدان از شش میدان هرگز واقعاً
+# سنجیده نمی‌شدند. یک بار همین باعث شد باگ فقط در «name» دیده شود در
+# حالی که هر شش میدان همان اشکال را داشتند.
+def clear_rate():
+    php_out('$p=new PDO(getenv("DSN"),"root","");'
+            '$p->exec("DELETE FROM rate_limit");echo "1";')
+
+
+for field in ("name", "phone", "email", "institute", "city", "note", "students", "action"):
     dirty = []
     for shape in BAD_SHAPES:
+        clear_rate()
         body = raw(f"{SITE}/public.php", {"action": "demo", field: shape})
         if not clean(body):
             dirty.append((shape, body[:90]))
     check(not dirty, f"فرم دمو با «{field}» بدشکل", str(dirty[:1]))
+
+# و یک بررسی مثبت: شهر واقعاً ذخیره می‌شود؟ ستونش از مهاجرت ۰۱۴ هست،
+# ولی public.php آن را نمی‌نوشت — فرم می‌پرسید و جواب دور ریخته می‌شد.
+clear_rate()
+raw(f"{SITE}/public.php", {"action": "demo", "name": "شهرآزما",
+                           "phone": "09121110000", "city": "اصفهان، ۲ شعبه",
+                           "note": "متن آزمون"})
+got = sql_one("SELECT city FROM demo_lead WHERE phone='09121110000' "
+              "ORDER BY created_at DESC LIMIT 1")
+check(got == "اصفهان، ۲ شعبه", "شهرِ فرم دمو در دیتابیس نشست", f"خوانده شد: {got!r}")
 
 print("\n" + "─" * 58)
 print(f"موفق: {_pass}    ناموفق: {_fail}")

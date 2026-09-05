@@ -28,6 +28,29 @@ if (realpath(__FILE__) === realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''))
 date_default_timezone_set('UTC');   // ذخیره UTC، نمایش تهران — بند P.2
 mb_internal_encoding('UTF-8');
 
+/*
+ * هیچ خطای PHP نباید داخل بدنهٔ پاسخ چاپ شود.
+ *
+ * همهٔ نقطه‌های پایانی JSON برمی‌گردانند. یک Warning ساده — مثلاً وقتی
+ * کلاینت به‌جای رشته آرایه می‌فرستد — *پیش از* بدنه روی خروجی می‌نشیند:
+ *
+ *     <br /><b>Warning</b>: ... in <b>/var/www/.../login.php</b><br />{"ok":false,...}
+ *
+ * نتیجه دو چیز است، هر دو بد. اول اینکه پاسخ دیگر JSON معتبر نیست و
+ * کلاینت روی r.json() می‌شکند بی‌آنکه چیزی به کاربر بگوید — دکمه فقط
+ * کار نمی‌کند. دوم اینکه متن خطا مسیر کامل فایل روی سرور را لو می‌دهد.
+ *
+ * تا امروز این به php.ini هاست سپرده شده بود، یعنی به چیزی که ما
+ * کنترلش نمی‌کنیم و از میزبانی به میزبانی فرق دارد. حالا خودمان
+ * تعیینش می‌کنیم: خطا ثبت می‌شود ولی چاپ نمی‌شود.
+ *
+ * error_reporting کامل می‌ماند تا لاگ هاست همه‌چیز را داشته باشد؛ فقط
+ * مسیر نمایش بسته می‌شود.
+ */
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 const CONFIG_PATHS = [
     __DIR__ . '/../../private/talkora-config.php',   // بیرون از webroot، ترجیح داده می‌شود
     __DIR__ . '/config.php',
@@ -61,6 +84,37 @@ function fail(int $status, string $code, string $message, array $extra = []): ne
 {
     json_out($status, ['ok' => false, 'error' => $code, 'message' => $message] + $extra);
 }
+
+/*
+ * خطای پیش‌بینی‌نشده هم باید JSON باشد.
+ *
+ * حالا که display_errors خاموش است، یک Throwable که کسی نگرفته باشد
+ * صفحهٔ سفید با کد ۵۰۰ می‌دهد و کلاینت روی r.json() می‌شکند — همان
+ * علامتِ گنگی که با هشدارهای چاپ‌شده داشتیم، فقط از سمت دیگر.
+ *
+ * پس خودمان می‌گیریمش: متن واقعی به لاگ سرور می‌رود و کاربر یک پیام
+ * قابل‌فهم می‌بیند. جزئیات بیرون نمی‌رود؛ نام کلاس استثنا و مسیر فایل،
+ * اطلاعات مفیدی برای مهاجم است.
+ */
+set_exception_handler(function (Throwable $e): void {
+    error_log('talkora uncaught: ' . get_class($e) . ': ' . $e->getMessage()
+              . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    if (headers_sent()) exit;
+    json_out(500, ['ok' => false, 'error' => 'server_error',
+                   'message' => 'خطای غیرمنتظره در سرور. اگر تکرار شد به پشتیبانی بگویید.']);
+});
+
+/* خطای کشنده از دست set_exception_handler در می‌رود؛ این آخرین تور است. */
+register_shutdown_function(function (): void {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+    if (headers_sent()) return;
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'server_error',
+                      'message' => 'خطای غیرمنتظره در سرور. اگر تکرار شد به پشتیبانی بگویید.'],
+                     JSON_UNESCAPED_UNICODE);
+});
 
 function body_json(): array
 {

@@ -29,6 +29,27 @@ const PUBLIC_KEYS = [
     'enamad_html', 'samandehi_html', 'maintenance', 'signup_open',
 ];
 
+/**
+ * رشتهٔ ورودی، فقط اگر اسکالر باشد.
+ *
+ * کلاینت می‌تواند به‌جای رشته آرایه بفرستد — از روی اشتباه یا عمداً.
+ * تبدیل آرایه به رشته در PHP یک Warning چاپ می‌کند و آن Warning *پیش
+ * از* بدنهٔ JSON روی خروجی می‌نشیند: پاسخ دیگر JSON معتبر نیست و فرم
+ * دمو بی‌صدا می‌شکند. بدتر اینکه متن Warning مسیر کامل فایل روی سرور
+ * را لو می‌دهد.
+ *
+ * پنل همین کار را با s_in() در _ctx.php می‌کند، ولی این فایل در بستهٔ
+ * سایت فقط با _bootstrap و _settings می‌رود و _ctx را نمی‌بیند؛ پس
+ * نسخهٔ کوچک خودش را دارد با نامی که هرگز با آن یکی برخورد نکند.
+ */
+function lead_str(array $in, string $key, int $max): string
+{
+    $raw = $in[$key] ?? '';
+    if (is_array($raw) || is_object($raw) || $raw === null) return '';
+    if (is_bool($raw)) $raw = $raw ? '1' : '';
+    return mb_substr(trim((string)$raw), 0, $max);
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 /* ─────────── خواندن تنظیمات ─────────── */
@@ -43,7 +64,7 @@ if ($method === 'GET') {
 
 require_post();
 $in     = body_json();
-$action = trim((string)($in['action'] ?? ''));
+$action = lead_str($in, 'action', 40);
 
 if ($action !== 'demo') fail(400, 'unknown_action', 'درخواست نامشخص.');
 
@@ -52,7 +73,7 @@ if ($action !== 'demo') fail(400, 'unknown_action', 'درخواست نامشخص
 $ip = client_ip();
 
 // دام ربات: فیلدی که در فرم مخفی است و آدم واقعی پرش نمی‌کند
-if (trim((string)($in['website'] ?? '')) !== '') {
+if (lead_str($in, 'website', 200) !== '') {
     audit('demo.honeypot', null, ['ip' => $ip]);
     ok(['received' => true]);   // به ربات نمی‌گوییم که گیر افتاده
 }
@@ -61,12 +82,13 @@ if (!rate_ok('demo_ip', $ip, 5, 3600)) {
     fail(429, 'rate_limited', 'تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.');
 }
 
-$name  = mb_substr(trim((string)($in['name'] ?? '')), 0, 120);
-$phone = normalize_phone((string)($in['phone'] ?? ''));
-$email = mb_substr(trim((string)($in['email'] ?? '')), 0, 160);
-$inst  = mb_substr(trim((string)($in['institute'] ?? '')), 0, 160);
-$size  = mb_substr(trim((string)($in['students'] ?? '')), 0, 40);
-$note  = mb_substr(trim((string)($in['note'] ?? '')), 0, 2000);
+$name  = lead_str($in, 'name', 120);
+$phone = normalize_phone(lead_str($in, 'phone', 40));
+$email = lead_str($in, 'email', 160);
+$inst  = lead_str($in, 'institute', 160);
+$city  = lead_str($in, 'city', 120);
+$size  = lead_str($in, 'students', 40);
+$note  = lead_str($in, 'note', 2000);
 
 if ($name === '')       fail(400, 'invalid', 'نام‌تان را وارد کنید.');
 if ($phone === null)    fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
@@ -76,9 +98,9 @@ if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 $id = bin2hex(random_bytes(16));
 db()->prepare(
-    'INSERT INTO demo_lead (id, name, phone, email, institute, students, note, status, ip, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)'
-)->execute([$id, $name, $phone, $email ?: null, $inst ?: null, $size ?: null, $note ?: null, 'new', $ip, now_utc()]);
+    'INSERT INTO demo_lead (id, name, phone, email, institute, city, students, note, status, ip, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+)->execute([$id, $name, $phone, $email ?: null, $inst ?: null, $city ?: null, $size ?: null, $note ?: null, 'new', $ip, now_utc()]);
 
 /*
  * ایمیل بعد از ذخیره فرستاده می‌شود، نه قبلش. اگر ارسال ایمیل شکست
@@ -92,6 +114,7 @@ $body = "درخواست دموی رایگان تاکورا\n"
       . "موبایل:     {$phone}\n"
       . ($email ? "ایمیل:      {$email}\n" : '')
       . ($inst  ? "آموزشگاه:   {$inst}\n" : '')
+      . ($city  ? "شهر/شعبه:   {$city}\n" : '')
       . ($size  ? "زبان‌آموز:   {$size}\n" : '')
       . ($note  ? "\nتوضیح:\n{$note}\n" : '')
       . "\n" . str_repeat('─', 34) . "\n"
