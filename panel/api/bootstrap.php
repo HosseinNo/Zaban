@@ -217,7 +217,7 @@ if ($classIds) {
     foreach ($sRows as $r) {
         $url = $r['join_url'];
         if (!$staff && $url) {
-            $start = strtotime((string)$r['session_date'] . ' ' . (string)$r['start_time'] . ':00 UTC');
+            $start = session_start_ts((string)$r['session_date'], (string)$r['start_time']);
             if ($now < $start - 15 * 60 || $now > $start + 4 * 3600) $url = null;
         }
         $sessions[] = [

@@ -35,7 +35,7 @@ function attendance_auto(string $provider): bool
 /** پنجرهٔ باز بودن لینک: ۱۵ دقیقه قبل تا ۴ ساعت بعد از شروع */
 function session_window(array $s): array
 {
-    $start = strtotime((string)$s['session_date'] . ' ' . (string)$s['start_time'] . ':00 UTC');
+    $start = session_start_ts((string)$s['session_date'], (string)$s['start_time']);
     return [$start - 15 * 60, $start + 4 * 3600];
 }
 
@@ -182,7 +182,7 @@ case 'join':
 
 /* ─────────── جلسه‌های امروز، برای پیشخوان ─────────── */
 case 'today':
-    $today = gmdate('Y-m-d');
+    $today = school_today();
     /*
      * محدوده از مجوز می‌آید، نه از نام نقش. شکل قبلی برای هر نقشی جز
      * مدرس و زبان‌آموز هیچ فیلتری نمی‌گذاشت — یعنی اولین نقش سفارشی،

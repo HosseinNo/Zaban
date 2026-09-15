@@ -2012,7 +2012,7 @@ V["s/assignments"]=function(){
           <span class="num">${fa(a.max)} نمره</span></div></div>
       <div class="rt">${st}
         ${(mine&&mine.score!=null)?'<button class="btn btn--g btn--sm" data-nav="s/grades">دیدن بازخورد</button>'
-          :mine?'<button class="btn btn--g btn--sm" data-act="noop">مشاهدهٔ تحویل</button>'
+          :mine?'<button class="btn btn--g btn--sm" data-act="sub-open" data-id="'+esc(a.id)+'">مشاهدهٔ تحویل</button>'
           :'<button class="btn btn--p btn--sm" data-act="open-sub" data-aid="'+a.id+'">'+
             (a.type==="speaking"?"ضبط و ارسال":"نوشتن و ارسال")+'</button>'}</div></div>`;}).join("")}`;
 };
@@ -2308,6 +2308,29 @@ var demoM=function(){
 };
 
 V["m/live"]=function(){
+  /*
+   * این صفحه به S.live تکیه داشت که فقط در نسخهٔ نمایشی پر می‌شود. روی
+   * نصب واقعی همیشه «الان کلاسی برگزار نمی‌شود» می‌گفت و مدیر را به
+   * «پنل مدرس» می‌فرستاد، و دکمهٔ «ورود به‌عنوان ناظر» data-act="noop"
+   * بود. جلسه‌های در حال برگزاری با وضعیت live در bootstrap.php هستند و
+   * مدیر لینکشان را همیشه می‌گیرد.
+   */
+  if(API.live){
+    var byId={}; (DB.classes||[]).forEach(function(c){byId[c.id]=c;});
+    var now=(DB.sessions||[]).filter(function(x){return x.status==="live";});
+    return h`<div class="card">
+      <div class="card-h"><h3>کلاس‌های در حال برگزاری</h3>
+        <div class="r"><span class="muted num">${fa(now.length)} کلاس</span></div></div>
+      ${now.length?h`<div class="card-b">${now.map(function(x){var c=byId[x.cls]||{};return h`
+        <div class="alert" style="border-color:var(--live);background:var(--live-soft)">
+          <span class="sev" style="background:var(--live)"></span>
+          <span><b>${esc(c.name||"کلاس")}</b> · ${esc(c.teacher||"")} · جلسهٔ ${fa(x.seq)} · ساعت ${fa(x.time)}</span>
+          ${x.joinUrl?'<a class="a" href="'+esc(x.joinUrl)+'" target="_blank" rel="noopener">ورود به‌عنوان ناظر <i class="chev"></i></a>'
+                     :'<span class="muted">لینک ندارد</span>'}
+        </div>`;}).join("")}</div>`
+      :'<div class="empty"><b>الان کلاسی برگزار نمی‌شود</b><p>وقتی مدرسی جلسهٔ آنلاینش را شروع کند، اینجا می‌آید.</p></div>'}
+    </div>`;
+  }
   return h`<div class="card">
     <div class="card-h"><h3>کلاس‌های در حال برگزاری</h3></div>
     ${S.live?(function(){var c=cls(S.live.classId);return h`
@@ -2329,7 +2352,7 @@ V["m/students"]=function(){
   return h`<div class="card">
     <div class="card-h"><h3>زبان‌آموزان</h3>
       <div class="r"><span class="pill p-mute num">${fa(DB.students.length)} نفر</span>
-        <button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button></div></div>
+        <button class="btn btn--g btn--sm" data-act="stu-export" ${DB.students.length?"":"disabled"}>خروجی اکسل</button></div></div>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب${API.live?' <span class="muted" style="font-weight:400">(مالی وصل نیست)</span>':""}</th><th>وضعیت</th></tr></thead>
       <tbody>${DB.students.map(function(s){
@@ -5941,6 +5964,26 @@ document.addEventListener("click",function(e){
   }
   else if(a==="go-teacher"){go("t");}
   else if(a==="open-student"){S.selStudentId=act.dataset.id;go("m/student");}
+  else if(a==="stu-export"){
+    /*
+     * این دکمه data-act="noop" بود: کلیک می‌خورد و هیچ اتفاقی نمی‌افتاد.
+     * داده همین حالا در مرورگر است، پس خروجی بک‌اند نمی‌خواهد. CSV با
+     * BOM یوتی‌اف-۸ ذخیره می‌شود تا اکسل حروف فارسی را درست باز کند.
+     * شماره‌ها همان شکلِ پوشانده‌ای است که سرور داده — خروجی نباید
+     * بیشتر از خودِ صفحه نشان بدهد.
+     */
+    var cn={}; (DB.classes||[]).forEach(function(c){cn[c.id]=c.name;});
+    var q=function(v){v=(v===null||v===undefined)?"":String(v);return '"'+v.replace(/"/g,'""')+'"';};
+    var rows=[["نام","موبایل","کلاس","درصد حضور","میانگین نمره"]].concat(
+      DB.students.map(function(x){return [x.name,x.phone,cn[x.cls]||"",x.att,x.grade];}));
+    var csv="\ufeff"+rows.map(function(r){return r.map(q).join(",");}).join("\r\n");
+    var url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    var link=document.createElement("a");
+    link.href=url; link.download="zabanamouzan-"+todayISO()+".csv";
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},2000);
+    toast("فهرست "+fa(DB.students.length)+" زبان‌آموز ذخیره شد");
+  }
   else if(a==="ob-do"){
     var k=act.dataset.k;
     if(k==="term"){go("m/term");return;}

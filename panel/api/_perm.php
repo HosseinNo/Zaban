@@ -133,6 +133,25 @@ function active_context(): array
     $list = my_memberships();
 
     if (!$list) {
+        /*
+         * my_memberships() آموزشگاه‌های معلق را کنار می‌گذارد، پس کاربری که
+         * تنها آموزشگاهش تعلیق شده بود به همین شاخه می‌رسید و پیام «از مدیر
+         * آموزشگاه بخواهید دعوت‌تان کند» را می‌گرفت — حتی اگر خودش مدیر
+         * بود. شاخهٔ institute_suspended در ctx() که دلیل تعلیق را می‌گوید
+         * هیچ‌وقت اجرا نمی‌شد. دسترسی درست بسته می‌شد؛ فقط کاربر نمی‌دانست
+         * چرا، و به کسی مراجعه می‌کرد که کاری از دستش برنمی‌آمد.
+         */
+        $sus = db()->prepare(
+            'SELECT i.suspended_reason FROM membership m JOIN institute i ON i.id = m.institute_id
+              WHERE m.user_id = ? AND m.status = ? AND i.status = ? LIMIT 1');
+        $sus->execute([$u['id'], 'active', 'suspended']);
+        $row = $sus->fetch();
+        if ($row) {
+            $reason = trim((string)($row['suspended_reason'] ?? ''));
+            fail(403, 'institute_suspended',
+                'دسترسی آموزشگاه شما موقتاً معلق شده' . ($reason !== '' ? ': ' . $reason : '.')
+              . ' برای رفع مشکل با پشتیبانی تماس بگیرید.');
+        }
         fail(403, 'no_membership',
             'شما عضو هیچ آموزشگاه فعالی نیستید. از مدیر آموزشگاه بخواهید با همین شماره دعوت‌تان کند.');
     }

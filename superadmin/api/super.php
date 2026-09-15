@@ -238,7 +238,7 @@ case 'institutes.create':
     ok(['id' => $iid]);
 
 case 'institutes.suspend':
-    $a = require_super();
+    $a = require_owner();   // تعلیق آموزشگاه کار مالک است — بالای 'settings' را ببینید
     $inst = require_institute(id_in($in, 'id', 'آموزشگاه'));
     $reason = s_in($in, 'reason', 255);
     if ($reason === '') fail(400, 'invalid', 'دلیل تعلیق را بنویسید.');
@@ -248,7 +248,7 @@ case 'institutes.suspend':
     ok();
 
 case 'institutes.reactivate':
-    $a = require_super();
+    $a = require_owner();   // تعلیق آموزشگاه کار مالک است — بالای 'settings' را ببینید
     $inst = require_institute(id_in($in, 'id', 'آموزشگاه'));
     db()->prepare("UPDATE institute SET status = 'active', suspended_reason = NULL WHERE id = ?")
         ->execute([$inst['id']]);
@@ -671,12 +671,26 @@ case 'impersonate.start':
 
 /* ═════════════════════ سایت (پورت از پنل قدیمی) ═════════════════════ */
 
+/*
+ * _super.php صریح نوشته «تنظیمات پلتفرم» و «تعلیق آموزشگاه» از دروازهٔ
+ * require_owner() می‌گذرند، ولی این سه اکشن require_super() صدا می‌زدند.
+ * نتیجه: ادمین کمکی (غیرمالک) کلید API پنل پیامک را کامل می‌دید، قیمت
+ * پلن‌ها را عوض می‌کرد — در آزمون قیمت پلن پایه به «۱» ذخیره شد — و
+ * آموزشگاه را معلق می‌کرد.
+ *
+ * خواندن تنظیمات برای ادمین کمکی باز می‌ماند (متن‌ها و تماس‌ها را لازم
+ * دارد)، ولی کلید پیامک برایش پوشانده می‌شود.
+ */
 case 'settings':
-    require_super();
-    ok(['settings' => settings_all(), 'keys' => array_keys(setting_defaults())]);
+    $a = require_super();
+    $all = settings_all();
+    if ((int)($a['is_platform_owner'] ?? 0) !== 1 && ($all['smsir_api_key'] ?? '') !== '') {
+        $all['smsir_api_key'] = '••••••' . substr((string)$all['smsir_api_key'], -4);
+    }
+    ok(['settings' => $all, 'keys' => array_keys(setting_defaults())]);
 
 case 'saveSettings':
-    $a = require_super();
+    $a = require_owner();
     $vals = (array)($in['settings'] ?? []);
 
     foreach (['contact_email', 'demo_email'] as $k) {
