@@ -56,6 +56,23 @@ if seen == 0:
     print("!! هیچ INSERT INTO membership پیدا نشد — الگو خراب است؟")
     sys.exit(1)
 
+# ── UPDATE: عوض‌کردن role بدون role_id ──
+#
+# خطای دوم، ساکت‌تر از اولی: super.php در membership.setRole و مسیر
+# «عضویت از قبل هست» در membership.add فقط ستون متنی role را عوض می‌کرد.
+# مجوزها از role_id می‌آیند، پس مدیری که به زبان‌آموز تنزل داده می‌شد
+# برچسب زبان‌آموز می‌گرفت و همهٔ اختیارات مدیر را نگه می‌داشت. هیچ خطایی
+# هم نمی‌داد — برای همین تا آزمون رفتاری پیدا نشد.
+UPD = re.compile(r"UPDATE\s+membership\s+SET\s+(.*?)\s+WHERE", re.I | re.S)
+for d in DIRS:
+    for f in sorted((ROOT / d).glob("*.php")):
+        src = f.read_text(encoding="utf-8")
+        for m in UPD.finditer(src):
+            sets = m.group(1)
+            if re.search(r"(^|,|\s)role\s*=", sets) and not re.search(r"role_id\s*=", sets):
+                line = src[:m.start()].count(chr(10)) + 1
+                bad.append(f"{d}/{f.name}:{line}  role عوض می‌شود ولی role_id نه: SET {sets.strip()[:60]}")
+
 print(f"بررسی {seen} دستور INSERT INTO membership")
 if bad:
     print("\nناموفق:")

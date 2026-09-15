@@ -562,17 +562,21 @@ case 'membership.add':
     $role = s_in($in, 'role', 16);
     if (!in_array($role, PLATFORM_ROLES, true)) fail(400, 'invalid_role', 'نقش باید مدیر، مدرس یا زبان‌آموز باشد.');
 
-    $st = db()->prepare('SELECT id, role FROM membership WHERE institute_id = ? AND user_id = ?');
-    $st->execute([$inst['id'], $u['id']]);
+    /*
+     * «افزودن عضویت با نقش X» — نه «عوض‌کردن نقشِ هر عضویتی که پیدا شد».
+     *
+     * این مسیر قبلاً اولین عضویتِ کاربر در آموزشگاه را برمی‌داشت و فقط
+     * ستون متنی role را بازنویسی می‌کرد. مجوزها ولی از role_id می‌آیند.
+     * نتیجه: مدیری که «زبان‌آموز» ثبت می‌شد، برچسب زبان‌آموز می‌گرفت و
+     * همهٔ اختیارات مدیر را نگه می‌داشت. از نسخهٔ ۷ هر نقش عضویت خودش را
+     * دارد، پس اینجا فقط همان نقش پیدا یا ساخته می‌شود.
+     */
+    $st = db()->prepare('SELECT id FROM membership WHERE institute_id = ? AND user_id = ? AND role_id = ?');
+    $st->execute([$inst['id'], $u['id'], system_role_id($role)]);
     $existing = $st->fetch();
 
     if ($existing) {
-        if ((string)$existing['role'] === 'manager' && $role !== 'manager'
-            && is_last_active_manager($inst['id'], (string)$existing['id'])) {
-            fail(409, 'last_manager', 'این تنها مدیر فعال این آموزشگاه است؛ اول یک مدیر دیگر تعیین کنید.');
-        }
-        db()->prepare("UPDATE membership SET role = ?, status = 'active' WHERE id = ?")
-            ->execute([$role, $existing['id']]);
+        db()->prepare("UPDATE membership SET status = 'active' WHERE id = ?")->execute([$existing['id']]);
         $mid = (string)$existing['id'];
     } else {
         $mid = new_id();
@@ -592,7 +596,27 @@ case 'membership.setRole':
         && is_last_active_manager((string)$m['institute_id'], (string)$m['id'])) {
         fail(409, 'last_manager', 'این تنها مدیر فعال این آموزشگاه است؛ اول یک مدیر دیگر تعیین کنید.');
     }
-    db()->prepare('UPDATE membership SET role = ? WHERE id = ?')->execute([$role, $m['id']]);
+    /*
+     * role و role_id باید با هم عوض شوند.
+     *
+     * پیش از این فقط role نوشته می‌شد، ولی active_context() و همهٔ مجوزها
+     * از role_id می‌خوانند. در آزمون، مدیری که به زبان‌آموز تنزل داده شد
+     * برچسب «زبان‌آموز» گرفت و همچنان تنظیمات آموزشگاه را ذخیره می‌کرد،
+     * فهرست همهٔ اعضا را می‌دید و مجوز حذف عضو داشت. یعنی تنزل مدیرِ
+     * اخراجی هیچ اختیاری از او نمی‌گرفت. برعکسش هم صادق بود: مدرسی که
+     * مدیر می‌شد، برچسب مدیر می‌گرفت و اختیارات مدرس.
+     *
+     * can_host_meeting هم به پیش‌فرض نقش تازه برمی‌گردد، وگرنه دسترسی
+     * جلسهٔ مدیر روی عضویت زبان‌آموز باقی می‌ماند.
+     */
+    $newRoleId = system_role_id($role);
+    $dup = db()->prepare('SELECT 1 FROM membership WHERE institute_id = ? AND user_id = ? AND role_id = ? AND id <> ?');
+    $dup->execute([$m['institute_id'], $m['user_id'], $newRoleId, $m['id']]);
+    if ($dup->fetchColumn()) {
+        fail(409, 'role_exists', 'این کاربر از قبل همین نقش را در این آموزشگاه دارد.');
+    }
+    db()->prepare('UPDATE membership SET role = ?, role_id = ?, can_host_meeting = ? WHERE id = ?')
+        ->execute([$role, $newRoleId, default_can_host_meeting($role), $m['id']]);
     audit('super.membership_role_changed', $a['id'],
         ['membership' => $m['id'], 'institute' => $m['institute_id'], 'from' => $m['role'], 'to' => $role]);
     ok();
@@ -1092,14 +1116,23 @@ case 'roles.setPerms':
 
     $want = (array)($in['perms'] ?? []);   // { perm_key: scope }
 
-    $plat = [];
-    foreach (db()->query('SELECT perm_key FROM permission WHERE is_platform = 1')->fetchAll() as $x) {
-        $plat[(string)$x['perm_key']] = true;
+    $plat = []; $known = [];
+    foreach (db()->query('SELECT perm_key, is_platform FROM permission')->fetchAll() as $x) {
+        $known[(string)$x['perm_key']] = true;
+        if ((int)$x['is_platform'] === 1) $plat[(string)$x['perm_key']] = true;
     }
 
     $rows = [];
     foreach ($want as $k => $scope) {
         $k = (string)$k;
+        /*
+         * کلید ناموجود پیش از نوشتن رد می‌شود. قبلاً این کار به قید کلید
+         * خارجی سپرده شده بود و متن خام PDOException — نام پایگاه داده،
+         * نام جدول و تعریف قید fk_rp_perm — در پیام خطا به مرورگر می‌رفت.
+         */
+        if (!isset($known[$k])) {
+            fail(400, 'bad_perm', 'مجوز ناشناخته: ' . mb_substr($k, 0, 60));
+        }
         if (isset($plat[$k])) {
             fail(403, 'platform_perm', 'مجوز سطح پلتفرم به هیچ نقشی داده نمی‌شود: ' . $k);
         }
@@ -1116,7 +1149,8 @@ case 'roles.setPerms':
         $db->commit();
     } catch (Throwable $e) {
         $db->rollBack();
-        fail(400, 'bad_perm', 'یکی از مجوزها معتبر نیست: ' . $e->getMessage());
+        error_log('roles.setPerms failed: ' . $e->getMessage());
+        fail(500, 'save_failed', 'ذخیرهٔ مجوزها انجام نشد. دوباره تلاش کنید.');
     }
 
     audit('role.perms_set', $a['id'], ['role' => $r['id'], 'count' => count($rows)]);
