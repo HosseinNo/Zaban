@@ -1545,7 +1545,7 @@ var demoT=function(){
         <div class="card-b">
           <div style="font-size:20px;font-weight:700">${esc(c.name)}</div>
           <div class="metaline muted" style="font-size:13px;margin-top:6px">
-            <span class="num">${c.days}، ${c.time}</span><span>${c.room}</span>
+            <span class="num">${c.days}، ${c.time}</span><span>${esc(c.room)}</span>
             <span class="num">جلسهٔ ${fa(c.session)} از ${fa(c.total)}</span>
             <span class="num">${fa(c.enrolled)} زبان‌آموز</span>
           </div>
@@ -1582,7 +1582,7 @@ var demoT=function(){
             return '<div class="rrow" style="border-radius:8px">'+
               '<span class="av num">'+fa(i+1)+'</span>'+
               '<span class="nm"><span>'+esc(k.name)+'</span>'+
-              '<small class="num">'+k.time+"، "+k.room+'</small></span>'+st+'</div>';
+              '<small class="num">'+k.time+"، "+esc(k.room)+'</small></span>'+st+'</div>';
           }).join("")}
         </div>
       </div>
@@ -1605,7 +1605,7 @@ V["t/classes"]=function(){
         <tr>
           <td><b style="font-weight:700">${esc(c.name)}</b>
               <div class="muted num" style="font-size:12px">جلسهٔ ${fa(c.session)} از ${fa(c.total)}</div></td>
-          <td class="num">${c.days}<div class="muted" style="font-size:12px">${c.time}، ${c.room}</div></td>
+          <td class="num">${c.days}<div class="muted" style="font-size:12px">${c.time}، ${esc(c.room)}</div></td>
           <td>${modeLabel(c.mode)}</td>
           <td class="num">${fa(c.enrolled)} / ${fa(c.cap)}
               <div class="bar" style="width:70px"><i style="width:${Math.round(c.enrolled/c.cap*100)}%"></i></div></td>
@@ -1917,7 +1917,7 @@ var demoS=function(){
         <div class="card-b">
           <div style="font-size:20px;font-weight:700">${esc(c.name)}</div>
           <div class="metaline muted" style="font-size:13px;margin-top:6px">
-            <span class="num">${c.days}، ${c.time}</span><span>${c.room}</span><span>استاد ${c.teacher}</span></div>
+            <span class="num">${c.days}، ${c.time}</span><span>${esc(c.room)}</span><span>استاد ${esc(c.teacher)}</span></div>
           <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:16px">
             ${liveNow?'<button class="btn btn--live btn--lg" data-act="join-class">ورود به کلاس</button>'
                      :'<button class="btn btn--g btn--lg" disabled>ورود ۱۵ دقیقه قبل از کلاس فعال می‌شود</button>'}
@@ -4207,7 +4207,7 @@ V["m/enrol"]=function(){
     </div></div>
   `:e.step===3?h`
     <div class="card"><div class="card-h"><h3>کلاس‌های باز در این سطح</h3>
-      <div class="r">${pill("سطح: AEF 2A","info")}</div></div>
+      </div>
       <div class="card-b" style="padding:10px">
         ${open.map(function(c){
           var left=c.cap-c.enrolled, full=left<=0;
@@ -4215,7 +4215,7 @@ V["m/enrol"]=function(){
              ${full?"disabled":""} aria-pressed="${e.clsId===c.id}">
             <span class="av">${c.enrolled}</span>
             <span class="nm"><span>${esc(c.name)}</span>
-              <small class="num">${c.days}، ${c.time}، ${c.room}، استاد ${c.teacher}</small></span>
+              <small class="num">${c.days}، ${c.time}، ${esc(c.room)}، استاد ${esc(c.teacher)}</small></span>
             ${full?pill("تکمیل، لیست انتظار","bad"):
               left<=3?pill(fa(left)+" صندلی مانده","warn"):pill(fa(left)+" صندلی خالی","ok")}
             ${e.clsId===c.id?'<span class="pill p-info"><i class="ck"></i> انتخاب شد</span>':""}
@@ -5715,7 +5715,7 @@ document.addEventListener("click",function(e){
   else if(a==="au-finish"){
     if(S.auth.inst)DB.institute.name=S.auth.inst;
     S.onboard.profile=true; S.onboard.levels=true;
-    go("m"); toast("فضای کاری «"+DB.institute.name+"» ساخته شد");
+    go("m"); toast("فضای کاری «"+esc(DB.institute.name)+"» ساخته شد");
   }
   else if(a==="logout"){
     stopCooldown();
