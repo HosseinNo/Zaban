@@ -163,7 +163,16 @@ foreach ($invites->fetchAll() as $inv) {
     } catch (PDOException $e) {
         // از قبل عضو بوده — دعوت باز هم باید بسته شود
     }
-    if (!empty($inv['class_id'])) {
+    // کلاس ممکن است بین دعوت و پذیرش پر شده باشد؛ عضویت می‌ماند، ثبت‌نام نه
+    $cap = $db->prepare('SELECT k.capacity, (SELECT COUNT(*) FROM enrolment e WHERE e.class_id = k.id AND e.status = ?) AS taken
+                           FROM klass k WHERE k.id = ? AND k.institute_id = ?');
+    $cap->execute(['active', $inv['class_id'] ?? '', $inv['institute_id']]);
+    $capRow = $cap->fetch();
+    $roomLeft = $capRow && (int)$capRow['taken'] < (int)$capRow['capacity'];
+    if (!empty($inv['class_id']) && !$roomLeft) {
+        audit('invite.class_full', $uid, ['class' => $inv['class_id']]);
+    }
+    if (!empty($inv['class_id']) && $roomLeft) {
         try {
             $db->prepare('INSERT INTO enrolment (id, institute_id, class_id, student_user_id, status, created_at) VALUES (?,?,?,?,?,?)')
                ->execute([bin2hex(random_bytes(16)), $inv['institute_id'], $inv['class_id'], $uid, 'active', now_utc()]);

@@ -372,7 +372,13 @@ function en_digits(string $s): string
     $fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
     $ar = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
     $en = ['0','1','2','3','4','5','6','7','8','9'];
-    return str_replace($ar, $en, str_replace($fa, $en, $s));
+    /*
+     * «٫» (U+066B) ممیزی است که کیبورد فارسی تایپ می‌کند و «٬» (U+066C)
+     * جداکنندهٔ هزارگان. بدون این دو، مدرسی که «۱۷٫۵» می‌نوشت پیام
+     * «نمره را وارد کنید» می‌گرفت و نمرهٔ اعشاری با کیبورد فارسی اصلاً
+     * ثبت نمی‌شد.
+     */
+    return str_replace(['٫', '٬'], ['.', ''], str_replace($ar, $en, str_replace($fa, $en, $s)));
 }
 
 function enum_in(array $in, string $key, array $allowed, string $default): string

@@ -44,6 +44,8 @@ python tests/signup.py
 python tests/joinflow.py
 python tests/notify.py
 python tests/classdates.py
+python tests/session-window-tz.py   # ساعت جلسه به وقت تهران، نه UTC
+python tests/lifecycle.py           # چرخهٔ کامل آموزشگاه با payloadهای خودِ رابط کاربری
 
 # آزمون اعلانِ پلتفرم سرور سوپرادمین هم می‌خواهد:
 #   cp panel/api/config.php superadmin/api/config.php

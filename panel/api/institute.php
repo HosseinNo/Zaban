@@ -101,7 +101,25 @@ case 'invite':
 
     if ($phone === null) fail(400, 'invalid_phone', 'شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
     if ($name === '')    fail(400, 'invalid', 'نام را وارد کنید.');
-    if ($clsId !== '')   own('klass', $clsId, 'کلاس');
+    if ($clsId !== '') {
+        /*
+         * ظرفیت همین حالا بررسی می‌شود، پیش از هر نوشتنی.
+         *
+         * دعوتِ شمارهٔ تازه هیچ بررسی ظرفیتی نداشت و otp-verify هنگام
+         * پذیرفتن دعوت، ثبت‌نام را بی‌شرط می‌نوشت. در آزمون، کلاسی با
+         * ظرفیت ۲ سه زبان‌آموز فعال گرفت. مسیر «حساب از قبل هست» هم
+         * اول عضویت را می‌نوشت و بعد در enrol_student با ۴۰۹ برمی‌گشت —
+         * یعنی مدیر پیام «ظرفیت پر است» می‌دید ولی آن نفر عضو شده بود.
+         */
+        $icl = own('klass', $clsId, 'کلاس');
+        $taken = (int)(t_one('SELECT COUNT(*) AS n FROM enrolment WHERE __I__ AND class_id = ? AND status = ?',
+                             [$clsId, 'active'])['n'] ?? 0);
+        $waiting = (int)(t_one('SELECT COUNT(*) AS n FROM invite WHERE __I__ AND class_id = ? AND accepted_at IS NULL',
+                               [$clsId])['n'] ?? 0);
+        if ($taken + $waiting >= (int)$icl['capacity']) {
+            fail(409, 'class_full', 'ظرفیت این کلاس (با دعوت‌های پذیرفته‌نشده) پر است.');
+        }
+    }
 
     // اگر کاربر از قبل حساب دارد، همان لحظه عضو می‌شود — دعوتی لازم نیست
     $st = db()->prepare('SELECT id FROM app_user WHERE phone = ?');
