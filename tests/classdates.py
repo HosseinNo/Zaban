@@ -234,6 +234,29 @@ if len(ses) >= 3:
     a2 = {x["name"]: x for x in r[1].get("roster", [])}.get("زبان‌آموزیک ج", {})
     check(a2.get("absences") == 2, "غیبتِ همین جلسه در شمار خودش نمی‌آید", str(a2))
 
+    # ── وضعیت ناشناخته نباید «حاضر» شود ──
+    #
+    # enum_in به پیش‌فرض برمی‌گشت و پیش‌فرضِ save مقدار 'present' بود.
+    # یعنی هر مقدار بدی که کلاینت می‌فرستاد — تایپو، نسخهٔ قدیمی پنل،
+    # دست‌کاری — پاسخ ۲۰۰ می‌گرفت و غیبتِ ثبت‌شده بی‌سروصدا به حضور
+    # تبدیل می‌شد. هیچ خطایی هم در کار نبود که کسی بفهمد.
+    for bad in ("teleported", "", "Present", "حاضر", 5):
+        r = post(tch, "attendance.php", {"action": "save", "id": ses[2]["id"],
+                                         "marks": [{"id": absent_uid, "status": bad}]})
+        body = r[1]
+        check(body.get("saved") == 0 and body.get("skipped") == 1,
+              f"وضعیت نامعتبر «{bad}» رد شد", str(body))
+
+    r = post(tch, "attendance.php", {"action": "get", "id": ses[2]["id"]})
+    still = {x["name"]: x for x in r[1].get("roster", [])}.get("زبان‌آموزیک ج", {})
+    check(still.get("status") == "absent",
+          "غیبتِ قبلی با ورودی بد پاک نشد", str(still))
+
+    # و وضعیت درست همچنان می‌نشیند
+    r = post(tch, "attendance.php", {"action": "save", "id": ses[2]["id"],
+                                     "marks": [{"id": absent_uid, "status": "late"}]})
+    check(r[1].get("saved") == 1, "وضعیت معتبر همچنان ثبت می‌شود", str(r[1]))
+
 print("\n" + "─" * 58)
 print(f"موفق: {_pass}    ناموفق: {_fail}")
 sys.exit(0 if _fail == 0 else 1)

@@ -2144,8 +2144,69 @@ function demoSPayments(){
 
 /* همان دلیل t/schedule — «این نمونه» و «سند F» برای زبان‌آموز
    واقعی هیچ معنایی ندارند. */
-V["s/classes"]=V["s/schedule"]=V["s/certificates"]=function(){
-  return notBuilt("کلاس‌ها و تکالیفتان را فعلاً در صفحهٔ «خانه» و «تکالیف» می‌بینید.");
+/*
+ * سه آیتمِ منوی زبان‌آموز — «کلاس‌های من»، «برنامهٔ کلاسی» و «مدارک» —
+ * هر سه به یک تابع وصل بودند که یک پیام می‌داد: «کلاس‌ها و تکالیفتان
+ * را فعلاً در صفحهٔ خانه و تکالیف می‌بینید». برای «مدارک» این جمله
+ * اصلاً ربطی نداشت، و برای دو تای دیگر بن‌بست بود در حالی که داده‌اش
+ * از bootstrap.php می‌آید و صفحهٔ خانه همان را نشان می‌دهد.
+ */
+V["s/classes"]=function(){
+  var cs=DB.classes||[];
+  if(!cs.length) return h`
+    <div class="card"><div class="empty">
+      <b>هنوز در کلاسی ثبت‌نام نشده‌اید</b>
+      <p>وقتی آموزشگاه شما را در کلاسی ثبت‌نام کند، اینجا می‌آید.</p>
+    </div></div>`;
+  return h`
+  <div class="card"><div class="card-h"><h3>کلاس‌های من</h3>
+    <div class="r"><span class="muted num">${fa(cs.length)} کلاس</span></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>کلاس</th><th>مدرس</th><th>روز و ساعت</th><th>پیشرفت</th><th>حضور</th></tr></thead>
+      <tbody>${cs.map(function(c){return h`
+        <tr>
+          <td><b>${esc(c.name)}</b>${c.level?'<br><span class="muted">'+esc(c.level)+'</span>':""}</td>
+          <td>${c.teacher?esc(c.teacher):"—"}</td>
+          <td class="num">${esc(c.days||"—")} · ${esc(c.time||"—")}</td>
+          <td class="num">جلسهٔ ${fa(c.session||0)} از ${fa(c.total||0)}</td>
+          <td class="num">${c.attendance===null||c.attendance===undefined?"—":fa(c.attendance)+"٪"}</td>
+        </tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["s/schedule"]=function(){
+  var ss=(DB.sessions||[]).filter(function(x){return x.status!=="cancelled";});
+  var byId={}; (DB.classes||[]).forEach(function(c){byId[c.id]=c;});
+  var today=todayISO();
+  var next=ss.filter(function(x){return x.date>=today;});
+  var list=(next.length?next:ss).slice(0,40);
+  if(!list.length) return h`
+    <div class="card"><div class="empty">
+      <b>هنوز جلسه‌ای در برنامه نیست</b>
+      <p>وقتی کلاس‌تان منتشر شود، جلسه‌های کل ترم اینجا می‌آید.</p>
+    </div></div>`;
+  return h`
+  <div class="card"><div class="card-h"><h3>برنامهٔ کلاسی</h3>
+    <div class="r"><span class="muted num">${fa(list.length)} جلسه</span></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>تاریخ</th><th>ساعت</th><th>کلاس</th><th>وضعیت</th></tr></thead>
+      <tbody>${list.map(function(x){
+        var c=byId[x.cls]||{};
+        return h`<tr>
+          <td>${esc(jDay(x.date))}</td>
+          <td class="num">${fa(x.time||"—")}</td>
+          <td>${esc(c.name||"—")}</td>
+          <td>${x.status==="live"?pill("در حال برگزاری","ok")
+              :x.status==="done"?pill("برگزار شد","mute")
+              :pill("پیش رو","info")}</td>
+        </tr>`;}).join("")}
+      </tbody></table></div>
+  </div>`;
+};
+
+V["s/certificates"]=function(){
+  return notBuilt("صدور مدرک پایان دوره و کد استعلام هنوز به سامانه وصل نشده است.");
 };
 
 /* ══════════ صفحات: مدیر ══════════ */
@@ -2270,16 +2331,38 @@ V["m/students"]=function(){
       <div class="r"><span class="pill p-mute num">${fa(DB.students.length)} نفر</span>
         <button class="btn btn--g btn--sm" data-act="noop">خروجی اکسل</button></div></div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب</th><th>وضعیت</th></tr></thead>
+      <thead><tr><th>نام</th><th>کلاس</th><th>حضور</th><th>نمرهٔ جاری</th><th>مانده حساب${API.live?' <span class="muted" style="font-weight:400">(مالی وصل نیست)</span>':""}</th><th>وضعیت</th></tr></thead>
       <tbody>${DB.students.map(function(s){
-        var risk=s.att<80||s.grade<13;
+        /*
+         * سه چیز اینجا غلط بود:
+         *
+         *   ستون کلاس لیترال «AEF 2A» بود — هر زبان‌آموزی، در هر
+         *   کلاسی، همان را نشان می‌داد. سرور شناسهٔ کلاس را در s.cls
+         *   می‌دهد، پس نامش از DB.classes پیدا می‌شود.
+         *
+         *   شرط ریزش `s.att<80||s.grade<13` بود و در جاوااسکریپت
+         *   null<80 و null<13 هر دو true هستند. یعنی زبان‌آموزی که
+         *   تازه ثبت‌نام شده و هنوز نه حضوری دارد نه نمره‌ای، «در
+         *   معرض ریزش» برچسب می‌خورد. وقتی همه قرمزند، قرمز معنایش
+         *   را از دست می‌دهد.
+         *
+         *   ستون مانده حساب وقتی balance خالی بود «تسویه» می‌نوشت.
+         *   applyBootstrap مقدار balance را ثابت صفر می‌گذارد چون
+         *   ماژول مالی اصلاً وجود ندارد — پس این یعنی ادعای «هیچ‌کس
+         *   بدهی ندارد» از سامانه‌ای که خبر ندارد.
+         */
+        var cname=(DB.classes.filter(function(c){return c.id===s.cls;})[0]||{}).name;
+        var lowAtt = s.att!==null && s.att!==undefined && s.att<80;
+        var lowGr  = s.grade!==null && s.grade!==undefined && s.grade<13;
+        var risk   = lowAtt||lowGr;
+        var known  = (s.att!==null&&s.att!==undefined)||(s.grade!==null&&s.grade!==undefined);
         return h`<tr class="click" data-act="open-student" data-id="${esc(s.id)}">
           <td><span class="who"><span class="av">${initials(s.name)}</span><b>${esc(s.name)}</b></span></td>
-          <td class="num">AEF 2A</td>
-          <td class="num ${s.att<80?"down":""}">${fa(s.att)}٪</td>
+          <td>${cname?esc(cname):'<span class="muted">بدون کلاس</span>'}</td>
+          <td class="num ${lowAtt?"down":""}">${s.att===null||s.att===undefined?"—":fa(s.att)+"٪"}</td>
           <td class="num">${fa(s.grade)}</td>
-          <td class="num ${s.balance?"down":""}">${s.balance?money(s.balance):"تسویه"}</td>
-          <td>${risk?pill("در معرض ریزش","warn"):pill("عادی","ok")}</td></tr>`;}).join("")}
+          <td class="num">${API.live?'<span class="muted">—</span>':(s.balance?money(s.balance):"تسویه")}</td>
+          <td>${!known?pill("تازه","mute"):risk?pill("در معرض ریزش","warn"):pill("عادی","ok")}</td></tr>`;}).join("")}
       </tbody></table></div>
   </div>`;
 };
@@ -3831,7 +3914,95 @@ function termConflicts(){
   });
   return out;
 }
+/*
+ * وضعیت واقعی ترم — جای ویزارد نمایشی روی نصب زنده.
+ *
+ * هیچ عددی اینجا ساخته نمی‌شود: نام ترم، هفتهٔ جاری و فهرست کلاس‌ها
+ * همان چیزی است که bootstrap.php داده. اگر ترمی نیست، صادقانه گفته
+ * می‌شود و دکمه به همان modalTerm() می‌رود که واقعاً ترم می‌سازد.
+ */
+function termLive(){
+  var i  = DB.institute || {};
+  var cs = DB.classes || [];
+  var hasTerm = i.term && i.term !== "بدون ترم فعال";
+
+  if(!hasTerm){
+    return h`
+    <div class="card"><div class="empty">
+      <b>هنوز ترم فعالی ندارید</b>
+      <p>ترم که ساخته شود، هر کلاسی که می‌سازید به آن بسته می‌شود و
+         جلسه‌هایش از تاریخ شروع ترم و الگوی روزهای کلاس ساخته می‌شود.</p>
+      <button class="btn btn--p" data-act="tm-setup" style="margin-top:12px">ساخت ترم</button>
+    </div></div>`;
+  }
+
+  var published = cs.filter(function(c){return c.status==="published";});
+  var draft     = cs.filter(function(c){return c.status!=="published";});
+  var seats     = cs.reduce(function(a,c){return a+(+c.cap||0);},0);
+  var taken     = cs.reduce(function(a,c){return a+(+c.enrolled||0);},0);
+
+  return h`
+  <div class="grid g4" style="margin-bottom:16px">
+    ${kpi("ترم جاری",esc(i.term),"هفتهٔ "+fa(i.week||0)+" از "+fa(i.weeks||0))}
+    ${kpi("کلاس منتشرشده",fa(published.length),draft.length?fa(draft.length)+" پیش‌نویس":"همه منتشر شده")}
+    ${kpi("ظرفیت کل",fa(seats),"صندلی")}
+    ${kpi("پر شده",fa(taken),seats?fa(Math.round(taken/seats*100))+"٪ ظرفیت":"—")}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>کلاس‌های این ترم</h3>
+      <div class="r"><button class="btn btn--p btn--sm" data-act="cl-new">کلاس تازه</button></div></div>
+    ${cs.length===0?h`
+      <div class="empty"><b>هنوز کلاسی در این ترم نیست</b>
+        <p>کلاس را با روز و ساعت و مدرسش بسازید، بعد منتشرش کنید تا
+           جلسه‌های کل ترم خودکار ساخته شود.</p>
+        <button class="btn btn--p" data-act="cl-new" style="margin-top:12px">ساخت اولین کلاس</button>
+      </div>`:h`
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>کلاس</th><th>مدرس</th><th>روز و ساعت</th><th>ظرفیت</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>${cs.map(function(c){return h`
+        <tr>
+          <td><b>${esc(c.name)}</b>${c.level?'<br><span class="muted">'+esc(c.level)+'</span>':""}</td>
+          <td>${c.teacher?esc(c.teacher):pill("بدون مدرس","warn")}</td>
+          <td class="num">${esc(c.days||"—")} · ${esc(c.time||"—")}</td>
+          <td class="num">${fa(c.enrolled||0)} / ${fa(c.cap||0)}</td>
+          <td>${c.status==="published"?pill("منتشر شده","ok"):pill("پیش‌نویس","warn")}</td>
+          <td><button class="btn btn--g btn--sm" data-act="cl-edit" data-id="${esc(c.id)}">ویرایش</button></td>
+        </tr>`;}).join("")}
+      </tbody></table></div>`}
+  </div>
+
+  ${draft.length?h`
+  <div class="card" style="margin-top:16px"><div class="card-b">
+    <p class="muted" style="margin:0">کلاس «پیش‌نویس» در برنامهٔ مدرس و زبان‌آموز دیده نمی‌شود.
+       از صفحهٔ <b>کلاس‌ها</b> منتشرش کنید تا جلسه‌هایش ساخته شود.</p>
+  </div></div>`:""}
+
+  <div class="card" style="margin-top:16px"><div class="card-b">
+    <p class="muted" style="margin:0">تقویم تعطیلات و کمپین تمدید ترم هنوز به سامانه وصل
+       نشده‌اند؛ جلسه‌ها روی الگوی روزهای کلاس ساخته می‌شوند بدون حذف تعطیلات.</p>
+  </div></div>`;
+}
+
 V["m/term"]=function(){
+  /*
+   * ویزارد چهارمرحله‌ای زیر، نمایشی است: ردیف‌هایش از DB.termDraft
+   * می‌آمد (پنج کلاس ساختگی با نام و قیمت ثابت)، تقویم تعطیلاتش پنج
+   * تاریخ نوشته‌شده در کد بود، و دکمهٔ «انتشار ترم» فقط یک toast نشان
+   * می‌داد و هیچ درخواستی به سرور نمی‌فرستاد.
+   *
+   * روی نصب واقعی این یعنی مدیر پنج کلاسی می‌دید که نساخته بود، و بعد
+   * از زدن «انتشار ترم» باور می‌کرد ترمش منتشر شده در حالی که هیچ ترمی
+   * و هیچ جلسه‌ای ساخته نشده بود.
+   *
+   * ساخت ترم و کلاس از قبل راه واقعی خودشان را دارند — modalTerm() که
+   * institute.php|setup را صدا می‌زند و modalClass() که classes.php را.
+   * پس اینجا در حالت زنده وضعیت واقعی ترم نشان داده می‌شود و کاربر به
+   * همان دو مسیرِ کارکننده فرستاده می‌شود، نه به یک ویزارد دوم که فقط
+   * ادای کار درمی‌آورد.
+   */
+  if(API.live) return termLive();
+
   var st=S.term, rows=st.rows||(st.rows=JSON.parse(JSON.stringify(DB.termDraft)));
   var cf=termConflicts(), badRows={};
   cf.forEach(function(c){badRows[c.row]=true;});

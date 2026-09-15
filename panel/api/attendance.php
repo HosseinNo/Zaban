@@ -122,7 +122,19 @@ case 'save':
         if (!is_array($m)) continue;
         $uid = s_in($m, 'id', 32);
         if (!isset($allowed[$uid])) { $skipped++; continue; }
-        $st   = enum_in($m, 'status', STATUSES, 'present');
+        /*
+         * وضعیت ناشناخته را «حاضر» حساب نمی‌کنیم.
+         *
+         * enum_in به پیش‌فرض برمی‌گردد، و پیش‌فرض اینجا 'present' بود.
+         * یعنی اگر کلاینت به هر دلیلی مقدار بدی می‌فرستاد — تایپو، نسخهٔ
+         * قدیمی پنل، دست‌کاری — پاسخ ۲۰۰ می‌گرفت و غیبت بی‌سروصدا به
+         * حضور تبدیل می‌شد. هیچ‌کس هم نمی‌فهمید، چون خطایی در کار نبود.
+         *
+         * حالا ردیف رد می‌شود و در skipped شمرده می‌شود، مثل شناسهٔ
+         * زبان‌آموزی که در این کلاس نیست.
+         */
+        $st = (string)scalar_in($m, 'status', '');
+        if (!in_array($st, STATUSES, true)) { $skipped++; continue; }
         $note = s_in($m, 'note', 255) ?: null;
 
         // درج‌کن‌وگرنه‌به‌روزرسان، قابل حمل بین MySQL و SQLite
