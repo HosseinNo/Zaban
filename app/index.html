@@ -763,7 +763,9 @@ var FA=["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
    فارسی چاپ می‌شد. */
 function fa(n){
   if(n===null||n===undefined||n==="")return "—";
-  return String(n).replace(/[0-9]/g,function(d){return FA[+d];});
+  /* ممیز هم فارسی شود: «۱۹.۵» با نقطهٔ لاتین وسط متن فارسی می‌شکند.
+     فقط نقطهٔ بین دو رقم عوض می‌شود تا نام فایل و نشانی دست‌نخورده بماند. */
+  return String(n).replace(/(\d)\.(\d)/g,"$1٫$2").replace(/[0-9]/g,function(d){return FA[+d];});
 }
 function faG(n){return fa(String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"٬"));}
 function money(n){return faG(n)+" تومان";}
@@ -1142,6 +1144,7 @@ var S={role:"teacher",route:"",att:{},live:null,provider:"bbb",
        enrol:{step:1,name:"",phone:"",level:"",clsId:"",plan:"instal",paid:false},
        exam:{on:false,i:0,ans:{},left:0,timer:null,done:false},
        tools:{timer:0,run:false,tk:null,picked:"",poll:null},
+       account:null,
        canHostMeeting:false,meet:null,meetApi:null};
 
 DB.students.forEach(function(s){S.att[s.id]="present";});
@@ -1324,7 +1327,9 @@ var NAV={
   {g:"آموزشی"},
   {r:"t/gradebook",t:"دفتر نمره",i:"grid",perm:"assignment.grade"},
   {r:"t/payroll",t:"کارکرد و حقوق من",i:"wallet",perm:"finance.payout.view"},
-  {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"}
+  {r:"t/schedule",t:"برنامهٔ هفتگی",i:"cal"},
+  {g:"حساب"},
+  {r:"account",t:"حساب کاربری من",i:"cog"}
  ],
  student:[
   {g:"یادگیری"},
@@ -1336,7 +1341,9 @@ var NAV={
   {g:"مالی و اداری"},
   {r:"s/payments",t:"شهریه و اقساط",i:"wallet",badge:1,perm:"finance.tuition.view"},
   {r:"s/schedule",t:"برنامهٔ کلاسی",i:"cal"},
-  {r:"s/certificates",t:"مدارک",i:"award"}
+  {r:"s/certificates",t:"مدارک",i:"award"},
+  {g:"حساب"},
+  {r:"account",t:"حساب کاربری من",i:"cog"}
  ],
  manager:[
   {g:"روزانه"},
@@ -1354,7 +1361,9 @@ var NAV={
   {r:"m/books",t:"فروش کتاب",i:"book",perm:"shop.manage"},
   {r:"m/payroll",t:"حقوق مدرسان",i:"wallet",perm:"finance.payout.view"},
   {r:"m/reports",t:"گزارش‌ها",i:"chart",perm:"report.view"},
-  {r:"m/settings",t:"تنظیمات",i:"cog",perm:"institute.edit"}
+  {r:"m/settings",t:"تنظیمات",i:"cog",perm:"institute.edit"},
+  {g:"حساب"},
+  {r:"account",t:"حساب کاربری من",i:"cog"}
  ]
 };
 
@@ -2844,6 +2853,67 @@ V["m/classes"]=function(){
 };
 
 /* ══════════ تنظیمات و اعضا ══════════ */
+
+/* ══════════ حساب کاربری ══════════
+ *
+ * account.php از قبل state/checkUsername/setPassword را داشت و درست کار
+ * می‌کرد، ولی هیچ صفحه‌ای صدایشان نمی‌زد. یعنی کسی که با پیامک ثبت‌نام
+ * کرده بود هرگز نمی‌توانست رمز بگذارد، و کسی که رمز داشت نمی‌توانست
+ * عوضش کند — تنها راه، خروج و «رمزم را فراموش کرده‌ام» بود.
+ */
+V["account"]=function(){
+  var st=S.account;
+  if(st===null||st===undefined){
+    S.account={loading:true};
+    apiCall("account.php",{action:"state"}).then(function(r){
+      S.account=r&&r.ok?{username:r.username,hasPassword:r.hasPassword,phone:r.phone}:{err:(r&&r.message)||"خوانده نشد"};
+      render();
+    });
+    return h`<div class="card"><div class="card-b"><p class="muted">در حال بارگذاری…</p></div></div>`;
+  }
+  if(st.loading)return h`<div class="card"><div class="card-b"><p class="muted">در حال بارگذاری…</p></div></div>`;
+  if(st.err)return h`<div class="card"><div class="empty"><b>خوانده نشد</b><p>${esc(st.err)}</p></div></div>`;
+
+  return h`
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3>شناسهٔ ورود</h3></div>
+    <div class="card-b">
+      <div class="grid g2">
+        <div class="fld"><label>شمارهٔ موبایل</label>
+          <input type="text" dir="ltr" style="text-align:end" value="${esc(st.phone||"")}" disabled>
+          <span class="hint">با همین شماره کد ورود می‌گیرید. تغییرش از پشتیبانی.</span></div>
+        <div class="fld"><label>نام کاربری فعلی</label>
+          <input type="text" dir="ltr" style="text-align:end" value="${esc(st.username||"—")}" disabled></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h3>${st.hasPassword?"تغییر رمز":"گذاشتن رمز"}</h3></div>
+    <div class="card-b">
+      <p class="muted" style="margin-block-end:14px">
+        ${st.hasPassword
+          ? "با رمز، بدون منتظرماندن برای پیامک وارد می‌شوید."
+          : "هنوز رمزی ندارید. اگر بگذارید، می‌توانید بدون کد پیامکی هم وارد شوید."}
+      </p>
+      ${st.hasPassword?h`
+      <div class="fld"><label for="acCur">رمز فعلی <span class="rq">*</span></label>
+        <input id="acCur" type="password" autocomplete="current-password"></div>`:""}
+      <div class="grid g2">
+        <div class="fld"><label for="acUser">نام کاربری${st.username?"":" <span class=\"rq\">*</span>"}</label>
+          <input id="acUser" type="text" dir="ltr" style="text-align:end" autocomplete="username"
+                 value="${esc(st.username||"")}" placeholder="مثلاً sara.m">
+          <span class="hint">حروف انگلیسی، عدد، نقطه و زیرخط.</span></div>
+        <div class="fld"><label for="acPass">رمز تازه <span class="rq">*</span></label>
+          <input id="acPass" type="password" autocomplete="new-password">
+          <span class="hint">حداقل ۸ نویسه و فقط عدد نباشد.</span></div>
+      </div>
+      <div class="fld"><label for="acPass2">تکرار رمز تازه <span class="rq">*</span></label>
+        <input id="acPass2" type="password" autocomplete="new-password"></div>
+      <button class="btn btn--p" data-act="ac-save">${st.hasPassword?"تغییر رمز":"ذخیرهٔ رمز"}</button>
+    </div>
+  </div>`;
+};
 
 V["m/settings"]=function(){
   if(!API.live)return notBuilt();
@@ -5090,7 +5160,7 @@ var TITLES={"t":"امروز","t/classes":"کلاس‌های من","t/attendance"
  "m":"پیشخوان","m/live":"کلاس‌های در حال برگزاری","m/students":"زبان‌آموزان",
  "m/student":"پروندهٔ زبان‌آموز","m/classes":"کلاس‌ها","m/finance":"مالی",
  "m/reports":"گزارش‌ها","m/settings":"تنظیمات","m/term":"ترم‌ساز",
- "compose":"اعلان تازه","m/join":"پیوستن و درخواست‌ها","m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
+ "account":"حساب کاربری من","compose":"اعلان تازه","m/join":"پیوستن و درخواست‌ها","m/enrol":"ثبت‌نام زبان‌آموز","m/books":"فروش کتاب","m/payroll":"حقوق مدرسان"};
 
 /* مسیرهایی که تمام‌صفحه‌اند و پوستهٔ اپ را نشان نمی‌دهند */
 var FULL={"auth":1,"signup":1,"nows":1,"susp":1,"meet":1,"pick":1};
@@ -5125,7 +5195,7 @@ function render(){
     else if(r==="auth"||r==="nows"||r==="susp"||r==="pick"){ r=roleRoute(API.user.role); }
     /* اعلان‌نویسی مسیر مشترک است: مدیر و مدرس هر دو به همان صفحه
        می‌روند و محدودهٔ مجوز تعیین می‌کند چه مخاطبی می‌بینند */
-    else if(r==="compose"){ /* بگذار بماند */ }
+    else if(r==="compose"||r==="account"){ /* مسیر مشترک هر سه نقش */ }
     else if(r.split("/")[0]!==roleRoute(API.user.role)){ r=roleRoute(API.user.role); }
     if("#/"+r!==location.hash){ location.replace("#/"+r); }
   }
@@ -6086,6 +6156,21 @@ document.addEventListener("click",function(e){
     doAct("institute.php",{action:"setMeetingAccess",id:act.dataset.id,on:onFlag},
       onFlag?"اجازهٔ جلسهٔ میت داده شد":"اجازهٔ جلسهٔ میت گرفته شد",function(){
       S.members=null; loadMembers();});
+  }
+  else if(a==="ac-save"){
+    var cur=((el("acCur")||{}).value)||"", u=(((el("acUser")||{}).value)||"").trim();
+    var p1=((el("acPass")||{}).value)||"", p2=((el("acPass2")||{}).value)||"";
+    if(p1.length<8){toast("رمز باید حداقل ۸ نویسه باشد");return;}
+    if(/^\d+$/.test(enDigits(p1))){toast("رمز نمی‌تواند فقط عدد باشد");return;}
+    if(p1!==p2){toast("تکرار رمز با خودش نمی‌خواند");return;}
+    if(S.account&&S.account.hasPassword&&!cur){toast("رمز فعلی را وارد کنید");return;}
+    var body={action:"setPassword",password:p1};
+    if(cur)body.current=cur;
+    if(u&&u!==(S.account&&S.account.username))body.username=u;
+    doAct("account.php",body,"ذخیره شد",function(){
+      S.account=null;              /* دوباره از سرور خوانده شود */
+      render();
+    });
   }
   else if(a==="st-save"){
     doAct("institute.php",{action:"update",name:((el("stName")||{}).value||"").trim(),

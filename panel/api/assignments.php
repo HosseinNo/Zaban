@@ -129,7 +129,8 @@ case 'grade':
     $score = (float)$raw;
     $max   = (float)$a['max_score'];
     if ($score < 0 || $score > $max) {
-        fail(400, 'out_of_range', 'نمره باید بین ۰ و ' . rtrim(rtrim(number_format($max, 2, '.', ''), '0'), '.') . ' باشد.');
+        fail(400, 'out_of_range', 'نمره باید بین ۰ و '
+            . fa_digits(rtrim(rtrim(number_format($max, 2, '.', ''), '0'), '.')) . ' باشد.');
     }
 
     db()->prepare('UPDATE submission SET score = ?, feedback = ?, graded_by = ?, graded_at = ? WHERE id = ? AND institute_id = ?')

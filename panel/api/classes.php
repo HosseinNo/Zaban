@@ -133,7 +133,8 @@ case 'publish':
 
     $from = date_in($in, 'from', (string)$term['starts_on']);
     $made = generate_sessions((string)$cl['id'], (string)$cl['day_pattern'], (string)$cl['start_time'],
-                              (int)$cl['total_sessions'], (string)$from, $cl['join_url']);
+                              (int)$cl['total_sessions'], (string)$from, $cl['join_url'],
+                              (string)$cl['provider']);
 
     db()->prepare('UPDATE klass SET status = ?, term_id = ? WHERE id = ? AND institute_id = ?')
         ->execute(['published', $term['id'], $cl['id'], inst_id()]);

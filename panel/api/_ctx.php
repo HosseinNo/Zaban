@@ -366,6 +366,19 @@ function i_in(array $in, string $key, int $default = 0, int $min = 0, int $max =
     return max($min, min($max, $v));
 }
 
+/**
+ * لاتین → فارسی، برای متنی که به کاربر نشان داده می‌شود.
+ *
+ * پیام خطای نمره «نمره باید بین ۰ و 20 باشد» می‌شد: صفر فارسی چون در
+ * متن تایپ شده بود، بیست لاتین چون از number_format می‌آمد. در محصولی
+ * که همه‌جا رقم فارسی دارد، این وصله تو ذوق می‌زند.
+ */
+function fa_digits(string $s): string
+{
+    return strtr($s, ['0'=>'۰','1'=>'۱','2'=>'۲','3'=>'۳','4'=>'۴',
+                      '5'=>'۵','6'=>'۶','7'=>'۷','8'=>'۸','9'=>'۹','.'=>'٫']);
+}
+
 /** ارقام فارسی و عربی → لاتین */
 function en_digits(string $s): string
 {
@@ -454,7 +467,8 @@ function day_numbers(string $pattern): array
  * جلسه‌های موجود پاک نمی‌شوند؛ اگر کلاس قبلاً جلسه داشته، دست نمی‌خورد.
  */
 function generate_sessions(string $classId, string $pattern, string $startTime,
-                           int $count, string $fromDate, ?string $joinUrl): int
+                           int $count, string $fromDate, ?string $joinUrl,
+                           string $provider = ''): int
 {
     $exists = db()->prepare('SELECT COUNT(*) FROM class_session WHERE class_id = ?');
     $exists->execute([$classId]);
@@ -473,7 +487,21 @@ function generate_sessions(string $classId, string $pattern, string $startTime,
     // سقف نگهبان: با بدترین الگو (هفته‌ای یک جلسه) ۶۰ جلسه حدود ۴۲۰ روز است
     while ($made < $count && $guard < 500) {
         if (in_array((int)gmdate('w', $ts), $days, true)) {
-            $ins->execute([new_id(), inst_id(), $classId, $seq, gmdate('Y-m-d', $ts), $startTime, 'scheduled', $joinUrl]);
+            /*
+             * اتاق جیتسی برای هر جلسه جداست، نه یکی برای کل عمر کلاس.
+             *
+             * پیش از این آدرس اتاق از شناسهٔ کلاس ساخته می‌شد، پس یک لینک
+             * تا آخر ترم ثابت می‌ماند. زبان‌آموزی که انصراف داده یا ترمش
+             * تمام شده، همان لینک را داشت و اتاق روی meet.jit.si باز بود.
+             * سرور دیگر لینک را به او نمی‌داد، ولی لینکی که قبلاً گرفته
+             * بود همچنان کار می‌کرد.
+             *
+             * حالا هر جلسه شناسهٔ تصادفی خودش را دارد؛ لینک دیروز برای
+             * جلسهٔ فردا بی‌فایده است.
+             */
+            $sid = new_id();
+            $url = $provider === 'jitsi' ? jitsi_room_url($sid) : $joinUrl;
+            $ins->execute([$sid, inst_id(), $classId, $seq, gmdate('Y-m-d', $ts), $startTime, 'scheduled', $url]);
             $seq++; $made++;
         }
         $ts += 86400; $guard++;

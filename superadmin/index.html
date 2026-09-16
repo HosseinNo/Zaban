@@ -77,9 +77,31 @@ input,select,textarea{font:inherit}
 a{color:var(--brand-2)}
 
 /* ── چیدمان ── */
-.shell{display:grid;grid-template-columns:236px 1fr;min-block-size:100vh}
+/*
+ * منو کشویی است، نه ستون همیشگی.
+ *
+ * پیش از این پانزده دکمهٔ منو همیشه روی صفحه بودند؛ روی گوشی زیر هم
+ * می‌چیدند و حدود ۴۰٪ نخستین صفحه را می‌گرفتند. حالا با دکمهٔ ☰ باز
+ * می‌شود، انتخاب که شد بسته می‌شود، و تمام پهنا برای محتوا می‌ماند.
+ */
+.shell{display:block;min-block-size:100vh}
 .side{background:var(--surface);border-inline-end:1px solid var(--line);
-      display:flex;flex-direction:column;position:sticky;top:0;block-size:100vh}
+      display:flex;flex-direction:column;position:fixed;inset-block:0;inset-inline-start:0;
+      inline-size:268px;max-inline-size:86vw;z-index:60;
+      transform:translateX(100%);transition:transform .22s ease;box-shadow:var(--sh-lg)}
+[dir="ltr"] .side{transform:translateX(-100%)}
+.side.open{transform:none}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:55;border:0;padding:0;
+       opacity:0;pointer-events:none;transition:opacity .22s ease}
+.scrim.on{opacity:1;pointer-events:auto}
+.bridge-bar{background:var(--warn-soft);color:var(--warn);
+  border-block-end:1px solid var(--warn);padding:10px 16px;font-size:13.5px;line-height:1.8;
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bridge-bar b{font-weight:700}
+.bridge-bar .btn{margin-inline-start:auto;background:var(--warn);color:var(--surface);border:0}
+.burger{inline-size:40px;block-size:40px;border-radius:var(--r1);border:1px solid var(--line);
+        background:var(--surface-2);color:var(--ink);font-size:18px;line-height:1;flex:none}
+.burger:hover{background:var(--brand-soft);border-color:var(--brand)}
 .brand{display:flex;align-items:center;gap:10px;padding:18px 18px 16px;
        border-block-end:1px solid var(--line);font-weight:700}
 .brand i{inline-size:32px;block-size:32px;border-radius:9px;background:var(--brand);color:#fff;
@@ -261,12 +283,8 @@ tr.click:hover td{background:var(--surface-2)}
 .modal .card-b{padding:20px}
 
 @media(max-width:820px){
-  .shell{grid-template-columns:1fr}
-  .side{position:static;block-size:auto;border-inline-end:none;border-block-end:1px solid var(--line)}
-  nav{display:flex;flex-wrap:wrap;gap:4px}
-  nav button{inline-size:auto}
-  nav .grp{display:none}
   .page{padding:16px}
+  .top{padding:12px 14px}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
@@ -408,7 +426,7 @@ function call(body){
 }
 
 /* ══════════ وضعیت ══════════ */
-var S={view:"dash",settings:null,leads:null,stats:null,events:null,
+var S={view:"dash",nav:false,settingsLoading:false,settings:null,leads:null,stats:null,events:null,
        codes:null,health:null,issued:null,smsTest:null,busy:false,err:"",
        institutes:null,instQ:"",instStatus:"",instDetail:null,
        userQ:"",userResults:null,userDetail:null,
@@ -443,7 +461,7 @@ var NAV=[
   {v:"account",t:"حساب من"}
 ];
 
-var TITLES={dash:"پیشخوان",institutes:"آموزشگاه‌ها",users:"کاربران و نقش‌ها",
+var TITLES={dash:"پیشخوان",institutes:"آموزشگاه‌ها",users:"کاربران و نقش‌ها",access:"نقش‌ها و مجوزها",
   leads:"درخواست‌های دموی رایگان",notify:"اعلان به کاربران",blog:"وبلاگ",pricing:"قیمت‌ها",contact:"تماس و ایمیل",
   content:"متن‌های سایت",trust:"نمادها و وضعیت",sms:"ورود کاربران و پیامک",
   health:"سلامت سامانه",events:"رویدادهای اخیر",account:"حساب من"};
@@ -1646,8 +1664,16 @@ function render(){
   if(!API.admin){el("app").innerHTML=viewLogin();focusFirst();return;}
   el("app").innerHTML=h`
   ${!API.live?'<div class="demo-bar"><b>نسخهٔ نمایشی:</b> به بک‌اند زنده وصل نیست؛ داده‌ها نمونه‌اند و ذخیره نمی‌شوند.</div>':''}
+  ${S.settings&&S.settings.sms_mode==="bridge"?h`
+  <div class="bridge-bar">
+    <b>حالت پل روشن است</b> — پیامکی فرستاده نمی‌شود و کد ورود هر کاربر
+    به‌صورت خوانا در پایگاه داده می‌نشیند و در صفحهٔ «ورود کاربران و پیامک»
+    دیده می‌شود. پیش از اینکه کاربر واقعی وارد شود، کلید sms.ir را تنظیم کنید.
+    <button class="btn btn--sm" data-go="sms">تنظیم پیامک</button>
+  </div>`:""}
   <div class="shell">
-    <aside class="side">
+    <button class="scrim${S.nav?" on":""}" data-a="nav-close" aria-label="بستن منو" tabindex="-1"></button>
+    <aside class="side${S.nav?" open":""}" id="sideNav">
       <div class="brand"><i>ا</i><span>تاکورا<small>سوپرادمین پلتفرم</small></span></div>
       <nav>${NAV.map(function(n){
         if(n.g)return '<div class="grp">'+n.g+'</div>';
@@ -1660,7 +1686,11 @@ function render(){
       </div>
     </aside>
     <div class="main">
-      <header class="top"><h1>${TITLES[S.view]||""}</h1></header>
+      <header class="top">
+        <button class="burger" data-a="nav" aria-label="منو" aria-expanded="${S.nav?"true":"false"}"
+                aria-controls="sideNav">☰</button>
+        <h1>${TITLES[S.view]||""}</h1>
+      </header>
       <div class="page">${(VIEWS[S.view]||viewDash)()}</div>
     </div>
   </div>
@@ -1763,6 +1793,20 @@ function need(view){
     if(!S.settings&&["pricing","contact","content","trust","sms"].indexOf(view)>=0)S.settings=demoSettings();
     return Promise.resolve();
   }
+  /*
+   * تنظیمات یک‌بار و مستقل از نما خوانده می‌شود — بدون معطل‌کردن صفحه.
+   * نوار هشدارِ «حالت پل» باید همه‌جا دیده شود، وگرنه مالکی که سراغ
+   * صفحهٔ پیامک نمی‌رود هرگز نمی‌فهمد کد ورود کاربران به‌صورت خوانا در
+   * پایگاه می‌نشیند.
+   */
+  if(!S.settings&&!S.settingsLoading){
+    S.settingsLoading=true;
+    call({action:"settings"}).then(function(r){
+      S.settingsLoading=false;
+      if(r.ok){S.settings=r.settings;render();}
+    });
+  }
+
   if(view==="dash"&&!S.stats){
     /*
      * جاروی قراردادهای تمام‌شده، همراه آمار پیشخوان.
@@ -1792,6 +1836,7 @@ function need(view){
     if(!S.settings)jobs.push(call({action:"settings"}).then(function(r){if(r.ok)S.settings=r.settings;}));
     return Promise.all(jobs);
   }
+
   if(!S.settings&&["pricing","contact","content","trust"].indexOf(view)>=0){
     return call({action:"settings"}).then(function(r){if(r.ok)S.settings=r.settings;});
   }
@@ -1891,7 +1936,12 @@ function readForm(){
 
 document.addEventListener("click",function(e){
   var g=e.target.closest("[data-go]");
-  if(g){goView(g.dataset.go);return;}
+  if(g){S.nav=false;goView(g.dataset.go);return;}
+
+  var na=e.target.closest('[data-a="nav"]');
+  if(na){S.nav=!S.nav;render();var sn=document.getElementById("sideNav");
+         if(S.nav&&sn){var b=sn.querySelector("nav button");if(b)b.focus();}return;}
+  if(e.target.closest('[data-a="nav-close"]')){S.nav=false;render();return;}
 
   var oi=e.target.closest("[data-openinst]");
   if(oi){S.instDetail=null;doInstOpen(oi.dataset.openinst);return;}
@@ -2442,6 +2492,9 @@ document.addEventListener("change",function(e){
 });
 
 document.addEventListener("keydown",function(e){
+  /* منوی کشویی با Esc بسته شود — کشویی که فقط با ماوس بسته شود، تله است */
+  if(e.key==="Escape"&&S.nav){S.nav=false;render();
+    var b=document.querySelector('[data-a="nav"]'); if(b)b.focus(); return;}
   if(e.key==="Enter"&&!API.admin&&e.target.tagName==="INPUT"){
     var btn=document.querySelector("[data-a='login'],[data-a='setup']");
     if(btn)btn.click();
